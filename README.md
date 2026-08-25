@@ -10,6 +10,19 @@ Instead of browsing snapshots one by one or mounting `.zfs/snapshot` manually ov
 
 ---
 
+## 📸 Screenshots
+
+### Explorer View (Multi-Snapshot Timeline)
+![Explorer View](assets/explorer.png)
+
+### Roots Dashboard (Dataset Overview)
+![Roots Dashboard](assets/dashboard.png)
+
+### File Details & Version History
+![File Details & Version History](assets/detail.png)
+
+---
+
 ## ✨ Key Features
 
 * **📊 Multi-Snapshot Timeline Bar:** Each file and folder features an interactive, color-coded timeline bar indicating modifications, creations, deletions, and static periods across all snapshots at a single glance.

@@ -1,3 +1,7 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 :root {
     --top-header-height: 85px;
     --header-row-height: 27px;
@@ -92,7 +96,9 @@ body {
     font-size: 10pt;
     line-height: normal;
     margin: 0;
-    padding: 0 12px 12px 12px;
+    padding: 0 24px 24px 24px;
+    min-width: max-content;
+    width: 100%;
 }
 
 .sticky-header-container {
@@ -100,8 +106,7 @@ body {
     top: 0;
     background: var(--bg-surface);
     z-index: 50;
-    padding-top: 6px;
-    padding-bottom: 4px;
+    padding: 6px 16px 4px 16px;
     border-bottom: 1px solid var(--border-color-light);
 }
 
@@ -551,6 +556,7 @@ td.browser-cell-name {
 .browser-cell-snapshots {
     width: 25%;
     min-width: 320px;
+    max-width: 450px;
     height: 16px;
     padding: 2px 6px;
 }
@@ -558,6 +564,7 @@ td.browser-cell-name {
 .browser-header-snapshots {
     width: 25%;
     min-width: 320px;
+    max-width: 450px;
 }
 
 .browser-cell-snapshots svg.snapshotbar {
@@ -625,19 +632,36 @@ td.browser-cell-name {
     opacity: 0.7;
 }
 
-.browser-cell-size {
+.browser-cell-size, .browser-header-size {
+    width: 80px;
+    min-width: 80px;
     text-align: right;
 }
 
-.browser-cell-owner,
-.browser-cell-mtime,
-.browser-cell-ctime,
-.browser-cell-mode {
+.browser-cell-owner, .browser-header-owner {
+    width: 100px;
+    min-width: 100px;
     text-align: center;
 }
 
-.browser-cell-mode {
+.browser-cell-mtime, .browser-header-mtime,
+.browser-cell-ctime, .browser-header-ctime {
+    width: 160px;
+    min-width: 160px;
+    text-align: center;
+}
+
+.browser-cell-mode, .browser-header-mode {
+    width: 90px;
+    min-width: 90px;
+    text-align: center;
     font-family: 'Courier New', Courier, monospace;
+}
+
+.browser-cell-type, .browser-header-type {
+    width: 110px;
+    min-width: 110px;
+    text-align: left;
 }
 
 /* Details View Specific Styles */

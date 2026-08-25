@@ -710,7 +710,7 @@ class TreeTable {
 
         const circle = (currentIdx >= 0 && !isSubDataset) ? `<circle cx="${currentIdx * barWidth + 10}" cy="10" r="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>` : '';
 
-        return `<svg class="snapshotbar" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; max-width: ${totalWidth}px; height: 100%;">${inner}${circle}</svg>`;
+        return `<svg class="snapshotbar" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; max-width: ${totalWidth}px; height: 16px;">${inner}${circle}</svg>`;
     }
 
     initTimelineTooltip() {

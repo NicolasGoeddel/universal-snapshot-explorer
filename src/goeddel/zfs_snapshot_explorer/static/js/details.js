@@ -56,7 +56,10 @@ async function loadMimeTypes() {
     if (!rootName || !filePath) return;
 
     try {
-        const url = `/api/file-mimetypes/${encodeURIComponent(rootName)}/${encodePath(filePath)}`;
+        let url = `/api/file-mimetypes/${encodeURIComponent(rootName)}`;
+        if (filePath && filePath.trim()) {
+            url += `/-/${encodePath(filePath)}`;
+        }
         const res = await fetch(url);
         if (!res.ok) return;
         cachedMimeMap = await res.json();

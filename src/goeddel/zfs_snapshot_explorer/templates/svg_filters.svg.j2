@@ -1,0 +1,18 @@
+<svg width="0" height="0" style="position: absolute;">
+    <defs>
+        <filter id="bar_light">
+            <feDiffuseLighting in="SourceGraphic" result="light" lighting-color="white">
+            <fePointLight x="120" y="-20" z="100" />
+            </feDiffuseLighting>
+
+            <feComposite
+            in="SourceGraphic"
+            in2="light"
+            operator="arithmetic"
+            k1="1"
+            k2="1"
+            k3="0.2"
+            k4="0" />
+        </filter>
+    </defs>
+</svg>

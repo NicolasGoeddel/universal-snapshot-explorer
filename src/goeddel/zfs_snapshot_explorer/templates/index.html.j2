@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    {% include 'header.html.j2' %}
+    <link rel="stylesheet" href="{{ static_url('css/index.css') }}">
+    <script src="{{ static_url('js/index.js') }}" defer></script>
+    
+</head>
+<body>
+    <div class="root-list-container">
+        <div class="root-header-sticky-container">
+            <div class="root-header-bar">
+                <h2 style="display: flex; align-items: center; gap: 10px; margin: 0;">
+                    {{ lucide('hard-drive', size=26) }} {{ t('index.title') }}
+                </h2>
+                {% include 'nav_controls.html.j2' %}
+            </div>
+            <p style="color: var(--text-muted); margin: 0 0 6px 0; font-size: 9.5pt;">{{ t('index.prompt') }}</p>
+        </div>
+        
+        <table id="rootbrowser" class="filebrowser">
+            <thead>
+                <tr class="header-row">
+                    <th style="text-align: left;">{{ t('index.header.name') }}</th>
+                    <th style="text-align: center; width: 140px;">{{ t('table.snapshots') }}</th>
+                    <th style="text-align: left;">{{ t('index.header.root_path') }}</th>
+                    <th style="text-align: left;">{{ t('index.header.sub_path') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for root in roots %}
+                {% if root.is_mounted %}
+                <tr data-href="{{ route_url('list', root.name, '', 'Original') }}">
+                    <td>
+                        <a class="root-link" href="{{ route_url('list', root.name, '', 'Original') }}">
+                            {{ lucide('database', size=16, class_='text-muted') }} {{ root.name }}
+                        </a>
+                    </td>
+                    <td style="text-align: center;">
+                        <span class="badge" style="background: var(--bg-header-alt); border: 1px solid var(--border-color); color: var(--text-main);">
+                            {{ root.snapshots_count }}
+                        </span>
+                    </td>
+                    <td><code>{{ root.root_path }}</code></td>
+                    <td><code>{{ root.sub_path or '/' }}</code></td>
+                </tr>
+                {% else %}
+                <tr class="row-unmounted" style="opacity: 0.65;">
+                    <td>
+                        <span class="root-link" style="cursor: not-allowed; text-decoration: none; color: var(--text-muted);">
+                            {{ lucide('database', size=16, class_='text-muted') }} {{ root.name }}
+                            <span class="badge badge-missing" style="font-size: 7.5pt; margin-left: 6px; padding: 1px 6px;">{{ t('badge.unmounted') }}</span>
+                        </span>
+                    </td>
+                    <td style="text-align: center; color: var(--text-muted);">–</td>
+                    <td><code style="color: var(--text-muted);">{{ root.root_path }}</code></td>
+                    <td><code style="color: var(--text-muted);">{{ root.sub_path or '/' }}</code></td>
+                </tr>
+                {% endif %}
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                        {{ t('index.no_roots') }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

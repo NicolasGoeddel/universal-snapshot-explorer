@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  zfs_snapshot_explorer:
+    image: snapshotexplorer
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - snapshotexplorer.yaml:/snapshotexplorer.yaml
+      - ./data:/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

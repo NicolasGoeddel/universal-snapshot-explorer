@@ -1,0 +1,23 @@
+roots:
+  backup-pi:
+    root_path: /data/backups
+    sub_path: backup-pi
+    user_map: etc/passwd
+    group_map: etc/group
+    snapshot_patterns:
+      - "auto-%Y-%m-%d_%H-%M*"
+  Backup Rocky:
+    root_path: /data/backups
+    sub_path: Rocky
+    user_map: etc/passwd
+    group_map: etc/group
+    snapshot_patterns:
+      - "auto-%Y-%m-%d_%H-%M*"
+  backup-server:
+    root_path: /data/backups
+    sub_path: backup-server
+    user_map: etc/passwd
+    group_map: etc/group
+    snapshot_patterns:
+      - "auto-%Y-%m-%d_%H-%M*"
+loglevel: info

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    {% include 'header.html.j2'%}
+    <script src="{{ static_url('js/details.js') }}" defer></script>
+</head>
+<body>
+    <div class="sticky-header-container">
+        <h2 style="display: flex; align-items: center; gap: 8px;">{{ lucide('folder' if file.is_folder else 'file-text', size=24) }} {{ file.name }}</h2>
+        {% include 'breadcrumbs.html.j2' %}
+    </div>
+    <table id="details" class="filebrowser" data-root="{{ root_name }}" data-subpath="{{ file.path }}">
+        <thead>
+            <tr class="header-row">
+                <th class="browser-header-snapshot sortable sort-desc" data-sort-type="number" data-default-dir="desc">{{ t('table.snapshot') }}</th>
+                <th class="browser-header-size sortable" data-sort-type="number">{{ t('table.size') }}</th>
+                <th class="browser-header-type sortable" data-sort-type="text">{{ t('table.type') }}</th>
+                <th class="browser-header-owner sortable" data-sort-type="text">{{ t('table.user') }}</th>
+                <th class="browser-header-mode sortable" data-sort-type="octal">Mode</th>
+                <th class="browser-header-mtime sortable" data-sort-type="date">{{ t('table.modified') }}</th>
+                <th class="browser-header-ctime sortable" data-sort-type="date">Changed</th>
+            </tr>
+        </thead>
+        <tbody>
+            {%- for v in versions -%}
+            {%- set entry = v.entry -%}
+            {%- set prev = v.prev_entry -%}
+            <tr class="{{ 'odd' if loop.index0 % 2 == 0 else 'even' }}{{ ' row-missing' if not entry.does_exist else '' }}"
+                data-snapshot-id="{{ entry.snapshot.id }}"
+                data-does-exist="{{ 'true' if entry.does_exist else 'false' }}"
+                data-chronological-index="{{ loop.revindex0 }}">
+                <td class="details-cell-snapshot" data-sort="{{ loop.revindex0 }}">
+                    {%- if not entry.does_exist -%}
+                        <span class="version-badge missing" title="{{ t('badge.missing') }}"></span>
+                        <div class="snapshot-name-group">
+                            <span class="stroke">{{ entry.snapshot.name }}</span>
+                            {%- if entry.snapshot.has_timestamp -%}
+                                <span class="snapshot-time">{{ entry.snapshot.timestamp_formatted }}</span>
+                            {%- endif -%}
+                        </div>
+                        {%- if v.is_deleted -%}
+                            <span class="badge badge-deleted" style="display: inline-flex; align-items: center; gap: 2px;">{{ lucide('x', size=12) }} {{ t('badge.deleted') }}</span>
+                        {%- else -%}
+                            <span class="badge badge-missing">{{ t('badge.missing') }}</span>
+                        {%- endif -%}
+                    {%- else -%}
+                        <span class="version-badge" style="background-color: {{ v.color }};" title="Color: {{ v.color }}"></span>
+                        <div class="snapshot-name-group">
+                            <strong>{{ entry.snapshot.name }}</strong>
+                            {%- if entry.snapshot.has_timestamp -%}
+                                <span class="snapshot-time">{{ entry.snapshot.timestamp_formatted }}</span>
+                            {%- endif -%}
+                        </div>
+                        {%- if v.is_created -%}
+                            <span class="badge badge-created" style="display: inline-flex; align-items: center; gap: 2px;">{{ lucide('plus', size=12) }} {{ t('badge.created') }}</span>
+                        {%- endif -%}
+                    {%- endif -%}
+                    <a class="open-explorer-btn" style="display: inline-flex; align-items: center; gap: 4px;" href="{{ route_url('list', root_name, entry.parent_path, entry.snapshot.id) }}#{{ entry.name | quote_plus }}" title="{{ t('action.open_explorer') }}">{{ lucide('external-link', size=12) }} Explorer</a>
+                </td>
+
+                {# Size Cell #}
+                {%- if not entry.does_exist -%}
+                    <td class="browser-cell-size" data-sort="-1">–</td>
+                {%- elif 'size' in v.changed_attributes and prev and prev.does_exist -%}
+                    <td class="browser-cell-size cell-changed" data-sort="{{ entry.size or 0 }}" title="{{ t('action.changed_from') }}: {{ prev.size_human if not prev.is_folder else (prev.size ~ ' files') }} &rarr; {{ entry.size_human if not entry.is_folder else (entry.size ~ ' files') }}">
+                        {%- if entry.is_folder -%}
+                            {{ entry.size if entry.size is not none else 'unknown' }} files
+                        {%- else -%}
+                            {{ entry.size_human }}
+                        {%- endif -%}
+                        <span class="change-dot">●</span>
+                    </td>
+                {%- else -%}
+                    <td class="browser-cell-size" data-sort="{{ entry.size or 0 }}">
+                        {%- if entry.is_folder -%}
+                            {{ entry.size if entry.size is not none else 'unknown' }} files
+                        {%- else -%}
+                            {{ entry.size_human }}
+                        {%- endif -%}
+                    </td>
+                {%- endif -%}
+
+                {# Type Cell #}
+                {%- if not entry.does_exist -%}
+                    <td class="browser-cell-type" data-sort="0">–</td>
+                {%- elif entry.is_symlink -%}
+                    <td class="browser-cell-type" data-sort="inode/symlink" data-is-symlink="true">
+                        <span title="Target: {{ entry.symlink_target }}">inode/symlink 🔗 &rarr; {{ entry.symlink_target }}</span>
+                    </td>
+                {%- else -%}
+                    <td class="browser-cell-type" data-sort="{{ entry.filetype or '' }}" data-is-symlink="false">
+                        <span class="mime-skeleton"></span>
+                    </td>
+                {%- endif -%}
+
+                {# Owner Cell #}
+                {%- if not entry.does_exist -%}
+                    <td class="browser-cell-owner" data-sort="">–</td>
+                {%- elif ('uid' in v.changed_attributes or 'gid' in v.changed_attributes) and prev and prev.does_exist -%}
+                    <td class="browser-cell-owner cell-changed" data-sort="{{ entry.owner }}:{{ entry.group }}" title="{{ t('action.changed_from') }}: {{ prev.owner }}:{{ prev.group }} &rarr; {{ entry.owner }}:{{ entry.group }}">
+                        {{ entry.owner }}:{{ entry.group }} <span class="change-dot">●</span>
+                    </td>
+                {%- else -%}
+                    <td class="browser-cell-owner" data-sort="{{ entry.owner }}:{{ entry.group }}">{{ entry.owner }}:{{ entry.group }}</td>
+                {%- endif -%}
+
+                {# Mode Cell #}
+                {%- if not entry.does_exist -%}
+                    <td class="browser-cell-mode" data-sort="0000">–</td>
+                {%- elif 'mode' in v.changed_attributes and prev and prev.does_exist -%}
+                    <td class="browser-cell-mode cell-changed" data-sort="{{ entry.mode_octal or '0000' }}" title="{{ t('action.changed_from') }}: {{ prev.mode_human }} ({{ prev.mode_octal }}) &rarr; {{ entry.mode_human }} ({{ entry.mode_octal }})">
+                        {{ entry.mode_human }} ({{ entry.mode_octal }}) <span class="change-dot">●</span>
+                    </td>
+                {%- else -%}
+                    <td class="browser-cell-mode" data-sort="{{ entry.mode_octal or '0000' }}">{{ entry.mode_human }} ({{ entry.mode_octal }})</td>
+                {%- endif -%}
+
+                {# Modified Cell #}
+                {%- if not entry.does_exist -%}
+                    <td class="browser-cell-mtime" data-sort="">–</td>
+                {%- elif 'mtime' in v.changed_attributes and prev and prev.does_exist -%}
+                    <td class="browser-cell-mtime cell-changed" data-sort="{{ entry.mtime.isoformat() if entry.mtime else '' }}" title="{{ t('action.changed_from') }}: {{ prev.mtime.strftime('%d.%m.%Y %H:%M:%S') if prev.mtime else '?' }} &rarr; {{ entry.mtime.strftime('%d.%m.%Y %H:%M:%S') if entry.mtime else '?' }}">
+                        {{ entry.mtime.strftime('%d.%m.%Y %H:%M:%S') if entry.mtime else '?' }} <span class="change-dot">●</span>
+                    </td>
+                {%- else -%}
+                    <td class="browser-cell-mtime" data-sort="{{ entry.mtime.isoformat() if entry.mtime else '' }}">
+                        {{ entry.mtime.strftime('%d.%m.%Y %H:%M:%S') if entry.mtime else '?' }}
+                    </td>
+                {%- endif -%}
+
+                {# Changed Cell #}
+                {%- if not entry.does_exist -%}
+                    <td class="browser-cell-ctime" data-sort="">–</td>
+                {%- elif 'ctime' in v.changed_attributes and prev and prev.does_exist -%}
+                    <td class="browser-cell-ctime cell-changed" data-sort="{{ entry.ctime.isoformat() if entry.ctime else '' }}" title="{{ t('action.changed_from') }}: {{ prev.ctime.strftime('%d.%m.%Y %H:%M:%S') if prev.ctime else '?' }} &rarr; {{ entry.ctime.strftime('%d.%m.%Y %H:%M:%S') if entry.ctime else '?' }}">
+                        {{ entry.ctime.strftime('%d.%m.%Y %H:%M:%S') if entry.ctime else '?' }} <span class="change-dot">●</span>
+                    </td>
+                {%- else -%}
+                    <td class="browser-cell-ctime" data-sort="{{ entry.ctime.isoformat() if entry.ctime else '' }}">
+                        {{ entry.ctime.strftime('%d.%m.%Y %H:%M:%S') if entry.ctime else '?' }}
+                    </td>
+                {%- endif -%}
+            </tr>
+            {%- endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<div class="nav-controls" style="display: inline-flex; align-items: center; gap: 4px;">
+    <div class="breadcrumb" id="shortcuts-help-btn" style="cursor: pointer;" title="{{ t('shortcuts.title') }} (h / ?)">
+        {{ lucide('keyboard', size=16) }}
+    </div>
+
+    <div class="breadcrumb dropdown" style="cursor: pointer;">
+        {{ lang | upper }} <span style="margin-left: 4px;">{{ lucide('chevron-down', size=14) }}</span>
+        <div class="dropdown-content" style="right: 0; left: auto; min-width: 100px;">
+            <a href="/set-language/de">{{ t('lang.de') }}</a>
+            <a href="/set-language/en">{{ t('lang.en') }}</a>
+        </div>
+    </div>
+    
+    <div class="breadcrumb dropdown" id="theme-switcher" style="cursor: pointer; display: inline-flex; align-items: center;">
+        <span class="icon-light-theme" style="display:none; align-items: center; justify-content: center;">{{ lucide('sun', size=16) }}</span>
+        <span class="icon-dark-theme" style="display:none; align-items: center; justify-content: center;">{{ lucide('moon', size=16) }}</span>
+        <span class="icon-system-theme" style="display:none; align-items: center; justify-content: center;">{{ lucide('monitor', size=16) }}</span>
+        <span style="margin-left: 4px; display: inline-flex; align-items: center;">{{ lucide('chevron-down', size=14) }}</span>
+        
+        <div class="dropdown-content" style="right: 0; left: auto; min-width: 100px;">
+            <a href="#" onclick="setTheme('light'); return false;">{{ lucide('sun', size=14) }} <span style="margin-left: 4px;">{{ t('theme.light') }}</span></a>
+            <a href="#" onclick="setTheme('dark'); return false;">{{ lucide('moon', size=14) }} <span style="margin-left: 4px;">{{ t('theme.dark') }}</span></a>
+            <a href="#" onclick="setTheme('system'); return false;">{{ lucide('monitor', size=14) }} <span style="margin-left: 4px;">{{ t('theme.system') }}</span></a>
+        </div>
+    </div>
+</div>
+
+<!-- Shortcuts Help Modal -->
+<div id="shortcuts-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>{{ lucide('keyboard', size=18) }} {{ t('shortcuts.title') }}</h3>
+            <button type="button" class="modal-close-btn" id="shortcuts-modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+            <table class="shortcuts-table">
+                <tbody>
+                    <tr>
+                        <td>{{ t('shortcuts.nav_rows') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>↑</kbd> <kbd>↓</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.typeahead') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>A..Z</kbd> / <kbd>0..9</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.jump_page') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Page↑</kbd> <kbd>Page↓</kbd> / <kbd>Home</kbd> <kbd>End</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.expand_folder') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>→</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.collapse_folder') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>←</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.enter_action') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Enter</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.open_details') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Ctrl</kbd>+<kbd>I</kbd> / <kbd>Alt</kbd>+<kbd>Enter</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.go_parent') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Backspace</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.switch_snapshot') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Ctrl</kbd>+<kbd>←</kbd> / <kbd>Ctrl</kbd>+<kbd>→</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.focus_filter') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>/</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.sort_column') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Ctrl</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> / <kbd>Alt</kbd>+<kbd>1..8</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.edit_path') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Ctrl</kbd>+<kbd>L</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.toggle_select') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Space</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.select_all') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Ctrl</kbd>+<kbd>A</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.close_or_cancel') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Esc</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.help') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>?</kbd> / <kbd>F1</kbd></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

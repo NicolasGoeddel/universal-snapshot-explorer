@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.env
+*.egg-info/
+.ruff_cache/
+
+# Build/Docker
+.docker/
+*.log
+
+# IDE
+.vscode/
+
+# Project specific
+.zfs/
+zfs-snapshot-explorer.code-workspace
+
+# Coverage
+.coverage
+htmlcov/
+

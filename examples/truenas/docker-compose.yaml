@@ -1,0 +1,24 @@
+services:
+  zfs-snapshot-explorer:
+    image: zfs-snapshot-explorer:latest
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+    container_name: zfs-snapshot-explorer
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    privileged: true
+    security_opt:
+      - apparmor:unconfined
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/zfs:/dev/zfs
+    volumes:
+      # Read-only access to full host filesystem root with rslave for dynamic ZFS snapshot automounts across all pools
+      - /:/host:ro,rslave
+      # Application configuration file
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      - PYTHONUNBUFFERED=1

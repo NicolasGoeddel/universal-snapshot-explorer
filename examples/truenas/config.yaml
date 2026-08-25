@@ -1,0 +1,35 @@
+# ==============================================================================
+# ZFS Snapshot Explorer - TrueNAS Scale Configuration
+# ==============================================================================
+# In TrueNAS Scale, all ZFS datasets can be discovered automatically via ZFS CLI,
+# reading exact snapshot timestamps directly from ZFS metadata without pattern guessing.
+
+zfs:
+  # Enable automatic discovery of all mounted ZFS datasets on the host
+  auto_discover: true
+
+  # Path prefix where the host root filesystem is mounted into the container
+  mount_prefix: "/host"
+
+  # Glob patterns for datasets to ignore during auto-discovery
+  exclude_datasets:
+    - "*/.system*"
+    - "*/ix-applications*"
+    - "*/docker*"
+    - "*/custom-apps*"
+
+  # Default host user/group resolution for TrueNAS system users
+  default_user_map: "/host/etc/passwd"
+  default_group_map: "/host/etc/group"
+
+# Specific roots can be configured to override auto-discovered datasets
+# or add custom sub-paths / backup directories with foreign /etc/passwd files.
+roots:
+  # Example: Backup dataset from another Linux machine with its own /etc/passwd
+  Backup Rocky:
+    root_path: /host/mnt/data/backups
+    sub_path: Rocky
+    user_map: etc/passwd
+    group_map: etc/group
+
+loglevel: info

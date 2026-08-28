@@ -1,15 +1,34 @@
+from __future__ import annotations
+
 import os
 import tempfile
 import unittest
+from typing import override
 
 from fastapi.testclient import TestClient
 
-from goeddel.zfs_snapshot_explorer.app import app
-from goeddel.zfs_snapshot_explorer.config import AppConfig, RootConfig
-from goeddel.zfs_snapshot_explorer.models.root_folder import RootFolder
+from goeddel.use.app import app
+from goeddel.use.config import AppConfig, RootConfig
+from goeddel.use.models.root_folder import RootFolder
 
 
 class TestAppRoutes(unittest.TestCase):
+    temp_dir: tempfile.TemporaryDirectory[str] | None = None
+    root_path: str
+    snap1_dir: str
+    snap2_dir: str
+    config: AppConfig
+    client: TestClient
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.root_path = ""
+        self.snap1_dir = ""
+        self.snap2_dir = ""
+        self.config = AppConfig()
+        self.client = TestClient(app)
+
+    @override
     def setUp(self) -> None:
         # Create a temporary directory structure representing a ZFS dataset
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -35,21 +54,18 @@ class TestAppRoutes(unittest.TestCase):
             f.write("v2")
 
         # Setup mock app config
-        self.config = AppConfig(
-            roots={
-                "mock-root": RootConfig(root_path=self.root_path, sub_path="")
-            },
-            loglevel="info"
-        )
+        self.config = AppConfig(roots={"mock-root": RootConfig(root_path=self.root_path, sub_path="")}, loglevel="info")
         app.state.loaded_config = self.config
         RootFolder.set_root_configs(self.config.roots)
 
         self.client = TestClient(app)
 
+    @override
     def tearDown(self) -> None:
         # Clear out instances cache to prevent leaking state between tests
         RootFolder._root_folder_instances.clear()
-        self.temp_dir.cleanup()
+        if self.temp_dir:
+            self.temp_dir.cleanup()
 
     def test_root_dashboard(self) -> None:
         response = self.client.get("/")
@@ -99,6 +115,20 @@ class TestAppRoutes(unittest.TestCase):
         response = self.client.get("/download/mock-root/-%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd")
         self.assertEqual(response.status_code, 400)
         self.assertIn("Path traversal detected", response.text)
+
+    def test_set_language_route(self) -> None:
+        response = self.client.get("/set-language/de", follow_redirects=False)
+        self.assertEqual(response.status_code, 307)
+        self.assertIn("lang=de", response.headers.get("set-cookie", ""))
+
+        response_en = self.client.get("/set-language/en", follow_redirects=False)
+        self.assertEqual(response_en.status_code, 307)
+        self.assertIn("lang=en", response_en.headers.get("set-cookie", ""))
+
+    def test_favicon_route(self) -> None:
+        response = self.client.get("/favicon.ico")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("svg", response.headers.get("content-type", ""))
 
 
 if __name__ == "__main__":

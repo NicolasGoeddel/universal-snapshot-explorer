@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Lint, Type Check & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run Ruff Linter & Formatter Check
+        run: |
+          uv run ruff check src tests
+          uv run ruff format --check src tests
+
+      - name: Run basedpyright Type Checker
+        run: uv run basedpyright src
+
+      - name: Run Unit Tests & Coverage
+        run: |
+          PYTHONPATH=src uv run coverage run -m unittest discover -s tests -p "test_*.py" -v
+          PYTHONPATH=src uv run coverage report -m

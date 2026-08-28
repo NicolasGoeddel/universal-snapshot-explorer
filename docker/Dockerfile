@@ -11,6 +11,7 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
         sed -i 's/main/main contrib/g' /etc/apt/sources.list; \
     fi && \
     apt-get update && apt-get install -y --no-install-recommends \
+        btrfs-progs \
         libmagic1 \
         zfsutils-linux \
     && rm -rf /var/lib/apt/lists/*
@@ -46,4 +47,4 @@ VOLUME /data
 EXPOSE 8080
 
 # Start app
-CMD ["zfsse", "--bind", "0.0.0.0", "--port", "8080", "--config-file", "config.yaml"]
+CMD ["use", "--bind", "0.0.0.0", "--port", "8080", "--config-file", "config.yaml"]

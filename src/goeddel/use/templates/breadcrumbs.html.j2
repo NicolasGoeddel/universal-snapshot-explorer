@@ -1,0 +1,102 @@
+<nav class="breadcrumbs">
+    <!-- Home button to Root Overview -->
+    <a href="{{ base_url }}/#{{ root_name | quote_plus }}" class="breadcrumb home" title="Roots Overview">
+        {{ lucide('hard-drive', size=16) }} <span style="margin-left: 4px;">{{ t('breadcrumb.root') }}</span>
+    </a>
+    
+    {{ lucide('chevron-right', size=16, class_='text-muted') }}
+    
+    <!-- Root dropdown breadcrumb -->
+    <div class="breadcrumb root dropdown">
+        {{ breadcrumbs.root.name }} <span style="margin-left: 4px;">{{ lucide('chevron-down', size=14) }}</span>
+        <div class="dropdown-content">
+            {% for r_name in breadcrumbs.all_roots %}
+                <a href="{{ route_url('list', r_name, '', 'Original') }}">{{ r_name }}</a>
+            {% endfor %}
+        </div>
+    </div>
+    
+    {{ lucide('chevron-right', size=16, class_='text-muted') }}
+    
+    <!-- Snapshot indicator / dropdown -->
+    {% if module == 'detail' %}
+        <span class="breadcrumb snapshot-static" title="{{ t('table.snapshot') }}">
+            {{ lucide('calendar', size=16) }} 
+            <span id="breadcrumb-snapshot-name" style="margin-left: 4px;">{{ breadcrumbs.snapshot.name }}</span>
+            {% if breadcrumbs.snapshot.has_timestamp %}
+                <span class="breadcrumb-snapshot-time" style="color: var(--text-muted); font-size: 8.5pt; margin-left: 6px;">({{ breadcrumbs.snapshot.timestamp_formatted }})</span>
+            {% endif %}
+        </span>
+    {% else %}
+        <div class="breadcrumb dropdown" id="breadcrumb-snapshot-dropdown">
+            {{ lucide('calendar', size=16) }} <span id="breadcrumb-snapshot-name" style="margin-left: 4px;">{{ breadcrumbs.snapshot.name }}</span> <span style="margin-left: 4px;">{{ lucide('chevron-down', size=14) }}</span>
+            <div class="dropdown-content snapshot-dropdown-content">
+                <div class="snapshot-dropdown-header">
+                    <span class="snapshot-header-time">{{ t('table.timestamp') }}</span>
+                    <span class="snapshot-header-name">{{ t('table.snapshot') }}</span>
+                </div>
+                {% for snapshot in breadcrumbs.snapshots %}
+                    <a href="{{ route_url('list', root_name, breadcrumbs.current_path, snapshot.id) }}" 
+                       data-snap-id="{{ snapshot.id }}"
+                       class="snapshot-dropdown-item {% if snapshot.id == breadcrumbs.snapshot.id %}active{% endif %}">
+                        <span class="snapshot-item-time">
+                            {% if snapshot.is_original %}
+                                <span class="badge-live">{{ t('badge.live') }}</span>
+                            {% elif snapshot.has_timestamp %}
+                                {{ snapshot.timestamp_formatted }}
+                            {% else %}
+                                –
+                            {% endif %}
+                        </span>
+                        <span class="snapshot-item-name" title="{{ snapshot.name }}">{{ snapshot.name }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    {{ lucide('chevron-right', size=16, class_='text-muted') }}
+    
+    <!-- Path breadcrumbs dual-mode container -->
+    <div class="breadcrumbs-path-container" id="breadcrumbs-path-container">
+        <div class="breadcrumbs-path-view" id="breadcrumbs-path-view">
+            {% for crumb in breadcrumbs.paths %}
+                {% if module == 'detail' and crumb.is_current and not file.is_folder %}
+                    <span class="breadcrumb current" title="{{ crumb.name }}">
+                        {{ lucide('file', size=16) }}
+                        <span style="margin-left: 4px;">{{ crumb.name }}</span>
+                    </span>
+                {% else %}
+                    {% set next_crumb = breadcrumbs.paths[loop.index] if loop.index < breadcrumbs.paths | length else none %}
+                    {% set crumb_hash = ('#' ~ (next_crumb.name | quote_plus)) if next_crumb else '' %}
+                    <a href="{{ route_url('list', root_name, crumb.path, breadcrumbs.snapshot.id) }}{{ crumb_hash }}" class="breadcrumb" title="{{ crumb.name }}">
+                        {% if crumb.is_boundary and crumb.icon_name %}
+                            {{ lucide(crumb.icon_name, size=16, class_='file-icon ' ~ crumb.icon_class) }} <span style="margin-left: 4px;">{{ crumb.name }}</span>
+                        {% elif module == 'detail' and crumb.is_current and file.is_folder %}
+                            {{ lucide('folder', size=16) }} <span style="margin-left: 4px;">{{ crumb.name }}</span>
+                        {% else %}
+                            {{ crumb.name }}
+                        {% endif %}
+                    </a>
+                {% endif %}
+                {% if crumb.separator | default(true) %}
+                    {{ lucide('chevron-right', size=16, class_='text-muted') }}
+                {% endif %}
+            {% endfor %}
+            {% if module != 'detail' %}
+            <span class="breadcrumb path-edit-btn" id="breadcrumb-edit-btn" title="{{ t('breadcrumb.edit_path_tooltip') }}">
+                {{ lucide('pencil', size=13) }}
+            </span>
+            {% endif %}
+        </div>
+        {% if module != 'detail' %}
+        <div class="breadcrumbs-path-edit" id="breadcrumbs-path-edit" style="display: none;">
+            <input type="text" id="breadcrumb-path-input" class="breadcrumb-path-input" value="{{ breadcrumbs.current_path }}" placeholder="{{ t('breadcrumb.path_placeholder') }}" data-root="{{ root_name }}" data-snapshot="{{ breadcrumbs.snapshot.id }}">
+        </div>
+        {% endif %}
+    </div>
+    
+    <div style="flex-grow: 1;"></div>
+    
+    {% include 'nav_controls.html.j2' %}
+</nav>

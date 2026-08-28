@@ -1,13 +1,13 @@
 version: '3.8'
 
 services:
-  zfs_snapshot_explorer:
-    image: snapshotexplorer
+  universal_snapshot_explorer:
+    image: ghcr.io/nicolasgoeddel/universal-snapshot-explorer:latest
     build: .
     ports:
       - "8080:8080"
     volumes:
-      - snapshotexplorer.yaml:/snapshotexplorer.yaml
+      - ./config.yaml:/app/config.yaml:ro
       - ./data:/data
     environment:
       - PYTHONUNBUFFERED=1

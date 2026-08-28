@@ -3,20 +3,25 @@
 ## Pre-Release / Maintenance
 - [ ] **Release Tagging & Changelog:** Create the first `v0.1.0` release with a clean GitHub Actions build workflow.
 - [x] **Path Traversal Protection:** Secure paths strictly in `resolve_root_and_subpath` and `real_path` to prevent requests from escaping the dataset root directory.
-- [ ] **Docstrings & Type Annotations:** Add detailed docstrings for the `zfs` module, caching, and VFS warmup/retry mechanisms.
-- [ ] **Automated HTTP/Route Tests:** Implement integration tests using FastAPI's `TestClient` to ensure stability of HTML and API endpoints under ZFS-CLI error scenarios.
+- [x] **Docstrings & Modern Type Annotations:** Clean typing with `from __future__ import annotations`, complete `basedpyright` strict typing across all files (0 errors / 0 warnings), and protocol abstractions.
+- [x] **Automated HTTP/Route Tests:** Implement integration tests using FastAPI's `TestClient` to ensure stability of HTML and API endpoints under error and multi-filesystem scenarios.
+- [ ] **Project Rebranding / Renaming:** Rename project to a universal snapshot explorer name across packages, CLI executable, docs, and repository references.
 
 ---
 
 ## 1. Backend, Storage & Snapshot Provider
-- [x] Configurable roots via YAML configuration (`snapshotexplorer.yaml`)
+- [x] Configurable roots via YAML configuration (`config.yaml`)
 - [x] MVC architecture refactoring (`models/`, `templates/`, `app.py`, `config.py`)
 - [x] Asynchronous MIME type detection & intelligent extension fallback
-- [x] Snapshot pattern parser (`auto-{year}-{month}-{day}...`) & ISnapshotProvider abstraction
+- [x] Snapshot pattern parser (`auto-{year}-{month}-{day}...`) & `ISnapshotProvider` abstraction
+- [x] **Pluggable Multi-Filesystem Architecture:** Provider registry supporting OpenZFS (`ZfsProvider`), Btrfs (`BtrfsProvider`), and generic mount fallbacks (`GenericProvider`).
+- [x] **Btrfs & Snapper Subvolume Support:** Auto-detection of `.snapshots` boundaries, Snapper XML metadata parsing (`info.xml`), and physical snapshot subvolume mapping (`.snapshots/<id>/snapshot`).
+- [x] **Nested Mount & Sub-Dataset Detection:** Automatic detection of nested mount boundaries via `/proc/mounts`, rendering dedicated per-dataset snapshot bars in folder rows.
 - [x] **ZFS-CLI Snapshot Provider:** Execute `zfs list -t snapshot` directly to retrieve exact Unix epoch creation timestamps from ZFS metadata & support automatic dataset auto-discovery
 - [x] **ZIP Batch Download:** Stream selected files or entire folders as a `.zip` archive on-the-fly (without temporary disk storage)
 - [x] **Multi-Selection:** Checkbox multi-selection for batch actions (similar to Nextcloud)
 - [x] **Modern 404 & Error Page:** Styled error view with smart navigation helpers (nearest existing parent directory), snapshot timeline bar with hover tooltips & i18n
+- [ ] **Shadow Config Exporter:** Option in the Root Overview dashboard to export all dynamically discovered Delegated Roots as a ready-to-use `config.yaml`.
 - [ ] **Multi-Snapshot Version Export (`.tar.gz`):** Export all versions of selected files across all snapshots utilizing native POSIX hardlink deduplication (unchanged files are only transferred once in the stream)
 - [ ] **On-Demand Folder Size Calculation:** Recursively calculate the actual folder size on-demand (button/shortcut) with caching at the `Folder` object to avoid unnecessary I/O load
 - [x] **TrueNAS Scale Deployment & Compose:** Docker Compose stack with `/dev/zfs` device passthrough, host `/etc/passwd` mounts, and a fast SSH deploy script

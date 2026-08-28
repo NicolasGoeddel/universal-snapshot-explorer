@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    {% include 'header.html.j2' %}
+    <script src="{{ static_url('js/explorer.js') }}" defer></script>
+</head>
+<body>
+    <div class="sticky-header-container">
+        <h2 style="display: flex; align-items: center; gap: 8px;">{{ lucide('folder-tree', size=24) }} {{ t('index.title') }}</h2>
+        {% include 'breadcrumbs.html.j2' %}
+        <div class="explorer-toolbar">
+            <label class="toggle-control" title="{{ t('filter.hidden_files_title') }}">
+                <input type="checkbox" id="toggle-hidden">
+                <span>
+                    {{ lucide('eye-off', size=16, class_='text-muted') }} 
+                    {{ t('filter.hidden_files') }}
+                    <span class="toggle-badge" id="badge-hidden-count" style="display: none;">0</span>
+                </span>
+            </label>
+            <label class="toggle-control" title="{{ t('filter.missing_files_title') }}">
+                <input type="checkbox" id="toggle-missing" checked>
+                <span>
+                    {{ lucide('ghost', size=16, class_='text-muted') }} 
+                    {{ t('filter.missing_files') }}
+                    <span class="toggle-badge" id="badge-missing-count" style="display: none;">0</span>
+                </span>
+            </label>
+            <label class="toggle-control" title="{{ t('filter.changed_only_title') }}">
+                <input type="checkbox" id="toggle-changed">
+                <span>
+                    {{ lucide('history', size=16, class_='text-muted') }} 
+                    {{ t('filter.changed_only') }}
+                    <span class="toggle-badge" id="badge-changed-count" style="display: none;">0</span>
+                </span>
+            </label>
+            <div style="flex-grow: 1;"></div>
+            <div class="toolbar-stats" id="toolbar-stats" style="font-size: 8.5pt; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;">
+            </div>
+        </div>
+    </div>
+
+    <table id="filebrowser" class="filebrowser" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}">
+        <thead>
+            <tr class="header-row">
+                <th class="browser-header-select" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">
+                    <input type="checkbox" id="master-select-checkbox" class="custom-checkbox" title="{{ t('selection.select_all_visible') }}">
+                </th>
+                <th class="browser-header-name sortable" data-sort-type="text">{{ t('table.name') }}</th>
+                <th class="browser-header-snapshots" style="min-width: 140px; padding: 2px 8px;">
+                    <div class="snapshots-header-container">
+                        <div class="snapshots-header-title-row sortable" data-sort-type="snapshot-bar" data-default-dir="desc">
+                            <span>{{ t('table.snapshots') }}</span>
+                        </div>
+                        <div class="snapshots-header-timeline">
+                            <svg class="snapshotbar header-snapshotbar" viewBox="-1 -1 {{ (breadcrumbs.snapshots | length) * 20 + 2 }} 18" preserveAspectRatio="none" style="width: 100%; max-width: {{ (breadcrumbs.snapshots | length) * 20 }}px;">
+                                {% set current_snap_id = folder.snapshot.id %}
+                                {% for item in folder.snapshots_bar %}
+                                {% set snap = item.snapshot %}
+                                {% set x = loop.index0 * 20 %}
+                                {% set is_current = (snap.id == current_snap_id) %}
+                                <a href="{{ base_url }}/list/{{ root_name | quote_plus }}/{{ directory_path | quote_path }}?snapshot={{ snap.id | quote_plus }}"
+                                   data-snap-id="{{ snap.id }}"
+                                   data-snap-name="{{ snap.name }}"
+                                   data-snap-time="{{ snap.timestamp_formatted if snap.timestamp_formatted else '' }}"
+                                   data-is-current="{{ 'true' if is_current else 'false' }}"
+                                   data-is-missing="{{ 'true' if item.missing else 'false' }}">
+                                    <rect x="{{ x + 0.5 }}" y="1" width="19" height="15" rx="2" ry="2" 
+                                           fill="{{ item.color }}"
+                                           stroke="rgba(0,0,0,0.15)" stroke-width="1"
+                                           class="header-snap-rect {{ 'current-snapshot-rect' if is_current else '' }}" />
+                                    {% if is_current %}
+                                    <circle cx="{{ x + 10 }}" cy="8.5" r="3.5" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>
+                                    {% endif %}
+                                </a>
+                                {% endfor %}
+                            </svg>
+                        </div>
+                    </div>
+                </th>
+                <th class="browser-header-size sortable" data-sort-type="number">{{ t('table.size') }}</th>
+                <th class="browser-header-type sortable" data-sort-type="text">{{ t('table.type') }}</th>
+                <th class="browser-header-owner sortable" data-sort-type="text">{{ t('table.user') }}</th>
+                <th class="browser-header-mode sortable" data-sort-type="octal">Mode</th>
+                <th class="browser-header-mtime sortable" data-sort-type="date">{{ t('table.modified') }}</th>
+                <th class="browser-header-ctime sortable" data-sort-type="date">{{ t('table.changed') }}</th>
+                <th class="browser-header-actions">
+                    <div class="browser-cell-actions-wrapper">
+                        <a href="{{ base_url }}/detail/{{ root_name | quote_plus }}/{{ directory_path | quote_path }}?snapshot={{ folder.snapshot.id | quote_plus }}" title="{{ t('action.show_folder_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
+                    </div>
+                </th>
+            </tr>
+            <tr class="column-filter">
+                <td class="browser-filter-select"></td>
+                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="1"></td>
+                <td></td>
+                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="3"></td>
+                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="4"></td>
+                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="5"></td>
+                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="6"></td>
+                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="7"></td>
+                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="8"></td>
+                <td></td>
+            </tr>
+        </thead>
+        <tbody>
+            {% include 'folder_content.html.j2' %}
+        </tbody>
+    </table>
+
+    <!-- Floating Action Bar for Multi-Selection & ZIP Batch-Download -->
+    <div id="floating-action-bar" class="floating-action-bar" style="display: none;">
+        <div class="action-bar-content">
+            <div class="action-bar-info">
+                <span class="action-bar-counter" id="selection-counter">0 ausgewählt</span>
+                <span class="action-bar-breakdown" id="selection-breakdown" style="display: none;"></span>
+                <span class="action-bar-warning" id="selection-warning" style="display: none;"></span>
+            </div>
+            <div class="action-bar-controls">
+                <div class="action-bar-structure">
+                    <label for="zip-structure-select" style="font-size: 8.5pt; color: var(--text-muted); margin-right: 4px;">{{ t('selection.structure') }}:</label>
+                    <select id="zip-structure-select" class="action-bar-select">
+                        <option value="relative" selected>{{ t('selection.structure_relative') }}</option>
+                        <option value="absolute">{{ t('selection.structure_absolute') }}</option>
+                        <option value="flat">{{ t('selection.structure_flat') }}</option>
+                    </select>
+                </div>
+                <button type="button" id="btn-download-zip" class="action-bar-btn primary">
+                    {{ lucide('archive', size=15) }} <span>{{ t('selection.download_zip') }}</span>
+                </button>
+                <button type="button" id="btn-clear-selection" class="action-bar-btn secondary" title="{{ t('selection.clear') }} (Esc)">
+                    {{ lucide('x', size=15) }} <span>{{ t('selection.clear') }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

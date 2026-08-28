@@ -1,7 +1,7 @@
 [project]
-name = "zfs-snapshot-explorer"
-version = "1.0.0"
-description = "A simple file explorer vor ZFS snapshot"
+name = "universal-snapshot-explorer"
+version = "2.0.0"
+description = "Universal Snapshot Explorer (USE) - High-performance web explorer and audit tool for ZFS, Btrfs and POSIX snapshots"
 authors = [
     { name = "Nicolas Göddel", email = "github@goeddel.net" }
 ]
@@ -28,7 +28,8 @@ dev = [
 ]
 
 [project.scripts]
-zfsse = "zfs_snapshot_explorer.server:start"
+use = "goeddel.use.server:start"
+snapshot-explorer = "goeddel.use.server:start"
 
 [tool.uv]
 package = true
@@ -38,7 +39,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/goeddel/zfs_snapshot_explorer"]
+packages = ["src/goeddel"]
 
 [tool.ruff]
 line-length = 150

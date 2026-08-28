@@ -1,0 +1,24 @@
+# Example configuration for Btrfs (e.g. CachyOS / openSUSE / Snapper setups)
+
+btrfs:
+  # Enable automatic discovery of Btrfs mount points that have a .snapshots directory
+  auto_discover: true
+  # In Docker containers, mount your host root (e.g. -v /:/host:ro) and set mount_prefix:
+  mount_prefix: "/host"
+  # Default user and group mapping files
+  default_user_map: /etc/passwd
+  default_group_map: /etc/group
+
+# You can also define Btrfs roots manually:
+roots:
+  # CachyOS / Arch / Snapper Root Filesystem
+  Rocky Backup:
+    root_path: /host/data/backups
+    sub_path: Rocky
+    filesystem_type: zfs
+    user_map: etc/passwd
+    group_map: etc/group
+    snapshot_patterns:
+      - "auto-%Y-%m-%d_%H-%M*"
+
+loglevel: debug

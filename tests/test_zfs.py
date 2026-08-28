@@ -6,13 +6,17 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from goeddel.zfs_snapshot_explorer.config import load_config
-from goeddel.zfs_snapshot_explorer.models.snapshot import OriginalSnapshot, Snapshot
-from goeddel.zfs_snapshot_explorer.models.snapshot_provider import (
+from goeddel.use.config import load_config
+from goeddel.use.models.snapshot import OriginalSnapshot, Snapshot
+from goeddel.use.models.snapshot_provider import (
     FilesystemSnapshotProvider,
-    ZfsCliSnapshotProvider,
 )
-from goeddel.zfs_snapshot_explorer.zfs import ZfsClient, ZfsDataset, ZfsSnapshotInfo
+from goeddel.use.zfs import (
+    ZfsClient,
+    ZfsCliSnapshotProvider,
+    ZfsDataset,
+    ZfsSnapshotInfo,
+)
 
 
 class TestZfsModule(unittest.TestCase):
@@ -187,8 +191,8 @@ roots:
                 self.assertEqual(cfg.roots["Manual Root"].sub_path, "sub")
 
     def test_resolve_root_and_subpath_hierarchical(self) -> None:
-        from goeddel.zfs_snapshot_explorer.app import resolve_root_and_subpath
-        from goeddel.zfs_snapshot_explorer.config import AppConfig, RootConfig
+        from goeddel.use.config import AppConfig, RootConfig
+        from goeddel.use.utils.path_resolver import resolve_root_and_subpath
 
         cfg = AppConfig(
             roots={
@@ -242,7 +246,7 @@ roots:
         self.assertEqual(ctx.exception.status_code, 404)
 
     def test_make_route_url(self) -> None:
-        from goeddel.zfs_snapshot_explorer.app import make_route_url
+        from goeddel.use.dependencies import make_route_url
 
         self.assertEqual(make_route_url("list", "data/backups"), "/list/data/backups")
         self.assertEqual(
@@ -261,16 +265,18 @@ roots:
     def test_sub_dataset_detection(self) -> None:
         from unittest.mock import patch
 
-        from goeddel.zfs_snapshot_explorer.config import RootConfig
-        from goeddel.zfs_snapshot_explorer.models.folder import Folder
-        from goeddel.zfs_snapshot_explorer.models.root_folder import RootFolder
-        from goeddel.zfs_snapshot_explorer.models.snapshot import OriginalSnapshot
+        from goeddel.use.config import RootConfig
+        from goeddel.use.models.folder import Folder
+        from goeddel.use.models.root_folder import RootFolder
+        from goeddel.use.models.snapshot import OriginalSnapshot
 
         # Set up RootFolder path registry
-        RootFolder.set_root_configs({
-            "parent-root": RootConfig(root_path="/mnt/pool/parent", sub_path=""),
-            "child-root": RootConfig(root_path="/mnt/pool/parent/child", sub_path="")
-        })
+        RootFolder.set_root_configs(
+            {
+                "parent-root": RootConfig(root_path="/mnt/pool/parent", sub_path=""),
+                "child-root": RootConfig(root_path="/mnt/pool/parent/child", sub_path=""),
+            }
+        )
 
         config = RootConfig(root_path="/mnt/pool/parent", sub_path="")
         root_folder = RootFolder(config)
@@ -293,10 +299,10 @@ roots:
     def test_zfs_folder_exclusion(self) -> None:
         from unittest.mock import MagicMock, patch
 
-        from goeddel.zfs_snapshot_explorer.config import RootConfig
-        from goeddel.zfs_snapshot_explorer.models.folder import Folder
-        from goeddel.zfs_snapshot_explorer.models.root_folder import RootFolder
-        from goeddel.zfs_snapshot_explorer.models.snapshot import OriginalSnapshot
+        from goeddel.use.config import RootConfig
+        from goeddel.use.models.folder import Folder
+        from goeddel.use.models.root_folder import RootFolder
+        from goeddel.use.models.snapshot import OriginalSnapshot
 
         config = RootConfig(root_path="/mnt/pool/parent", sub_path="")
         root_folder = RootFolder(config)
@@ -320,13 +326,14 @@ roots:
         class MockScandir:
             def __enter__(self):
                 return [mock_entry_zfs, mock_entry_file]
+
             def __exit__(self, exc_type, exc_val, exc_tb):
                 pass
 
-        with patch("os.scandir", return_value=MockScandir()), \
-             patch.object(root_folder, "get_file", return_value=MagicMock()):
+        with patch("os.scandir", return_value=MockScandir()), patch.object(root_folder, "get_file", return_value=MagicMock()):
             folder.update()
             self.assertIsNotNone(folder.children)
+            assert folder.children is not None
             self.assertIn("file1.txt", folder.children)
             self.assertNotIn(".zfs", folder.children)
 
@@ -340,35 +347,36 @@ roots:
             mock_entry_file.stat.return_value.st_size = 123
             mock_entry_file.stat.return_value.st_ino = 1
 
-            res = root_folder._scan_dir_live("/mnt/pool/parent")
+            res = root_folder._scan_dir_live("/mnt/pool/parent", root_folder.control_dir_name)
             self.assertIsNotNone(res)
+            assert res is not None
             self.assertIn("file1.txt", res)
             self.assertNotIn(".zfs", res)
 
     def test_sub_dataset_snapshot_bars(self) -> None:
+        from typing import cast
         from unittest.mock import patch
 
-        from goeddel.zfs_snapshot_explorer.config import RootConfig
-        from goeddel.zfs_snapshot_explorer.models.root_folder import RootFolder
+        from goeddel.use.config import RootConfig
+        from goeddel.use.models.root_folder import RootFolder
 
         # Register configs
         parent_cfg = RootConfig(root_path="/mnt/pool/parent", sub_path="")
         child_cfg = RootConfig(root_path="/mnt/pool/parent/child", sub_path="")
-        RootFolder.set_root_configs({
-            "parent-root": parent_cfg,
-            "child-root": child_cfg
-        })
+        RootFolder.set_root_configs({"parent-root": parent_cfg, "child-root": child_cfg})
 
         parent_folder = RootFolder.get(parent_cfg)
 
         # Mock self._scan_dir_live and scan_read_only_dir to return "child" directory in parent
-        with patch.object(parent_folder, "_scan_dir_live", return_value={"child": (0, 0, 0, 0, 0, 0, 0)}), \
-             patch.object(parent_folder, "_scan_read_only_dir", return_value={"child": (0, 0, 0, 0, 0, 0, 0)}):
-
+        with (
+            patch.object(parent_folder, "_scan_dir_live", return_value={"child": (0, 0, 0, 0, 0, 0, 0)}),
+            patch.object(parent_folder, "_scan_read_only_dir", return_value={"child": (0, 0, 0, 0, 0, 0, 0)}),
+        ):
             # Request snapshot bar for parent folder, which contains "child"
             data = parent_folder.get_snapshot_bars_data("")
-            self.assertIn("child", data["bars"])
-            child_data = data["bars"]["child"]
+            bars = cast(dict[str, object], data.get("bars", {}))
+            self.assertIn("child", bars)
+            child_data = cast(dict[str, object], bars["child"])
 
             # Verify child is returned as a sub-dataset object containing its own snapshots and barStr
             self.assertIsInstance(child_data, dict)
@@ -377,8 +385,8 @@ roots:
             self.assertIn("snapshots", child_data)
 
     def test_path_traversal_protection(self) -> None:
-        from goeddel.zfs_snapshot_explorer.config import RootConfig
-        from goeddel.zfs_snapshot_explorer.models.root_folder import RootFolder
+        from goeddel.use.config import RootConfig
+        from goeddel.use.models.root_folder import RootFolder
 
         config = RootConfig(root_path="/mnt/pool/parent", sub_path="sub")
         root_folder = RootFolder(config)
@@ -407,8 +415,8 @@ roots:
         import os
         import tempfile
 
-        from goeddel.zfs_snapshot_explorer.config import RootConfig
-        from goeddel.zfs_snapshot_explorer.models.root_folder import RootFolder
+        from goeddel.use.config import RootConfig
+        from goeddel.use.models.root_folder import RootFolder
 
         # Get current uid/gid
         current_uid = os.getuid()
@@ -433,12 +441,7 @@ roots:
                 f.write("othergroup:x:9999:\n")
 
             # Configure root with these custom mapping files
-            cfg = RootConfig(
-                root_path=temp_dir,
-                sub_path="",
-                user_map=passwd_path,
-                group_map=group_path
-            )
+            cfg = RootConfig(root_path=temp_dir, sub_path="", user_map=passwd_path, group_map=group_path)
             root_folder = RootFolder(cfg)
 
             # Get the File model
@@ -459,12 +462,7 @@ roots:
             with open(empty_group_path, "w") as f:
                 f.write("othergroup:x:9999:\n")
 
-            cfg_fallback = RootConfig(
-                root_path=temp_dir,
-                sub_path="",
-                user_map=empty_passwd_path,
-                group_map=empty_group_path
-            )
+            cfg_fallback = RootConfig(root_path=temp_dir, sub_path="", user_map=empty_passwd_path, group_map=empty_group_path)
             root_folder_fallback = RootFolder(cfg_fallback)
             file_node_fallback = root_folder_fallback.get_file(path="testfile.txt")
 
@@ -476,8 +474,8 @@ roots:
         import os
         import tempfile
 
-        from goeddel.zfs_snapshot_explorer.config import RootConfig
-        from goeddel.zfs_snapshot_explorer.models.root_folder import RootFolder
+        from goeddel.use.config import RootConfig
+        from goeddel.use.models.root_folder import RootFolder
 
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = os.path.join(temp_dir, "testfile.txt")

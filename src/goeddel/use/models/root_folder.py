@@ -111,10 +111,6 @@ class RootFolder:
         self._snapshot_provider: ISnapshotProvider
         if snapshot_provider is not None:
             self._snapshot_provider = snapshot_provider
-        elif config.provider_type and config.provider_type != "auto":
-            from ..providers import ProviderRegistry
-
-            self._snapshot_provider = ProviderRegistry.get(config.provider_type).create_snapshot_provider(config)
         else:
             from ..providers import ProviderRegistry
 

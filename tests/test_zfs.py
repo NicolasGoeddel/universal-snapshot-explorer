@@ -199,7 +199,15 @@ roots:
                 self.assertIn("Manual Root", cfg.roots)
                 self.assertEqual(cfg.roots["data/discovered"].root_path, "/host/mnt/data/discovered")
                 self.assertEqual(cfg.roots["data/discovered"].user_map, "/host/etc/passwd")
+                self.assertEqual(cfg.roots["data/discovered"].provider_type, "cli")
                 self.assertEqual(cfg.roots["Manual Root"].sub_path, "sub")
+
+                # Verify RootFolder instantiates ZfsCliSnapshotProvider
+                from goeddel.use.models.root_folder import RootFolder
+
+                root_f = RootFolder(cfg.roots["data/discovered"])
+                self.assertIsInstance(root_f._snapshot_provider, ZfsCliSnapshotProvider)
+                self.assertEqual(root_f._snapshot_provider._dataset_name, "data/discovered")
 
     def test_resolve_root_and_subpath_hierarchical(self) -> None:
         from goeddel.use.config import AppConfig, RootConfig

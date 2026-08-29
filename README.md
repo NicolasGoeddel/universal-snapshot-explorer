@@ -182,6 +182,9 @@ roots:
 loglevel: info
 ```
 
+> [!TIP]
+> For a detailed breakdown of all configuration parameters, filesystem providers, path resolution mechanics (e.g. `btrbk` setup, custom snapshot directories), and dynamic UID/GID mappings, see the **[Configuration & Architecture Guide](docs/configuration-guide.md)**.
+
 ---
 
 ## 🛠️ Local Development

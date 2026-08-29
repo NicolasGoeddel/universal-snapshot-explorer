@@ -66,10 +66,21 @@
 
 ---
 
-## 4. Frontend (Detail View, Diffing & Media Previews)
+## 4. Frontend (Pluggable Differ Engine, Detail View & Media Previews)
 - [x] Visual change highlighting: Highlight attribute changes across snapshots (with tooltips & version badges)
 - [x] Sortable snapshot column (Newest first $\downarrow$ vs. Oldest first $\uparrow$) with chronological diff calculation
 - [ ] **Categorical Attribute Value Color-Coding:** Color-code matching attribute values per column in DetailView so identical values across snapshots share subtle, harmonious background tints with high text contrast (columns without changes retain default background).
-- [ ] **Text Diff Viewer:** Side-by-Side & Unified diff for text and code files between any two snapshots
-- [ ] **Image Diff:** Before/after comparison for image files (slider / overlay)
-- [ ] **In-Browser Media Quick-Preview:** Modal lightbox window for images, HTML5 audio/video player, PDF viewer, and code syntax highlighting
+- [ ] **Modular / Pluggable File Differ Engine (`/diff`):** Dedicated view for inspecting file evolution across snapshots with a rich multi-snapshot selector topbar and pluggable viewer canvas:
+  - *MIME-based Plugin Auto-Selection & Override:* Automatically load the right plugin based on file MIME type with manual override selector.
+  - *Text & Code Differ Plugin:* 2-Way (Side-by-Side & Unified) diffing as well as multi-version stepping ($V_1 \rightarrow V_2 \rightarrow V_3$) with syntax highlighting.
+  - *Image Differ Plugin:* Cross-fade opacity fader, split/wipe curtain slider, and amplified CSS/Canvas difference shaders (`mix-blend-mode: difference` + contrast boost).
+  - *Structured Data Differ Plugin:* Semantic key-value and collapsible tree diffing for JSON, YAML, TOML, and XML.
+  - *In-Browser Media Quick-Preview / Lightbox:* Modal preview player for audio, video, PDFs, and high-resolution images (`Space` key quick-preview).
+
+---
+
+## 5. Storage Analytics & High-Density Snapshot Scaling
+- [ ] **Snapshot Growth & Churn Heatmap (Filelight / Sunburst View):** Interactive radial Sunburst or Treemap chart visualizing directory disk usage and highlighting where the most data was written, modified, or pruned between snapshot intervals.
+- [ ] **High-Density Snapshot Timeline Scaling (>100–200 Snapshots):**
+  - *Timeframe & Date-Range Filter:* Dropdown or range scrubber to limit timeline to specific timeframes (e.g. "Last 30 days", custom range) when datasets contain hundreds of snapshots.
+  - *Level-of-Detail (LOD) Clustering:* Smart clustering of dense hourly snapshots into expandable day/week blocks on low-zoom viewports.

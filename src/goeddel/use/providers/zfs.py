@@ -43,4 +43,4 @@ class ZfsProvider(FilesystemProvider):
 
         from ..zfs.provider import ZfsCliSnapshotProvider
 
-        return ZfsCliSnapshotProvider()
+        return ZfsCliSnapshotProvider(dataset_name=config.dataset_name)

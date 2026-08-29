@@ -227,15 +227,20 @@ class ZfsClient:
             return None
 
         clean = os.path.abspath(path).rstrip("/")
-        candidates = [clean]
+        if not clean:
+            clean = "/"
+
+        candidates: list[str] = [clean]
         if mount_prefix and clean.startswith(mount_prefix.rstrip("/")):
             stripped = clean[len(mount_prefix.rstrip("/")) :]
-            if stripped:
-                candidates.append(os.path.abspath(stripped).rstrip("/"))
+            cand_path = os.path.abspath(stripped if stripped else "/")
+            if cand_path not in candidates:
+                candidates.append(cand_path)
         elif clean.startswith("/host"):
             stripped = clean[5:]
-            if stripped:
-                candidates.append(os.path.abspath(stripped).rstrip("/"))
+            cand_path = os.path.abspath(stripped if stripped else "/")
+            if cand_path not in candidates:
+                candidates.append(cand_path)
 
         all_ds = datasets if datasets is not None else self.list_datasets()
 
@@ -246,11 +251,22 @@ class ZfsClient:
             if not ds.mountpoint or not ds.is_mounted:
                 continue
             mp = os.path.abspath(ds.mountpoint).rstrip("/")
+            if not mp:
+                mp = "/"
+
             for cand in candidates:
-                if cand == mp or cand.startswith(mp + "/"):
-                    if len(mp) > best_len:
-                        best_len = len(mp)
-                        best_match = ds
-                    break
+                if mp == "/":
+                    matches = True
+                    match_len = 1
+                elif cand == mp or cand.startswith(mp + "/"):
+                    matches = True
+                    match_len = len(mp)
+                else:
+                    matches = False
+                    match_len = 0
+
+                if matches and match_len > best_len:
+                    best_len = match_len
+                    best_match = ds
 
         return best_match

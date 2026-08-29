@@ -106,6 +106,17 @@ class TestZfsModule(unittest.TestCase):
         if match2 is not None:
             self.assertEqual(match2.name, "data")
 
+        ds_root = ZfsDataset(name="rpool/ROOT/ubuntu_123", pool="rpool", mountpoint="/", is_mounted=True)
+        match_root = client.find_dataset_by_path("/host", datasets=[ds_root])
+        self.assertIsNotNone(match_root)
+        if match_root is not None:
+            self.assertEqual(match_root.name, "rpool/ROOT/ubuntu_123")
+
+        match_root_sub = client.find_dataset_by_path("/host/home/nicolas", datasets=[ds_root])
+        self.assertIsNotNone(match_root_sub)
+        if match_root_sub is not None:
+            self.assertEqual(match_root_sub.name, "rpool/ROOT/ubuntu_123")
+
     def test_zfs_cli_snapshot_provider(self) -> None:
         mock_client = MagicMock(spec=ZfsClient)
         mock_client.is_available.return_value = True

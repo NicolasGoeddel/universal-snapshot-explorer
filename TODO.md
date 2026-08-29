@@ -21,7 +21,10 @@
 - [x] **ZIP Batch Download:** Stream selected files or entire folders as a `.zip` archive on-the-fly (without temporary disk storage)
 - [x] **Multi-Selection:** Checkbox multi-selection for batch actions (similar to Nextcloud)
 - [x] **Modern 404 & Error Page:** Styled error view with smart navigation helpers (nearest existing parent directory), snapshot timeline bar with hover tooltips & i18n
-- [ ] **Btrfs Subvolume Auto-Discovery & Nested Scan:** Scan all nested Btrfs subvolumes via `btrfs subvolume list` or filesystem inspection to register all subvolumes with `.snapshots` even if not mounted in `/proc/mounts`.
+- [ ] **Btrfs Subvolume CLI Auto-Discovery (`btrfs subvolume list`):**
+  - Parse output of `btrfs subvolume list` to auto-discover all live subvolumes on the system (e.g. `@`, `@home`, `@root`, `@srv`).
+  - Distinguish live subvolumes from snapshot subvolumes by evaluating `top level` ID hierarchies and path patterns (e.g. filter out `.snapshots`, `.snapshots/*/snapshot`, `_btrbk_snapshots/*`).
+  - Associate discovered snapshot subvolumes with their corresponding parent live subvolumes and register each live subvolume as an independent root in the Roots Overview dashboard (identical to ZFS dataset discovery).
 - [ ] **Folder-Scoped Inode Rename Tracking & Hash Navigation:** Detect renamed/moved files within the current folder by tracking persistent Inodes (`st_ino`) across snapshots. If a focused `#filename` is missing in a target snapshot, automatically refocus or link to the entry with the matching Inode.
 - [ ] **Automatic & On-Demand Cache Invalidation:**
   - *Mtime-based auto-detection:* Check `os.stat` on snapshot control directory (`.zfs/snapshot` or `.snapshots`) to auto-invalidate cache when snapshots are created/pruned in 24/7 server environments.

@@ -1,11 +1,11 @@
-# ZFS Snapshot Explorer - Feature Roadmap & TODOs
+# Universal Snapshot Explorer (USE) - Feature Roadmap & TODOs
 
 ## Pre-Release / Maintenance
-- [ ] **Release Tagging & Changelog:** Create the first `v0.1.0` release with a clean GitHub Actions build workflow.
+- [x] **Release Tagging & Changelog:** Released `v2.0.0` with full `RELEASES.md` changelog and automated GHCR Docker build workflow.
 - [x] **Path Traversal Protection:** Secure paths strictly in `resolve_root_and_subpath` and `real_path` to prevent requests from escaping the dataset root directory.
 - [x] **Docstrings & Modern Type Annotations:** Clean typing with `from __future__ import annotations`, complete `basedpyright` strict typing across all files (0 errors / 0 warnings), and protocol abstractions.
 - [x] **Automated HTTP/Route Tests:** Implement integration tests using FastAPI's `TestClient` to ensure stability of HTML and API endpoints under error and multi-filesystem scenarios.
-- [ ] **Project Rebranding / Renaming:** Rename project to a universal snapshot explorer name across packages, CLI executable, docs, and repository references.
+- [x] **Project Rebranding / Renaming:** Renamed to Universal Snapshot Explorer (USE) with package `goeddel.use`, CLI `use` / `snapshot-explorer`, docs, and Docker container.
 
 ---
 
@@ -21,6 +21,12 @@
 - [x] **ZIP Batch Download:** Stream selected files or entire folders as a `.zip` archive on-the-fly (without temporary disk storage)
 - [x] **Multi-Selection:** Checkbox multi-selection for batch actions (similar to Nextcloud)
 - [x] **Modern 404 & Error Page:** Styled error view with smart navigation helpers (nearest existing parent directory), snapshot timeline bar with hover tooltips & i18n
+- [ ] **Btrfs Subvolume Auto-Discovery & Nested Scan:** Scan all nested Btrfs subvolumes via `btrfs subvolume list` or filesystem inspection to register all subvolumes with `.snapshots` even if not mounted in `/proc/mounts`.
+- [ ] **Folder-Scoped Inode Rename Tracking & Hash Navigation:** Detect renamed/moved files within the current folder by tracking persistent Inodes (`st_ino`) across snapshots. If a focused `#filename` is missing in a target snapshot, automatically refocus or link to the entry with the matching Inode.
+- [ ] **Automatic & On-Demand Cache Invalidation:**
+  - *Mtime-based auto-detection:* Check `os.stat` on snapshot control directory (`.zfs/snapshot` or `.snapshots`) to auto-invalidate cache when snapshots are created/pruned in 24/7 server environments.
+  - *Browser Hard-Reload Header (`Ctrl+F5`):* Intercept `Cache-Control: no-cache` / `Pragma: no-cache` request headers in backend to automatically trigger `root_folder.invalidate()`.
+  - *UI Refresh Button & Shortcut (<kbd>Shift+R</kbd>):* Dedicated rotate icon in toolbar and keyboard shortcut to force cache invalidation with flicker-free DOM update.
 - [ ] **Shadow Config Exporter:** Option in the Root Overview dashboard to export all dynamically discovered Delegated Roots as a ready-to-use `config.yaml`.
 - [ ] **Multi-Snapshot Version Export (`.tar.gz`):** Export all versions of selected files across all snapshots utilizing native POSIX hardlink deduplication (unchanged files are only transferred once in the stream)
 - [ ] **On-Demand Folder Size Calculation:** Recursively calculate the actual folder size on-demand (button/shortcut) with caching at the `Folder` object to avoid unnecessary I/O load
@@ -50,6 +56,7 @@
 - [x] **Keyboard Navigation:** Navigate with `↑`/`↓`, expand/collapse folders with `→`/`←`, `Enter` for actions, `i`/`d` for details, `/` for quick search, `Ctrl+L` for path editing, and `h`/`?` for shortcut help
 - [x] **Toolbar Indicators:** Dynamic counter badges & filter statistics for hidden, missing, and unchanged files
 - [x] **Modernized Root Overview:** Snapshot count per root, keyboard navigation & reusable header widgets (`nav_controls.html.j2`)
+- [ ] **Hierarchical Roots Overview / Sub-Dataset Tree View:** Render nested datasets and subvolumes as an indented tree or grouped view with individual snapshot counts in the Roots dashboard.
 - [x] **Symlink Resolution & Navigation:** Intelligent handling of symlinks in the web interface: If symlink points to a folder $\rightarrow$ follow link and open ListView of target folder; if it points to a file $\rightarrow$ open target folder with row highlighted (`#filename`); if symlink is invalid/dead (dangling symlink) $\rightarrow$ display special icon (`link-2-off`) & error indicator instead of a download error 404
 - [x] **DetailView Button for Current Folder:** Add info button (`i`) on the far right of the table header in ListView to consistently navigate to the DetailView of the currently opened folder
 - [x] **Fixed Alignment of Action Icons:** Align icons in the right action column (`.browser-cell-actions`) left-aligned with a fixed grid, so that the info icon (`i`) on folder rows aligns perfectly with the info icons on file rows
@@ -62,6 +69,7 @@
 ## 4. Frontend (Detail View, Diffing & Media Previews)
 - [x] Visual change highlighting: Highlight attribute changes across snapshots (with tooltips & version badges)
 - [x] Sortable snapshot column (Newest first $\downarrow$ vs. Oldest first $\uparrow$) with chronological diff calculation
+- [ ] **Categorical Attribute Value Color-Coding:** Color-code matching attribute values per column in DetailView so identical values across snapshots share subtle, harmonious background tints with high text contrast (columns without changes retain default background).
 - [ ] **Text Diff Viewer:** Side-by-Side & Unified diff for text and code files between any two snapshots
 - [ ] **Image Diff:** Before/after comparison for image files (slider / overlay)
 - [ ] **In-Browser Media Quick-Preview:** Modal lightbox window for images, HTML5 audio/video player, PDF viewer, and code syntax highlighting

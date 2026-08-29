@@ -19,7 +19,7 @@ Instead of browsing snapshots one by one or mounting snapshot directories manual
 ### Explorer View (Multi-Snapshot Timeline)
 ![Explorer View](assets/explorer.png)
 
-### Roots Dashboard (Dataset Overview)
+### Roots Dashboard (Dataset Overview) *(v1.0.0 preview)*
 ![Roots Dashboard](assets/dashboard.png)
 
 ### File Details & Version History

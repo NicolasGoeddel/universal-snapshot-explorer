@@ -6,6 +6,25 @@ This project adheres to [Semantic Versioning (SemVer)](https://semver.org/).
 
 ---
 
+## [2.0.1] - 2026-08-29
+
+> **Bugfix Release: OpenZFS CLI Snapshot Discovery, Root Dataset Resolution & Configuration Guide**
+
+### 🐛 Bug Fixes & Stability
+
+* **OpenZFS Provider Initialisation & Snapshot Timestamps:**
+  * Fixed an issue in `RootFolder` where `ProviderRegistry` was erroneously queried with `provider_type` (`"cli"`) instead of `filesystem_type` (`"zfs"`), which caused auto-discovered ZFS roots to silently fall back to `GenericProvider` / `FilesystemSnapshotProvider`.
+  * Ensured `ZfsProvider.create_snapshot_provider` properly forwards `config.dataset_name` to `ZfsCliSnapshotProvider`.
+* **Root-on-ZFS Path Resolution (`/` & Container Mount Prefixes):**
+  * Fixed dataset matching in `ZfsClient.find_dataset_by_path` when the root filesystem dataset is mounted at `/` and passed into the container via `/host` (`mount_prefix: "/host"`).
+
+### 📚 Documentation
+
+* **Comprehensive Configuration & Architecture Guide:**
+  * Created [`docs/configuration-guide.md`](docs/configuration-guide.md) with deep-dives into path resolution formulas, provider use-cases (`btrbk`, Snapper, OpenZFS), and dynamic snapshot-specific UID/GID mappings.
+
+---
+
 ## [2.0.0] - 2026-08-28
 
 > **Major Release: Universal Snapshot Engine, Btrfs & Snapper Support, Sub-Dataset Boundaries & Strict Type Safety**

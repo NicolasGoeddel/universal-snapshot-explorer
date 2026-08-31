@@ -78,7 +78,7 @@
 ## 4. Frontend (Pluggable Differ Engine, Detail View & Media Previews)
 - [x] Visual change highlighting: Highlight attribute changes across snapshots (with tooltips & version badges)
 - [x] Sortable snapshot column (Newest first $\downarrow$ vs. Oldest first $\uparrow$) with chronological diff calculation
-- [ ] **Categorical Attribute Value Color-Coding:** Color-code matching attribute values per column in DetailView so identical values across snapshots share subtle, harmonious background tints with high text contrast (columns without changes retain default background).
+- [x] **Categorical Attribute Value Color-Coding:** Color-code matching attribute values per column in DetailView so identical values across snapshots share subtle, harmonious background tints with high text contrast (columns without changes retain default background).
 - [ ] **Modular / Pluggable File Differ Engine (`/diff`):** Dedicated view for inspecting file evolution across snapshots with a rich multi-snapshot selector topbar and pluggable viewer canvas:
   - *MIME-based Plugin Auto-Selection & Override:* Automatically load the right plugin based on file MIME type with manual override selector.
   - *Text & Code Differ Plugin:* 2-Way (Side-by-Side & Unified) diffing as well as multi-version stepping ($V_1 \rightarrow V_2 \rightarrow V_3$) with syntax highlighting.

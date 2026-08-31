@@ -1,5 +1,66 @@
 let cachedMimeMap = null;
 
+function applyCategoricalColors() {
+    const table = document.getElementById('details');
+    if (!table) return;
+
+    const colSelectors = [
+        '.browser-cell-size',
+        '.browser-cell-type',
+        '.browser-cell-owner',
+        '.browser-cell-mode',
+        '.browser-cell-mtime',
+        '.browser-cell-ctime',
+    ];
+
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    // Sort chronologically (oldest snapshot to newest) to assign consistent color palettes
+    const chronoRows = [...rows].sort((a, b) => {
+        const idxA = parseInt(a.dataset.chronologicalIndex || '0', 10);
+        const idxB = parseInt(b.dataset.chronologicalIndex || '0', 10);
+        return idxA - idxB;
+    });
+
+    colSelectors.forEach((selector) => {
+        // Clear previous categorical classes
+        rows.forEach((tr) => {
+            const cell = tr.querySelector(selector);
+            if (cell) {
+                cell.classList.remove('cat-val-1', 'cat-val-2', 'cat-val-3', 'cat-val-4', 'cat-val-5', 'cat-val-6');
+            }
+        });
+
+        // Collect unique values in chronological order from existing entries
+        const uniqueValues = [];
+        chronoRows.forEach((tr) => {
+            if (tr.dataset.doesExist !== 'true') return;
+            const cell = tr.querySelector(selector);
+            if (!cell) return;
+
+            const val = (cell.dataset.sort !== undefined ? cell.dataset.sort : cell.textContent).trim();
+            if (val && !uniqueValues.includes(val)) {
+                uniqueValues.push(val);
+            }
+        });
+
+        // Only apply categorical colors if there are 2 or more distinct values across snapshots
+        if (uniqueValues.length >= 2) {
+            chronoRows.forEach((tr) => {
+                if (tr.dataset.doesExist !== 'true') return;
+                const cell = tr.querySelector(selector);
+                if (!cell) return;
+
+                const val = (cell.dataset.sort !== undefined ? cell.dataset.sort : cell.textContent).trim();
+                const valIndex = uniqueValues.indexOf(val);
+                if (valIndex >= 0) {
+                    const colorIndex = (valIndex % 6) + 1;
+                    cell.classList.add(`cat-val-${colorIndex}`);
+                }
+            });
+        }
+    });
+}
+
 function refreshMimeDiffs() {
     if (!cachedMimeMap) return;
     const rows = Array.from(document.querySelectorAll('#details tbody tr'));
@@ -33,7 +94,7 @@ function refreshMimeDiffs() {
 
             const i18nChangedFrom = window.clientI18n ? window.clientI18n['action.changed_from'] : 'Geändert von';
             cell.title = `${i18nChangedFrom}: ${prevMime} → ${mime}`;
-            cell.innerHTML = `${mime} <span class="change-dot">●</span>`;
+            cell.textContent = mime;
         } else {
             cell.classList.remove('cell-changed');
             cell.removeAttribute('title');
@@ -41,6 +102,9 @@ function refreshMimeDiffs() {
         }
         prevMime = mime;
     });
+
+    // Update categorical colors once MIME types are resolved
+    applyCategoricalColors();
 }
 
 function encodePath(p) {
@@ -149,5 +213,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const table = document.getElementById('details');
     if (table) new DetailTable(table);
+    applyCategoricalColors();
     loadMimeTypes();
 });

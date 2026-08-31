@@ -41,6 +41,31 @@
     --badge-missing-bg: #f1f5f9;
     --badge-missing-border: #e2e8f0;
     --badge-missing-text: #64748b;
+
+    /* Categorical Detail View Colors (Dynamically derived from --snap-1..6) */
+    --cat-1-bg: color-mix(in srgb, var(--snap-1) 14%, transparent);
+    --cat-1-text: color-mix(in srgb, var(--snap-1) 70%, #000000);
+    --cat-1-border: color-mix(in srgb, var(--snap-1) 30%, transparent);
+
+    --cat-2-bg: color-mix(in srgb, var(--snap-2) 14%, transparent);
+    --cat-2-text: color-mix(in srgb, var(--snap-2) 70%, #000000);
+    --cat-2-border: color-mix(in srgb, var(--snap-2) 30%, transparent);
+
+    --cat-3-bg: color-mix(in srgb, var(--snap-3) 16%, transparent);
+    --cat-3-text: color-mix(in srgb, var(--snap-3) 70%, #000000);
+    --cat-3-border: color-mix(in srgb, var(--snap-3) 30%, transparent);
+
+    --cat-4-bg: color-mix(in srgb, var(--snap-4) 14%, transparent);
+    --cat-4-text: color-mix(in srgb, var(--snap-4) 70%, #000000);
+    --cat-4-border: color-mix(in srgb, var(--snap-4) 30%, transparent);
+
+    --cat-5-bg: color-mix(in srgb, var(--snap-5) 14%, transparent);
+    --cat-5-text: color-mix(in srgb, var(--snap-5) 70%, #000000);
+    --cat-5-border: color-mix(in srgb, var(--snap-5) 30%, transparent);
+
+    --cat-6-bg: color-mix(in srgb, var(--snap-6) 14%, transparent);
+    --cat-6-text: color-mix(in srgb, var(--snap-6) 70%, #000000);
+    --cat-6-border: color-mix(in srgb, var(--snap-6) 30%, transparent);
 }
 
 [data-theme="dark"] {
@@ -86,6 +111,31 @@
     --badge-missing-bg: #1e293b;
     --badge-missing-border: #334155;
     --badge-missing-text: #94a3b8;
+
+    /* Categorical Detail View Colors (Dark Mode dynamically derived from --snap-1..6) */
+    --cat-1-bg: color-mix(in srgb, var(--snap-1) 32%, transparent);
+    --cat-1-text: color-mix(in srgb, var(--snap-1) 60%, #ffffff);
+    --cat-1-border: color-mix(in srgb, var(--snap-1) 40%, transparent);
+
+    --cat-2-bg: color-mix(in srgb, var(--snap-2) 32%, transparent);
+    --cat-2-text: color-mix(in srgb, var(--snap-2) 60%, #ffffff);
+    --cat-2-border: color-mix(in srgb, var(--snap-2) 40%, transparent);
+
+    --cat-3-bg: color-mix(in srgb, var(--snap-3) 35%, transparent);
+    --cat-3-text: color-mix(in srgb, var(--snap-3) 60%, #ffffff);
+    --cat-3-border: color-mix(in srgb, var(--snap-3) 40%, transparent);
+
+    --cat-4-bg: color-mix(in srgb, var(--snap-4) 32%, transparent);
+    --cat-4-text: color-mix(in srgb, var(--snap-4) 60%, #ffffff);
+    --cat-4-border: color-mix(in srgb, var(--snap-4) 40%, transparent);
+
+    --cat-5-bg: color-mix(in srgb, var(--snap-5) 32%, transparent);
+    --cat-5-text: color-mix(in srgb, var(--snap-5) 60%, #ffffff);
+    --cat-5-border: color-mix(in srgb, var(--snap-5) 40%, transparent);
+
+    --cat-6-bg: color-mix(in srgb, var(--snap-6) 32%, transparent);
+    --cat-6-text: color-mix(in srgb, var(--snap-6) 60%, #ffffff);
+    --cat-6-border: color-mix(in srgb, var(--snap-6) 40%, transparent);
 }
 
 
@@ -727,15 +777,67 @@ td.browser-cell-name {
 }
 
 .cell-changed {
-    background-color: #fef9c3 !important;
     font-weight: 600;
-    color: #854d0e;
     position: relative;
     cursor: help;
 }
 
-.cell-changed:hover {
+.cell-changed:not([class*="cat-val-"]) {
+    background-color: #fef9c3 !important;
+    color: #854d0e;
+}
+
+.cell-changed:not([class*="cat-val-"]):hover {
     background-color: #fef08a !important;
+}
+
+[data-theme="dark"] .cell-changed:not([class*="cat-val-"]) {
+    background-color: rgba(180, 83, 9, 0.35) !important;
+    color: #fcd34d;
+}
+
+[data-theme="dark"] .cell-changed:not([class*="cat-val-"]):hover {
+    background-color: rgba(180, 83, 9, 0.45) !important;
+}
+
+/* Categorical Attribute Value Color-Coding */
+.cat-val-1 {
+    background-color: var(--cat-1-bg) !important;
+    color: var(--cat-1-text);
+}
+.cat-val-2 {
+    background-color: var(--cat-2-bg) !important;
+    color: var(--cat-2-text);
+}
+.cat-val-3 {
+    background-color: var(--cat-3-bg) !important;
+    color: var(--cat-3-text);
+}
+.cat-val-4 {
+    background-color: var(--cat-4-bg) !important;
+    color: var(--cat-4-text);
+}
+.cat-val-5 {
+    background-color: var(--cat-5-bg) !important;
+    color: var(--cat-5-text);
+}
+.cat-val-6 {
+    background-color: var(--cat-6-bg) !important;
+    color: var(--cat-6-text);
+}
+
+.cat-val-1:hover, .cat-val-2:hover, .cat-val-3:hover,
+.cat-val-4:hover, .cat-val-5:hover, .cat-val-6:hover {
+    filter: brightness(0.96);
+}
+
+[data-theme="dark"] .cat-val-1:hover,
+[data-theme="dark"] .cat-val-2:hover,
+[data-theme="dark"] .cat-val-3:hover,
+[data-theme="dark"] .cat-val-4:hover,
+[data-theme="dark"] .cat-val-5:hover,
+[data-theme="dark"] .cat-val-6:hover {
+    filter: brightness(1.15);
 }
 
 .snapshot-name-group {
@@ -753,12 +855,6 @@ td.browser-cell-name {
     line-height: 1.1;
 }
 
-.change-dot {
-    font-size: 7pt;
-    color: #d97706;
-    margin-left: 3px;
-    vertical-align: 1px;
-}
 
 .open-explorer-btn {
     display: inline-flex;

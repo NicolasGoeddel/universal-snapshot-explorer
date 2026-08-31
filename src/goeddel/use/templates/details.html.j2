@@ -68,7 +68,6 @@
                         {%- else -%}
                             {{ entry.size_human }}
                         {%- endif -%}
-                        <span class="change-dot">●</span>
                     </td>
                 {%- else -%}
                     <td class="browser-cell-size" data-sort="{{ entry.size or 0 }}">
@@ -98,7 +97,7 @@
                     <td class="browser-cell-owner" data-sort="">–</td>
                 {%- elif ('uid' in v.changed_attributes or 'gid' in v.changed_attributes) and prev and prev.does_exist -%}
                     <td class="browser-cell-owner cell-changed" data-sort="{{ entry.owner }}:{{ entry.group }}" title="{{ t('action.changed_from') }}: {{ prev.owner }}:{{ prev.group }} &rarr; {{ entry.owner }}:{{ entry.group }}">
-                        {{ entry.owner }}:{{ entry.group }} <span class="change-dot">●</span>
+                        {{ entry.owner }}:{{ entry.group }}
                     </td>
                 {%- else -%}
                     <td class="browser-cell-owner" data-sort="{{ entry.owner }}:{{ entry.group }}">{{ entry.owner }}:{{ entry.group }}</td>
@@ -109,7 +108,7 @@
                     <td class="browser-cell-mode" data-sort="0000">–</td>
                 {%- elif 'mode' in v.changed_attributes and prev and prev.does_exist -%}
                     <td class="browser-cell-mode cell-changed" data-sort="{{ entry.mode_octal or '0000' }}" title="{{ t('action.changed_from') }}: {{ prev.mode_human }} ({{ prev.mode_octal }}) &rarr; {{ entry.mode_human }} ({{ entry.mode_octal }})">
-                        {{ entry.mode_human }} ({{ entry.mode_octal }}) <span class="change-dot">●</span>
+                        {{ entry.mode_human }} ({{ entry.mode_octal }})
                     </td>
                 {%- else -%}
                     <td class="browser-cell-mode" data-sort="{{ entry.mode_octal or '0000' }}">{{ entry.mode_human }} ({{ entry.mode_octal }})</td>
@@ -120,7 +119,7 @@
                     <td class="browser-cell-mtime" data-sort="">–</td>
                 {%- elif 'mtime' in v.changed_attributes and prev and prev.does_exist -%}
                     <td class="browser-cell-mtime cell-changed" data-sort="{{ entry.mtime.isoformat() if entry.mtime else '' }}" title="{{ t('action.changed_from') }}: {{ prev.mtime.strftime('%d.%m.%Y %H:%M:%S') if prev.mtime else '?' }} &rarr; {{ entry.mtime.strftime('%d.%m.%Y %H:%M:%S') if entry.mtime else '?' }}">
-                        {{ entry.mtime.strftime('%d.%m.%Y %H:%M:%S') if entry.mtime else '?' }} <span class="change-dot">●</span>
+                        {{ entry.mtime.strftime('%d.%m.%Y %H:%M:%S') if entry.mtime else '?' }}
                     </td>
                 {%- else -%}
                     <td class="browser-cell-mtime" data-sort="{{ entry.mtime.isoformat() if entry.mtime else '' }}">
@@ -133,7 +132,7 @@
                     <td class="browser-cell-ctime" data-sort="">–</td>
                 {%- elif 'ctime' in v.changed_attributes and prev and prev.does_exist -%}
                     <td class="browser-cell-ctime cell-changed" data-sort="{{ entry.ctime.isoformat() if entry.ctime else '' }}" title="{{ t('action.changed_from') }}: {{ prev.ctime.strftime('%d.%m.%Y %H:%M:%S') if prev.ctime else '?' }} &rarr; {{ entry.ctime.strftime('%d.%m.%Y %H:%M:%S') if entry.ctime else '?' }}">
-                        {{ entry.ctime.strftime('%d.%m.%Y %H:%M:%S') if entry.ctime else '?' }} <span class="change-dot">●</span>
+                        {{ entry.ctime.strftime('%d.%m.%Y %H:%M:%S') if entry.ctime else '?' }}
                     </td>
                 {%- else -%}
                     <td class="browser-cell-ctime" data-sort="{{ entry.ctime.isoformat() if entry.ctime else '' }}">

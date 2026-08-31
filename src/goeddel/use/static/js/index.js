@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         updateStickyOffset();
         window.addEventListener('resize', updateStickyOffset);
+
+        if (typeof TableColumnResizer !== 'undefined') {
+            window.rootTableResizer = new TableColumnResizer(table);
+        }
     }
 
     const tbody = document.querySelector('#rootbrowser tbody');

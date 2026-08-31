@@ -18,13 +18,13 @@
             <p style="color: var(--text-muted); margin: 0 0 6px 0; font-size: 9.5pt;">{{ t('index.prompt') }}</p>
         </div>
         
-        <table id="rootbrowser" class="filebrowser">
+        <table id="rootbrowser" class="filebrowser" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}">
             <thead>
                 <tr class="header-row">
-                    <th style="text-align: left;">{{ t('index.header.name') }}</th>
-                    <th style="text-align: center; width: 140px;">{{ t('table.snapshots') }}</th>
-                    <th style="text-align: left;">{{ t('index.header.root_path') }}</th>
-                    <th style="text-align: left;">{{ t('index.header.sub_path') }}</th>
+                    <th data-col-key="root_name" data-elastic="true" data-default-pct="32" data-min-width="60" style="text-align: left;">{{ t('index.header.name') }}</th>
+                    <th data-col-key="root_snapshots" data-ignore-content="true" data-default-pct="18" data-min-width="120" style="text-align: center;">{{ t('table.snapshots') }}</th>
+                    <th data-col-key="root_path" data-default-pct="25" data-min-width="60" style="text-align: left;">{{ t('index.header.root_path') }}</th>
+                    <th data-col-key="sub_path" data-default-pct="25" data-min-width="60" style="text-align: left;">{{ t('index.header.sub_path') }}</th>
                 </tr>
             </thead>
             <tbody>

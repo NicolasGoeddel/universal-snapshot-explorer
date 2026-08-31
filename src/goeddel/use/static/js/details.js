@@ -74,13 +74,22 @@ class DetailTable {
         this.table = table;
         this.tbody = table.querySelector('tbody');
         this.currentSort = { colIndex: 0, direction: 'desc', type: 'number' };
+        if (typeof TableColumnResizer !== 'undefined') {
+            this.columnResizer = new TableColumnResizer(this.table);
+        }
         this.initSorting();
     }
 
     initSorting() {
         const headers = this.table.querySelectorAll('thead tr th.sortable');
         headers.forEach((th) => {
-            th.addEventListener('click', () => {
+            th.addEventListener('click', (e) => {
+                if (e.target.closest('.col-resizer')) {
+                    return;
+                }
+                if (this.columnResizer && this.columnResizer.justResized) {
+                    return;
+                }
                 const cellIndex = Array.from(th.parentNode.children).indexOf(th);
                 const sortType = th.dataset.sortType || 'text';
                 let direction = th.dataset.defaultDir || 'asc';

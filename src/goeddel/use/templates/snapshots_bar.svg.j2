@@ -1,7 +1,7 @@
 {%- macro snapshots_bar(entry, base_url, module, root_name, folder) -%}
 {%- set snapshots_bar = entry.snapshots_bar | default([]) | list -%}
 {%- set bar = namespace(x=0, height=20, width=20) %}
-<svg class="snapshotbar{{ ' is-sub-dataset' if entry.is_sub_dataset else '' }}" viewBox="-1 -1 {{ (snapshots_bar | length) * bar.width + 2 }} {{ bar.height + 1 }}" preserveAspectRatio="none" style="width: 100%; max-width: {{ (snapshots_bar | length) * bar.width }}px; height: 100%;">
+<svg class="snapshotbar{{ ' is-sub-dataset' if entry.is_sub_dataset else '' }}" viewBox="-1 -1 {{ (snapshots_bar | length) * bar.width + 2 }} {{ bar.height + 1 }}" preserveAspectRatio="none" style="width: 100%; height: 100%;">
     {%- for bar_part in snapshots_bar %}
         {%- if bar_part.missing %}
             <rect x="{{ bar.x + 0.5 }}" y="1" width="19" height="18" rx="2" ry="2" fill="{{ bar_part.color }}" stroke="rgba(0,0,0,0.25)" stroke-width="1"/>
@@ -23,7 +23,7 @@
 {%- set bar_width = 20 -%}
 {%- set count = snapshots_count | default(10) -%}
 {%- if count < 1 -%}{%- set count = 10 -%}{%- endif -%}
-<svg class="snapshotbar snapshot-skeleton-svg" viewBox="-1 -1 {{ count * bar_width + 2 }} 21" preserveAspectRatio="none" style="width: 100%; max-width: {{ count * bar_width }}px; height: 100%;">
+<svg class="snapshotbar snapshot-skeleton-svg" viewBox="-1 -1 {{ count * bar_width + 2 }} 21" preserveAspectRatio="none" style="width: 100%; height: 100%;">
     {%- for i in range(count) %}
     <rect x="{{ i * bar_width }}" width="19" height="20" rx="2" ry="2" class="skeleton-rect" style="animation-delay: {{ (i * 0.04) | round(2) }}s;"/>
     {%- endfor %}

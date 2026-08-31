@@ -1,0 +1,53 @@
+/**
+ * TableColumnResizer Styles
+ *
+ * Plug-and-play CSS styling for the TableColumnResizer component.
+ * Works with any HTML <table> structure.
+ */
+
+/* Column header needs relative or sticky positioning to anchor the absolute resizer */
+th:has(> .col-resizer),
+th.has-col-resizer {
+    position: relative;
+}
+
+/* Resizer handle bar placed at the right edge of each resizable <th> */
+.col-resizer {
+    position: absolute;
+    top: 0;
+    right: -5px;
+    width: 10px;
+    height: 100%;
+    cursor: col-resize !important;
+    user-select: none;
+    touch-action: none;
+    z-index: 60;
+    background: transparent;
+}
+
+/* Subtle line indicator inside the resizer handle */
+.col-resizer::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 4px;
+    width: 2px;
+    background: transparent;
+    border-radius: 1px;
+    transition: background-color 0.15s ease;
+    pointer-events: none;
+}
+
+/* Hover and active dragging indicator highlight */
+.col-resizer:hover::after,
+.col-resizer.is-resizing::after {
+    background-color: var(--table-resizer-accent, var(--primary-accent, #0077cc));
+}
+
+/* Active drag interaction body overrides (disables text selection and locks cursor) */
+body.is-resizing-columns,
+body.is-resizing-columns * {
+    user-select: none !important;
+    cursor: col-resize !important;
+}

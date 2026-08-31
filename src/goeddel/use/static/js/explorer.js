@@ -42,6 +42,9 @@ class TreeTable {
         this.initTypeahead();
         this.initSnapshotDropdown();
         this.initMultiSelection();
+        if (typeof TableColumnResizer !== 'undefined') {
+            this.columnResizer = new TableColumnResizer(this.table);
+        }
         this.updateZebra();
         this.updateToggleCounts();
 
@@ -749,7 +752,7 @@ class TreeTable {
 
         const circle = (currentIdx >= 0 && !isSub) ? `<circle cx="${currentIdx * barWidth + 10}" cy="10" r="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>` : '';
 
-        return `<svg class="snapshotbar${isSub ? ' is-sub-dataset' : ''}" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; max-width: ${totalWidth}px; height: 16px;">${inner}${circle}</svg>`;
+        return `<svg class="snapshotbar${isSub ? ' is-sub-dataset' : ''}" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; height: 16px;">${inner}${circle}</svg>`;
     }
 
     initTimelineTooltip() {
@@ -1108,7 +1111,10 @@ class TreeTable {
             el.setAttribute('tabindex', '0');
             el.setAttribute('role', 'button');
             el.addEventListener('click', (e) => {
-                if (e.target.closest('a') || e.target.closest('svg')) {
+                if (e.target.closest('a') || e.target.closest('svg') || e.target.closest('.col-resizer')) {
+                    return;
+                }
+                if (this.columnResizer && this.columnResizer.justResized) {
                     return;
                 }
                 const th = el.closest('th');

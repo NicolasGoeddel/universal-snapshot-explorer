@@ -97,7 +97,7 @@ body {
     line-height: normal;
     margin: 0;
     padding: 0 24px 24px 24px;
-    min-width: max-content;
+    box-sizing: border-box;
     width: 100%;
 }
 
@@ -117,6 +117,7 @@ body {
 
 table.filebrowser {
     width: 100%;
+    table-layout: fixed;
     border-collapse: separate;
     border-spacing: 0;
     margin-top: 0;
@@ -161,7 +162,7 @@ table.filebrowser>thead>tr.header-row>th.sortable::after {
     opacity: 0.35;
     font-size: 9pt;
     position: absolute;
-    right: 4px;
+    right: 8px;
     top: 50%;
     transform: translateY(-50%);
 }
@@ -178,6 +179,8 @@ table.filebrowser>thead>tr.header-row>th.sortable.sort-desc::after {
     color: var(--primary-accent);
 }
 
+
+
 table.filebrowser>thead>tr.column-filter>td {
     position: sticky;
     top: calc(var(--top-header-height, 85px) + var(--header-row-height, 27px));
@@ -190,6 +193,8 @@ table.filebrowser>thead>tr.column-filter>td {
 table.filebrowser td {
     padding: 4px 8px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     border-bottom: 1px solid var(--border-color-light);
 }
 
@@ -198,6 +203,11 @@ table.filebrowser td a {
     text-decoration: underline;
     text-decoration-color: var(--border-color);
     text-underline-offset: 3px;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
 }
 
 table.filebrowser td a:hover {
@@ -555,20 +565,25 @@ td.browser-cell-name {
 
 .browser-cell-snapshots {
     width: 25%;
-    min-width: 320px;
-    max-width: 450px;
     height: 16px;
     padding: 2px 6px;
+    overflow: hidden;
 }
 
 .browser-header-snapshots {
     width: 25%;
-    min-width: 320px;
-    max-width: 450px;
+    overflow: hidden;
+}
+
+.snapshots-header-container,
+.snapshots-header-timeline {
+    width: 100%;
+    overflow: hidden;
 }
 
 .browser-cell-snapshots svg.snapshotbar {
     width: 100%;
+    max-width: 100%;
     height: 16px;
     display: block;
 }
@@ -859,8 +874,8 @@ span.breadcrumb.current:hover {
 .browser-cell-actions {
     white-space: nowrap !important;
     text-align: left;
-    width: 48px;
-    min-width: 48px;
+    width: 58px;
+    min-width: 58px;
     padding-left: 6px !important;
     padding-right: 6px !important;
 }

@@ -66,6 +66,11 @@
 - [x] **Performance & High-Density Folder Rendering:** Removed CPU-intensive SVG filters (`feDiffuseLighting`), modernized to GPU-accelerated flat SVG vectors, and introduced `IntersectionObserver`-based lazy rendering for snapshot bars (smooth 60 FPS scrolling and 0% CPU blocking even in huge folders like `/usr/bin` with >6,000 files)
 - [x] **Typeahead Quick Search (Jump-to-Prefix):** Jump directly to folders and files by typing starting letters. Features a floating HUD indicator, multi-match cycling (<kbd>↑</kbd>/<kbd>↓</kbd>/<kbd>Tab</kbd>), and full tree-view support for expanded folders
 - [x] **Flicker-Free Snapshot Navigation:** When switching snapshots via shortcut (Ctrl+←/→) or click, update the page via in-place DOM update / fetch so that already rendered snapshot bars remain in the DOM and prevent white flickering (only move the active indicator dot and update metadata cells)
+- [ ] **Resizable Table Columns (with LocalStorage Persistence):**
+  - Interactive drag handles on table headers (`.col-resizer`) to adjust column widths manually (e.g. widening the snapshot activity column for dense snapshot counts or widening the file name column).
+  - Smooth scaling of underlying vector SVGs without distortion.
+  - Persist custom column widths in browser `localStorage`.
+  - Validate DPI / browser zoom resilience (ensure dragging behavior remains accurate at 125%/150% browser zoom).
 
 ---
 

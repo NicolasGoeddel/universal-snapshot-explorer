@@ -39,21 +39,21 @@
         </div>
     </div>
 
-    <table id="filebrowser" class="filebrowser" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}">
+    <table id="filebrowser" class="filebrowser" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}">
         <thead>
             <tr class="header-row">
-                <th class="browser-header-select" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">
+                <th class="browser-header-select" data-fixed-width="32" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">
                     <input type="checkbox" id="master-select-checkbox" class="custom-checkbox" title="{{ t('selection.select_all_visible') }}">
                 </th>
-                <th class="browser-header-name sortable" data-sort-type="text">{{ t('table.name') }}</th>
-                <th class="browser-header-snapshots" style="min-width: 140px; padding: 2px 8px;">
+                <th class="browser-header-name sortable" data-sort-type="text" data-col-key="name" data-elastic="true" data-default-pct="28" data-min-width="45">{{ t('table.name') }}</th>
+                <th class="browser-header-snapshots" data-col-key="snapshots" data-ignore-content="true" data-default-pct="27" data-min-width="120" data-soft-min="160" style="padding: 2px 8px;">
                     <div class="snapshots-header-container">
                         <div class="snapshots-header-title-row sortable" data-sort-type="snapshot-bar" data-default-dir="desc">
                             <span>{{ t('table.snapshots') }}</span>
                         </div>
                         <div class="snapshots-header-timeline">
-                            <svg class="snapshotbar header-snapshotbar" viewBox="-1 -1 {{ (breadcrumbs.snapshots | length) * 20 + 2 }} 18" preserveAspectRatio="none" style="width: 100%; max-width: {{ (breadcrumbs.snapshots | length) * 20 }}px;">
-                                {% set current_snap_id = folder.snapshot.id %}
+                            <svg class="snapshotbar header-snapshotbar" viewBox="-1 -1 {{ (breadcrumbs.snapshots | length) * 20 + 2 }} 18" preserveAspectRatio="none" style="width: 100%;">
+                                {%- set current_snap_id = folder.snapshot.id -%}
                                 {% for item in folder.snapshots_bar %}
                                 {% set snap = item.snapshot %}
                                 {% set x = loop.index0 * 20 %}
@@ -77,13 +77,13 @@
                         </div>
                     </div>
                 </th>
-                <th class="browser-header-size sortable" data-sort-type="number">{{ t('table.size') }}</th>
-                <th class="browser-header-type sortable" data-sort-type="text">{{ t('table.type') }}</th>
-                <th class="browser-header-owner sortable" data-sort-type="text">{{ t('table.user') }}</th>
-                <th class="browser-header-mode sortable" data-sort-type="octal">Mode</th>
-                <th class="browser-header-mtime sortable" data-sort-type="date">{{ t('table.modified') }}</th>
-                <th class="browser-header-ctime sortable" data-sort-type="date">{{ t('table.changed') }}</th>
-                <th class="browser-header-actions">
+                <th class="browser-header-size sortable" data-sort-type="number" data-col-key="size" data-default-pct="8" data-min-width="50">{{ t('table.size') }}</th>
+                <th class="browser-header-type sortable" data-sort-type="text" data-col-key="type" data-default-pct="9" data-min-width="45">{{ t('table.type') }}</th>
+                <th class="browser-header-owner sortable" data-sort-type="text" data-col-key="user" data-default-pct="8.5" data-min-width="45">{{ t('table.user') }}</th>
+                <th class="browser-header-mode sortable" data-sort-type="octal" data-col-key="mode" data-default-pct="7" data-min-width="55">Mode</th>
+                <th class="browser-header-mtime sortable" data-sort-type="date" data-col-key="mtime" data-default-pct="10.5" data-min-width="45">{{ t('table.modified') }}</th>
+                <th class="browser-header-ctime sortable" data-sort-type="date" data-col-key="ctime" data-default-pct="12" data-min-width="45">{{ t('table.changed') }}</th>
+                <th class="browser-header-actions" data-fixed-width="60" style="width: 60px; min-width: 60px; max-width: 60px;">
                     <div class="browser-cell-actions-wrapper">
                         <a href="{{ base_url }}/detail/{{ root_name | quote_plus }}/{{ directory_path | quote_path }}?snapshot={{ folder.snapshot.id | quote_plus }}" title="{{ t('action.show_folder_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
                     </div>

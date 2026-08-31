@@ -93,3 +93,29 @@
 - [ ] **High-Density Snapshot Timeline Scaling (>100–200 Snapshots):**
   - *Timeframe & Date-Range Filter:* Dropdown or range scrubber to limit timeline to specific timeframes (e.g. "Last 30 days", custom range) when datasets contain hundreds of snapshots.
   - *Level-of-Detail (LOD) Clustering:* Smart clustering of dense hourly snapshots into expandable day/week blocks on low-zoom viewports.
+
+---
+
+## 6. Frontend Modularization & Refactoring
+- [ ] **Generic TableSorter Component (`table_sorter.js`):**
+  - Standalone, generic table sorting engine with pluggable column comparator callbacks (`customComparators`).
+  - Multi-type value extraction (numbers, strings, timestamps via `data-sort`).
+  - Hierarchical tree sorting support with folder-first priority.
+  - Direction toggling (`asc`/`desc`/`none`), header visual indicators, and `localStorage` sort state persistence.
+  - Universal reusability across Explorer, DetailView, and Roots Overview.
+- [ ] **Generic KeyboardNavigator with Action Registry (`keyboard_nav.js`):**
+  - Core row-based focus and navigation engine (`↑`, `↓`, `PageUp`, `PageDown`, `Home`, `End`).
+  - Dynamic keybinding registry API (`keyboard.register(key, handler)`).
+  - Pluggable action hooks for custom views (snapshot switching, folder expand/collapse, selection, details).
+  - Dynamic integration with the Keyboard Shortcuts help modal.
+- [ ] **SelectionManager Extraction (`selection_manager.js`):**
+  - Multi-row selection state, Shift-range selection, select all, and floating action bar.
+  - On-the-fly ZIP generation form trigger and missing file warning badges.
+- [ ] **TypeaheadHUD Extraction (`typeahead.js`):**
+  - Self-contained prefix-jump HUD overlay with match counter, cycling, and event dispatching.
+- [ ] **SnapshotBars & Lazy Rendering Extraction (`snapshot_bars.js`):**
+  - SVG snapshot pill generation, IntersectionObserver batch lazy-loading, and timeline hover tooltips.
+- [ ] **FilterManager Extraction (`filter_manager.js`):**
+  - Filter input search, toggle switches (hidden, missing, changed-only), count badges, and row visibility evaluation.
+- [ ] **Slim TreeTable Coordinator (`explorer.js`):**
+  - Streamline `explorer.js` to ~150–200 lines acting as an orchestrator for the modular components and managing AJAX directory expansion.

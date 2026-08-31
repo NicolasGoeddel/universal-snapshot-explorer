@@ -427,7 +427,7 @@ class RootFolder:
         return file
 
     @staticmethod
-    def _scan_dir_live(real_dir: str, control_dir_name: str) -> dict[str, tuple[int, int, int, int, int, int, int]] | None:
+    def _scan_dir_live(real_dir: str, control_dir_name: str) -> dict[str, tuple[int, int, int, int, int, int]] | None:
         """
         Performs a fast raw metadata batch-scan of a directory, returning a map of filename to signatures.
 
@@ -437,7 +437,7 @@ class RootFolder:
         The special control directory is ignored.
         """
         try:
-            entries_map: dict[str, tuple[int, int, int, int, int, int, int]] = {}
+            entries_map: dict[str, tuple[int, int, int, int, int, int]] = {}
             with os.scandir(real_dir) as it:
                 for entry in it:
                     if entry.name == control_dir_name:
@@ -451,7 +451,6 @@ class RootFolder:
                             stat_info.st_mtime_ns,
                             stat_info.st_ctime_ns,
                             stat_info.st_size,
-                            stat_info.st_ino,
                         )
                         entries_map[entry.name] = sig
                     except OSError:
@@ -462,7 +461,7 @@ class RootFolder:
 
     @staticmethod
     @functools.lru_cache(maxsize=2048)
-    def _scan_read_only_dir(real_dir: str, control_dir_name: str) -> dict[str, tuple[int, int, int, int, int, int, int]] | None:
+    def _scan_read_only_dir(real_dir: str, control_dir_name: str) -> dict[str, tuple[int, int, int, int, int, int]] | None:
         return RootFolder._scan_dir_live(real_dir, control_dir_name)
 
     def get_snapshot_bars_data(self, path: FilePath) -> dict[str, object]:
@@ -471,7 +470,7 @@ class RootFolder:
         with LRU-cached read-only snapshots and returns a compact snapshot color map.
         """
         snapshots = self.snapshots()
-        snapshot_dir_entries: list[dict[str, tuple[int, int, int, int, int, int, int]] | None] = []
+        snapshot_dir_entries: list[dict[str, tuple[int, int, int, int, int, int]] | None] = []
         all_filenames: set[str] = set()
 
         for snapshot in snapshots:

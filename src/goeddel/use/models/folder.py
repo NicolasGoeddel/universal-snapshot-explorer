@@ -210,10 +210,9 @@ class Folder(FSNode):
     @property
     def item_count(self) -> int | None:
         if self._item_count is None:
-            real_path = self._root_folder.real_path(self.path, self.snapshot)
             try:
-                self._item_count = len(os.listdir(real_path))
-            except PermissionError, OSError:
+                self._item_count = len(self._root_folder.list_dir_names(self.path, self.snapshot))
+            except Exception:
                 self._item_count = None
         return self._item_count
 

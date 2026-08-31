@@ -43,7 +43,15 @@ def resolve_root_and_subpath(
                 accumulated = os.path.join(accumulated, part) if accumulated else part
                 # Check if this node crosses a boundary
                 f = Folder(current_folder, accumulated, current_folder.get_snapshot("Original"), name=part)
-                if f.is_sub_dataset and f.sub_dataset_root_name is None:
+                if f.sub_dataset_root_name is not None and f.sub_dataset_root_name in config.roots:
+                    # Crossed into an explicitly registered child dataset root
+                    remainder = "/".join(parts[i + 1 :])
+                    current_base = f.sub_dataset_root_name
+                    current_folder = RootFolder.get(config.roots[f.sub_dataset_root_name])
+                    current_sub = remainder
+                    found_boundary = True
+                    break
+                elif f.is_sub_dataset and f.sub_dataset_root_name is None:
                     # We crossed an implicit boundary, spawn a shadow root
                     remainder = "/".join(parts[i + 1 :])
                     live_path = ""

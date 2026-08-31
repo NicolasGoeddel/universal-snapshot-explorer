@@ -211,6 +211,7 @@ roots:
 
     def test_resolve_root_and_subpath_hierarchical(self) -> None:
         from goeddel.use.config import AppConfig, RootConfig
+        from goeddel.use.models.root_folder import RootFolder
         from goeddel.use.utils.path_resolver import resolve_root_and_subpath
 
         cfg = AppConfig(
@@ -257,7 +258,14 @@ roots:
         self.assertEqual(root_name, "data")
         self.assertEqual(subpath, "media/movies")
 
-        # 8. Unregistered root without /-/ should raise 404
+        RootFolder.set_root_configs(cfg.roots)
+
+        # 8. Child sub-dataset requested via parent/-/<child_dataset> should resolve to child dataset root
+        root_name, subpath, _ = resolve_root_and_subpath("data/-/backups", cfg)
+        self.assertEqual(root_name, "data/backups")
+        self.assertEqual(subpath, "")
+
+        # 9. Unregistered root without /-/ should raise 404
         from fastapi import HTTPException
 
         with self.assertRaises(HTTPException) as ctx:
@@ -371,6 +379,12 @@ roots:
             assert res is not None
             self.assertIn("file1.txt", res)
             self.assertNotIn(".zfs", res)
+
+        # 4. Test Folder.item_count excludes .zfs
+        folder_count_test = Folder(root_folder, "", OriginalSnapshot(), name="")
+        with patch("os.listdir", return_value=["file1.txt", "file2.txt", ".zfs"]):
+            root_folder.invalidate()
+            self.assertEqual(folder_count_test.item_count, 2)
 
     def test_sub_dataset_snapshot_bars(self) -> None:
         from typing import cast
@@ -523,6 +537,54 @@ roots:
                 # and mode_octal extract the permission bits (last 9 bits / 3 octals)
                 self.assertEqual(file_node.mode_human, expected_human)
                 self.assertEqual(file_node.mode_octal, expected_octal)
+
+    def test_inode_difference_does_not_trigger_changes(self) -> None:
+        import os
+        import tempfile
+
+        from goeddel.use.config import RootConfig
+        from goeddel.use.models.file import File
+        from goeddel.use.models.root_folder import RootFolder
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = os.path.join(temp_dir, "testfile.txt")
+            with open(file_path, "w") as f:
+                f.write("test content")
+
+            cfg = RootConfig(root_path=temp_dir, sub_path="")
+            root_folder = RootFolder(cfg)
+            dt = datetime.datetime.now()
+
+            node1 = File(
+                path="testfile.txt",
+                snapshot=OriginalSnapshot(),
+                root_folder=root_folder,
+                name="testfile.txt",
+                uid=1000,
+                gid=1000,
+                mode=0o644,
+                mtime=dt,
+                ctime=dt,
+                size=12,
+                inode=12345,
+            )
+
+            node2 = File(
+                path="testfile.txt",
+                snapshot=Snapshot("snap1"),
+                root_folder=root_folder,
+                name="testfile.txt",
+                uid=1000,
+                gid=1000,
+                mode=0o644,
+                mtime=dt,
+                ctime=dt,
+                size=12,
+                inode=67890,  # Different inode number (e.g. across snapshot mounts)
+            )
+
+            self.assertEqual(node1, node2)
+            self.assertEqual(node1.compare(node2), set())
 
 
 if __name__ == "__main__":

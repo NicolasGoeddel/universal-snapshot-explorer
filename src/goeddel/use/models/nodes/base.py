@@ -273,7 +273,6 @@ class FSNode:
                     self.mode == o.mode,
                     self.ctime == o.ctime,
                     self.mtime == o.mtime,
-                    self.inode == o.inode,
                     self.size == o.size,
                     self.does_exist == o.does_exist,
                     self.is_file == o.is_file,
@@ -298,8 +297,6 @@ class FSNode:
             changed_attributes.add("ctime")
         if self.mtime != o.mtime:
             changed_attributes.add("mtime")
-        if self.inode != o.inode:
-            changed_attributes.add("inode")
         if self.size != o.size:
             changed_attributes.add("size")
         if self.does_exist != o.does_exist:

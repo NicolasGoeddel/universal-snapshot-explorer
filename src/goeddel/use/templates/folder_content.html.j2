@@ -116,7 +116,11 @@
             </td>
             <td class="browser-cell-actions">
                 <div class="browser-cell-actions-wrapper">
+                    {%- if entry.sub_dataset_root_name is not none -%}
+                    <a href="{{ route_url('detail', entry.sub_dataset_root_name, '', entry.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
+                    {%- else -%}
                     <a href="{{ route_url('detail', root_name, entry.logical_path, entry.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
+                    {%- endif -%}
                     {%- if not entry.is_folder and not entry.is_symlink and entry.is_accessible -%}
                     <a href="{{ route_url('download', root_name, entry.logical_path, entry.snapshot.id) }}" title="{{ t('action.download') }}" class="action-btn action-download">{{ lucide('download', size=15) }}</a>
                     {%- endif -%}
@@ -156,7 +160,11 @@
             <td class="browser-cell-ctime" data-sort="1970-01-01T00:00:00">?</td>
             <td class="browser-cell-actions">
                 <div class="browser-cell-actions-wrapper">
+                    {%- if entry.sub_dataset_root_name is not none -%}
+                    <a href="{{ route_url('detail', entry.sub_dataset_root_name, '', folder.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
+                    {%- else -%}
                     <a href="{{ route_url('detail', root_name, entry.logical_path, folder.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
+                    {%- endif -%}
                 </div>
             </td>
         </tr>

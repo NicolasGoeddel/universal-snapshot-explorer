@@ -6,7 +6,7 @@
 </head>
 <body>
     <div class="sticky-header-container">
-        <h2 style="display: flex; align-items: center; gap: 8px;">{{ lucide('folder' if file.is_folder else 'file-text', size=24) }} {{ file.name }}</h2>
+        <h2 style="display: flex; align-items: center; gap: 8px;">{{ lucide('database' if file.is_sub_dataset or file.is_mount else ('folder' if file.is_folder else 'file-text'), size=24) }} {{ file.name if file.name else root_name }}</h2>
         {% include 'breadcrumbs.html.j2' %}
     </div>
     <table id="details" class="filebrowser" data-root="{{ root_name }}" data-subpath="{{ file.path }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}">
@@ -82,6 +82,10 @@
                 {# Type Cell #}
                 {%- if not entry.does_exist -%}
                     <td class="browser-cell-type" data-sort="0">–</td>
+                {%- elif entry.is_sub_dataset or entry.is_folder -%}
+                    <td class="browser-cell-type" data-sort="{{ entry.display_type or 'Folder' }}" data-is-folder="true">
+                        {{ entry.display_type or 'Folder' }}
+                    </td>
                 {%- elif entry.is_symlink -%}
                     <td class="browser-cell-type" data-sort="inode/symlink" data-is-symlink="true">
                         <span title="Target: {{ entry.symlink_target }}">inode/symlink 🔗 &rarr; {{ entry.symlink_target }}</span>

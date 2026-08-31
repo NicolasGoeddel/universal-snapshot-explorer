@@ -81,6 +81,21 @@ function refreshMimeDiffs() {
             return;
         }
 
+        const isFolder = cell.dataset.isFolder === 'true';
+        if (isFolder) {
+            const typeText = cell.textContent.trim();
+            if (prevMime !== null && typeText !== prevMime) {
+                cell.classList.add('cell-changed');
+                const i18nChangedFrom = window.clientI18n ? window.clientI18n['action.changed_from'] : 'Geändert von';
+                cell.title = `${i18nChangedFrom}: ${prevMime} → ${typeText}`;
+            } else {
+                cell.classList.remove('cell-changed');
+                cell.removeAttribute('title');
+            }
+            prevMime = typeText;
+            return;
+        }
+
         const isSymlink = cell.dataset.isSymlink === 'true';
         if (isSymlink) {
             prevMime = 'inode/symlink';
@@ -115,9 +130,18 @@ function encodePath(p) {
 async function loadMimeTypes() {
     const table = document.getElementById('details');
     if (!table) return;
+
+    const hasFiles = table.querySelector(
+        '.browser-cell-type:not([data-is-folder="true"]):not([data-is-symlink="true"])',
+    );
+    if (!hasFiles) {
+        applyCategoricalColors();
+        return;
+    }
+
     const rootName = table.dataset.root;
     const filePath = table.dataset.subpath;
-    if (!rootName || !filePath) return;
+    if (!rootName) return;
 
     try {
         let url = `/api/file-mimetypes/${encodeURIComponent(rootName)}`;

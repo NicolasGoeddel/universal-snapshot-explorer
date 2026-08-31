@@ -210,9 +210,15 @@ loglevel: info
 ### Testing & Code Quality
 
 ```sh
-# Run linters and type checker
+# Run Python linters, type checker, and formatters
 uv run ruff check src tests
 uv run basedpyright src
+uv run ruff format --check src tests
+
+# Run JavaScript linter & formatter (Biome)
+biome check src/goeddel/use/static/js
+# Automatically apply safe fixes and formatting:
+biome check --write src/goeddel/use/static/js
 
 # Run unit & integration tests
 PYTHONPATH=src uv run python -m unittest discover -s tests -p "test_*.py" -v

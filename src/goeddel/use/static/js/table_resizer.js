@@ -76,9 +76,7 @@
  *  - Idempotence Guarantee: Calculations are based on intrinsic content metrics rather than
  *    transient rendered dimensions, producing identical, stable pixel layouts across repeated double-clicks.
  */
-(function() {
-    'use strict';
-
+(() => {
     class TableColumnResizer {
         /**
          * Initialize the column resizer on a target table element.
@@ -128,15 +126,16 @@
             this.table.style.tableLayout = 'fixed';
 
             // Identify columns and apply generic properties based on data-* attributes
-            this.isFixedColumn = this.ths.map(th => th.hasAttribute('data-fixed-width'));
+            this.isFixedColumn = this.ths.map((th) => th.hasAttribute('data-fixed-width'));
 
             this.ths.forEach((th, index) => {
                 let colKey = th.dataset.colKey;
                 if (!colKey) {
-                    const headerClass = Array.from(th.classList).find(c =>
-                        c.startsWith('browser-header-') ||
-                        c.startsWith('root-header-') ||
-                        c.startsWith('details-cell-')
+                    const headerClass = Array.from(th.classList).find(
+                        (c) =>
+                            c.startsWith('browser-header-') ||
+                            c.startsWith('root-header-') ||
+                            c.startsWith('details-cell-'),
                     );
                     colKey = headerClass || `col-${index}`;
                     th.dataset.colKey = colKey;
@@ -171,7 +170,12 @@
                 this.observer = new MutationObserver(() => {
                     this.recalculateOptimalWidthsDebounced();
                 });
-                this.observer.observe(tbody, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+                this.observer.observe(tbody, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['style', 'class'],
+                });
             }
 
             // Apply saved percentage widths if present, otherwise set default initial percentages
@@ -181,10 +185,12 @@
                 this.applyDefaultPercentages();
             }
 
-            const defaultTooltip = (document.documentElement.lang === 'de')
-                ? 'Ziehen zum Anpassen der Spaltenbreite, Doppelklick zum Zurücksetzen'
-                : 'Drag to resize, double-click to reset';
-            const tooltip = this.table.dataset.resizerTooltip || this.table.getAttribute('data-resizer-tooltip') || defaultTooltip;
+            const defaultTooltip =
+                document.documentElement.lang === 'de'
+                    ? 'Ziehen zum Anpassen der Spaltenbreite, Doppelklick zum Zurücksetzen'
+                    : 'Drag to resize, double-click to reset';
+            const tooltip =
+                this.table.dataset.resizerTooltip || this.table.getAttribute('data-resizer-tooltip') || defaultTooltip;
 
             // Attach resize handles to resizable columns (excluding fixed and terminal columns)
             const lastIndex = this.ths.length - 1;
@@ -230,7 +236,8 @@
             const tableClass = this.table.className || '';
             const dummyTable = document.createElement('table');
             if (tableClass) dummyTable.className = tableClass;
-            dummyTable.style.cssText = 'position: absolute; visibility: hidden; table-layout: auto; width: auto; left: -9999px; top: -9999px;';
+            dummyTable.style.cssText =
+                'position: absolute; visibility: hidden; table-layout: auto; width: auto; left: -9999px; top: -9999px;';
 
             const dummyThead = document.createElement('thead');
             const dummyHeaderRow = document.createElement('tr');
@@ -248,12 +255,13 @@
             return {
                 measureTh(th) {
                     const clone = th.cloneNode(true);
-                    clone.style.cssText = 'width: auto !important; min-width: 0 !important; max-width: none !important; white-space: nowrap !important; overflow: visible !important;';
+                    clone.style.cssText =
+                        'width: auto !important; min-width: 0 !important; max-width: none !important; white-space: nowrap !important; overflow: visible !important;';
                     const resizer = clone.querySelector('.col-resizer');
                     if (resizer) resizer.remove();
                     // Ignore elastic elements like the snapshot SVG timeline during measurement
                     const elasticElements = clone.querySelectorAll('svg');
-                    elasticElements.forEach(el => el.remove());
+                    elasticElements.forEach((el) => el.remove());
                     dummyHeaderRow.appendChild(clone);
                     let width = clone.getBoundingClientRect().width;
                     if (th.classList.contains('sortable') || th.querySelector('.sortable')) {
@@ -265,20 +273,22 @@
                 },
                 measureTd(td) {
                     const clone = td.cloneNode(true);
-                    clone.style.cssText = 'width: auto !important; min-width: 0 !important; max-width: none !important; white-space: nowrap !important; overflow: visible !important;';
+                    clone.style.cssText =
+                        'width: auto !important; min-width: 0 !important; max-width: none !important; white-space: nowrap !important; overflow: visible !important;';
                     // Remove any max-width truncation from inner links/spans
                     const innerElements = clone.querySelectorAll('a, span, div');
-                    innerElements.forEach(el => {
-                        el.style.cssText += '; max-width: none !important; overflow: visible !important; text-overflow: clip !important;';
+                    innerElements.forEach((el) => {
+                        el.style.cssText +=
+                            '; max-width: none !important; overflow: visible !important; text-overflow: clip !important;';
                     });
                     dummyBodyRow.appendChild(clone);
-                    let width = clone.getBoundingClientRect().width + 8; // Safety buffer
+                    const width = clone.getBoundingClientRect().width + 8; // Safety buffer
                     dummyBodyRow.removeChild(clone);
                     return Math.ceil(width);
                 },
                 destroy() {
                     document.body.removeChild(dummyTable);
-                }
+                },
             };
         }
 
@@ -305,7 +315,7 @@
          */
         recalculateOptimalWidths() {
             const ctx = this.createMeasurementContext();
-            const visibleRows = Array.from(this.table.querySelectorAll('tbody tr')).filter(tr => {
+            const visibleRows = Array.from(this.table.querySelectorAll('tbody tr')).filter((tr) => {
                 return tr.style.display !== 'none' && !tr.classList.contains('row-hidden');
             });
 
@@ -325,17 +335,17 @@
 
                 let maxW = ctx.measureTh(th);
 
-                let cellCandidates = [];
+                const cellCandidates = [];
                 for (let r = 0; r < visibleRows.length; r++) {
                     const tr = visibleRows[r];
                     const td = tr.children[colIdx];
                     if (!td) continue;
 
                     let len = td.textContent.trim().length;
-                    
+
                     if (colIdx === this.elasticColIndex) {
                         const level = parseInt(tr.dataset.level || '0', 10);
-                        len += (level * 3);
+                        len += level * 3;
                     }
 
                     cellCandidates.push({ td: td, len: len });
@@ -376,7 +386,7 @@
                     this.softMinWidths[i] = hardMin;
                 } else {
                     // Soft-min is the optimal content width, capped at maxSoftMin so it doesn't become rigid
-                    let optimal = this.optimalWidths[i] || hardMin;
+                    const optimal = this.optimalWidths[i] || hardMin;
                     this.softMinWidths[i] = Math.max(hardMin, Math.min(optimal, maxSoftMin));
                 }
             });
@@ -447,7 +457,7 @@
                 if (defaultPct) {
                     th.style.width = `${parseFloat(defaultPct).toFixed(4)}%`;
                 } else {
-                    const flexibleCount = this.ths.filter(t => !t.hasAttribute('data-fixed-width')).length;
+                    const flexibleCount = this.ths.filter((t) => !t.hasAttribute('data-fixed-width')).length;
                     th.style.width = `${(100 / flexibleCount).toFixed(4)}%`;
                 }
             });
@@ -463,13 +473,13 @@
          */
         autoFitColumns() {
             const totalTableWidth = this.table.getBoundingClientRect().width;
-            
+
             // Recalculate optimal widths based on current visible rows
             this.recalculateOptimalWidths();
             const minRequiredWidths = [...this.optimalWidths];
 
             // 2. Measure current widths in pixels
-            const currentWidths = this.ths.map(th => th.getBoundingClientRect().width);
+            const currentWidths = this.ths.map((th) => th.getBoundingClientRect().width);
 
             // 3. Start target widths: keep current width if already >= minRequired, otherwise expand to minRequired
             const targetWidths = this.ths.map((_, idx) => {
@@ -577,7 +587,7 @@
             this.totalTableWidth = tableRect.width;
 
             this.updateConstraintThresholds();
-            this.startWidths = this.ths.map(th => th.getBoundingClientRect().width);
+            this.startWidths = this.ths.map((th) => th.getBoundingClientRect().width);
 
             document.body.classList.add('is-resizing-columns');
             const activeTh = this.ths[colIndex];
@@ -755,7 +765,9 @@
         stopDragging() {
             this.isResizing = false;
             this.justResized = true;
-            setTimeout(() => { this.justResized = false; }, 200);
+            setTimeout(() => {
+                this.justResized = false;
+            }, 200);
 
             if (this.activeResizerIndex >= 0 && this.ths[this.activeResizerIndex]) {
                 const resizer = this.ths[this.activeResizerIndex].querySelector(':scope > .col-resizer');

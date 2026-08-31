@@ -11,7 +11,7 @@ function refreshMimeDiffs() {
     });
 
     let prevMime = null;
-    chronoRows.forEach(tr => {
+    chronoRows.forEach((tr) => {
         const snapId = tr.dataset.snapshotId;
         const exists = tr.dataset.doesExist === 'true';
         const cell = tr.querySelector('.browser-cell-type');
@@ -65,7 +65,7 @@ async function loadMimeTypes() {
         cachedMimeMap = await res.json();
         refreshMimeDiffs();
     } catch (err) {
-        console.error("Failed to load MIME types:", err);
+        console.error('Failed to load MIME types:', err);
     }
 }
 
@@ -97,7 +97,7 @@ class DetailTable {
                     direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
                 }
 
-                headers.forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+                headers.forEach((h) => h.classList.remove('sort-asc', 'sort-desc'));
                 th.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
 
                 this.currentSort = { colIndex: cellIndex, direction, type: sortType };
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.clientI18nStr) {
         try {
             window.clientI18n = JSON.parse(window.clientI18nStr);
-        } catch (e) { }
+        } catch (e) {}
     }
     const table = document.getElementById('details');
     if (table) new DetailTable(table);

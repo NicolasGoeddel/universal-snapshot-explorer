@@ -26,7 +26,7 @@ function setTheme(theme) {
 function toggleShortcutsModal(show) {
     const modal = document.getElementById('shortcuts-modal');
     if (!modal) return;
-    const willShow = show !== undefined ? show : (modal.style.display === 'none');
+    const willShow = show !== undefined ? show : modal.style.display === 'none';
     modal.style.display = willShow ? 'flex' : 'none';
 }
 
@@ -58,7 +58,9 @@ function updateStickyOffsets() {
         document.documentElement.style.setProperty('--top-header-height', h + 'px');
         document.documentElement.style.setProperty('--index-top-height', h + 'px');
     }
-    const headerRow = document.querySelector('table.filebrowser > thead > tr.header-row, table.filebrowser > thead > tr:first-child');
+    const headerRow = document.querySelector(
+        'table.filebrowser > thead > tr.header-row, table.filebrowser > thead > tr:first-child',
+    );
     if (headerRow) {
         const h = Math.round(headerRow.getBoundingClientRect().height);
         document.documentElement.style.setProperty('--header-row-height', h + 'px');
@@ -141,7 +143,7 @@ function initTimelineTooltips() {
         tooltip.classList.remove('visible');
     };
 
-    timelines.forEach(timeline => {
+    timelines.forEach((timeline) => {
         if (timeline._timelineTooltipsInitialized) return;
         timeline._timelineTooltipsInitialized = true;
 
@@ -156,8 +158,12 @@ function initTimelineTooltips() {
             const isCurrent = link.dataset.isCurrent === 'true';
             const isMissing = link.dataset.isMissing === 'true';
 
-            const currentBadge = isCurrent ? `<span class="timeline-tooltip-badge">${window.clientI18n?.['snapshot.current'] || 'Aktuell'}</span>` : '';
-            const missingBadge = isMissing ? `<span class="timeline-tooltip-badge missing">${window.clientI18n?.['badge.missing'] || 'Nicht vorhanden'}</span>` : '';
+            const currentBadge = isCurrent
+                ? `<span class="timeline-tooltip-badge">${window.clientI18n?.['snapshot.current'] || 'Aktuell'}</span>`
+                : '';
+            const missingBadge = isMissing
+                ? `<span class="timeline-tooltip-badge missing">${window.clientI18n?.['badge.missing'] || 'Nicht vorhanden'}</span>`
+                : '';
 
             tooltip.innerHTML = `
                 <div class="timeline-tooltip-title">

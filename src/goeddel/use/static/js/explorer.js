@@ -68,14 +68,16 @@ class TreeTable {
         if (masterCheckbox) {
             masterCheckbox.addEventListener('click', () => {
                 const visibleRows = this.getVisibleRows();
-                const allVisibleSelected = visibleRows.length > 0 && visibleRows.every(r => this.selectedPaths.has(r.dataset.path || r.dataset.filename));
+                const allVisibleSelected =
+                    visibleRows.length > 0 &&
+                    visibleRows.every((r) => this.selectedPaths.has(r.dataset.path || r.dataset.filename));
 
                 if (allVisibleSelected) {
                     // Deselect all visible
-                    visibleRows.forEach(r => this.selectedPaths.delete(r.dataset.path || r.dataset.filename));
+                    visibleRows.forEach((r) => this.selectedPaths.delete(r.dataset.path || r.dataset.filename));
                 } else {
                     // Select all visible
-                    visibleRows.forEach(r => this.selectedPaths.add(r.dataset.path || r.dataset.filename));
+                    visibleRows.forEach((r) => this.selectedPaths.add(r.dataset.path || r.dataset.filename));
                 }
                 this.updateSelectionUI();
             });
@@ -150,7 +152,7 @@ class TreeTable {
 
     selectAllVisible() {
         const visibleRows = this.getVisibleRows();
-        visibleRows.forEach(r => this.selectedPaths.add(r.dataset.path || r.dataset.filename));
+        visibleRows.forEach((r) => this.selectedPaths.add(r.dataset.path || r.dataset.filename));
         this.updateSelectionUI();
     }
 
@@ -163,7 +165,7 @@ class TreeTable {
     updateSelectionUI() {
         if (!this.selectedPaths) return;
         const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-        allRows.forEach(row => {
+        allRows.forEach((row) => {
             const path = row.dataset.path || row.dataset.filename;
             const isSelected = this.selectedPaths.has(path);
             row.classList.toggle('selected-multi', isSelected);
@@ -173,7 +175,9 @@ class TreeTable {
 
         const totalCount = this.selectedPaths.size;
         const visibleRows = this.getVisibleRows();
-        const visibleSelectedCount = visibleRows.filter(r => this.selectedPaths.has(r.dataset.path || r.dataset.filename)).length;
+        const visibleSelectedCount = visibleRows.filter((r) =>
+            this.selectedPaths.has(r.dataset.path || r.dataset.filename),
+        ).length;
         const hiddenSelectedCount = totalCount - visibleSelectedCount;
 
         const masterCheckbox = document.getElementById('master-select-checkbox');
@@ -206,17 +210,24 @@ class TreeTable {
                 if (hiddenSelectedCount > 0) {
                     breakdown.style.display = 'inline';
                     const pattern = i18n['selection.filter_breakdown'] || '({visible} sichtbar, {hidden} ausgeblendet)';
-                    breakdown.textContent = pattern.replace('{visible}', String(visibleSelectedCount)).replace('{hidden}', String(hiddenSelectedCount));
+                    breakdown.textContent = pattern
+                        .replace('{visible}', String(visibleSelectedCount))
+                        .replace('{hidden}', String(hiddenSelectedCount));
                 } else {
                     breakdown.style.display = 'none';
                 }
             }
             if (warning) {
                 // Check if any selected rows in DOM are missing in the current snapshot
-                const missingCount = allRows.filter(r => this.selectedPaths.has(r.dataset.path || r.dataset.filename) && r.dataset.isMissing === 'true').length;
+                const missingCount = allRows.filter(
+                    (r) =>
+                        this.selectedPaths.has(r.dataset.path || r.dataset.filename) && r.dataset.isMissing === 'true',
+                ).length;
                 if (missingCount > 0) {
                     warning.style.display = 'inline-flex';
-                    const pattern = i18n['selection.missing_warning'] || '{count} Dateien in diesem Snapshot nicht vorhanden (werden übersprungen)';
+                    const pattern =
+                        i18n['selection.missing_warning'] ||
+                        '{count} Dateien in diesem Snapshot nicht vorhanden (werden übersprungen)';
                     warning.textContent = '⚠️ ' + pattern.replace('{count}', String(missingCount));
                 } else {
                     warning.style.display = 'none';
@@ -279,7 +290,8 @@ class TreeTable {
     extractSnapIdFromHref(link) {
         if (!link) return '';
         if (link.dataset.snapId) return link.dataset.snapId;
-        const href = link.getAttribute('href') || (link.href && link.href.baseVal ? link.href.baseVal : link.href) || '';
+        const href =
+            link.getAttribute('href') || (link.href && link.href.baseVal ? link.href.baseVal : link.href) || '';
         const match = href.match(/[?&]snapshot=([^&#]+)/);
         return match ? decodeURIComponent(match[1]) : '';
     }
@@ -288,13 +300,13 @@ class TreeTable {
         if (snapIndex < 0) return;
         const cx = String(snapIndex * 20 + 10);
         const svgs = this.tbody.querySelectorAll('svg.snapshotbar');
-        svgs.forEach(svg => {
+        svgs.forEach((svg) => {
             if (svg.classList.contains('snapshot-skeleton-svg') || svg.classList.contains('header-snapshotbar')) return;
             const td = svg.closest('td');
             const row = svg.closest('tr');
-            const isSubDataset = 
+            const isSubDataset =
                 svg.classList.contains('is-sub-dataset') ||
-                (td && td.dataset.isSubDataset === 'true') || 
+                (td && td.dataset.isSubDataset === 'true') ||
                 (row && row.dataset.isSubDataset === 'true') ||
                 (td && td._snapshotData && td._snapshotData.isSubDataset) ||
                 (row && row.querySelector('.sub-dataset-link') !== null) ||
@@ -347,7 +359,8 @@ class TreeTable {
             const rect = a.querySelector('.header-snap-rect');
             const circle = a.querySelector('circle');
             const snapId = a.dataset.snapId || this.extractSnapIdFromHref(a);
-            const isMatch = (snapId === targetSnapshotId) || (decodeURIComponent(snapId) === decodeURIComponent(targetSnapshotId));
+            const isMatch =
+                snapId === targetSnapshotId || decodeURIComponent(snapId) === decodeURIComponent(targetSnapshotId);
 
             if (isMatch) {
                 targetSnapIndex = idx;
@@ -388,7 +401,7 @@ class TreeTable {
 
         const snapDropdown = document.getElementById('breadcrumb-snapshot-dropdown');
         if (snapDropdown) {
-            snapDropdown.querySelectorAll('.snapshot-dropdown-item').forEach(item => {
+            snapDropdown.querySelectorAll('.snapshot-dropdown-item').forEach((item) => {
                 const snapId = this.extractSnapIdFromHref(item);
                 if (snapId === targetSnapshotId) {
                     item.classList.add('active');
@@ -399,7 +412,7 @@ class TreeTable {
         }
 
         const baseSubpath = this.table.dataset.subpath || '';
-        document.querySelectorAll('.breadcrumbs a[href*="snapshot="]').forEach(a => {
+        document.querySelectorAll('.breadcrumbs a[href*="snapshot="]').forEach((a) => {
             try {
                 const u = new URL(a.href, window.location.origin);
                 u.searchParams.set('snapshot', targetSnapshotId);
@@ -411,12 +424,18 @@ class TreeTable {
         const currentUrl = new URL(window.location.href);
         currentUrl.searchParams.set('snapshot', targetSnapshotId);
         if (options.pushHistory !== false) {
-            history.pushState({ snapshot: targetSnapshotId }, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
+            history.pushState(
+                { snapshot: targetSnapshotId },
+                '',
+                currentUrl.pathname + currentUrl.search + currentUrl.hash,
+            );
         }
 
         // 5. Fetch updated snapshot state from backend
         try {
-            const url = buildRouteUrl('', 'api/snapshot-state', this.rootName, baseSubpath, { snapshot: targetSnapshotId });
+            const url = buildRouteUrl('', 'api/snapshot-state', this.rootName, baseSubpath, {
+                snapshot: targetSnapshotId,
+            });
             const res = await fetch(url, { signal });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
@@ -424,9 +443,11 @@ class TreeTable {
             if (!data.entries) return;
 
             // Update DOM rows for current directory level
-            const topLevelRows = Array.from(this.tbody.querySelectorAll('tr')).filter(r => (r.dataset.parent || '') === baseSubpath);
+            const topLevelRows = Array.from(this.tbody.querySelectorAll('tr')).filter(
+                (r) => (r.dataset.parent || '') === baseSubpath,
+            );
 
-            topLevelRows.forEach(row => {
+            topLevelRows.forEach((row) => {
                 const filename = row.dataset.filename || row.querySelector('.browser-cell-snapshots')?.dataset.filename;
                 if (!filename) return;
 
@@ -451,8 +472,10 @@ class TreeTable {
                     if (!lockIndicator && nameCell) {
                         lockIndicator = document.createElement('span');
                         lockIndicator.className = 'lock-indicator';
-                        lockIndicator.title = window.clientI18n?.['error.permission_denied'] || 'Keine Leseberechtigung';
-                        lockIndicator.innerHTML = '<svg class="lucide lucide-lock" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+                        lockIndicator.title =
+                            window.clientI18n?.['error.permission_denied'] || 'Keine Leseberechtigung';
+                        lockIndicator.innerHTML =
+                            '<svg class="lucide lucide-lock" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
                         nameCell.appendChild(lockIndicator);
                     }
                     if (lockIndicator) lockIndicator.style.display = 'inline-block';
@@ -464,10 +487,22 @@ class TreeTable {
                 const sizeCell = row.querySelector('.browser-cell-size');
                 if (sizeCell) {
                     let displaySize = meta.size_human;
-                    if (meta.is_folder && !meta.has_independent_snapshots && meta.size !== undefined && meta.size !== null && meta.size >= 0) {
-                        const unit = meta.size === 1 ? (window.clientI18n?.['unit.file'] || 'file') : (window.clientI18n?.['unit.files'] || 'files');
+                    if (
+                        meta.is_folder &&
+                        !meta.has_independent_snapshots &&
+                        meta.size !== undefined &&
+                        meta.size !== null &&
+                        meta.size >= 0
+                    ) {
+                        const unit =
+                            meta.size === 1
+                                ? window.clientI18n?.['unit.file'] || 'file'
+                                : window.clientI18n?.['unit.files'] || 'files';
                         displaySize = `${meta.size} ${unit}`;
-                    } else if (meta.has_independent_snapshots || (meta.is_folder && (meta.size === null || meta.size < 0))) {
+                    } else if (
+                        meta.has_independent_snapshots ||
+                        (meta.is_folder && (meta.size === null || meta.size < 0))
+                    ) {
                         displaySize = '—';
                     }
                     sizeCell.textContent = displaySize;
@@ -534,69 +569,90 @@ class TreeTable {
             // Update subfolders if any are expanded
             const expandedRows = Array.from(this.tbody.querySelectorAll('tr[data-expanded="true"]'));
             if (expandedRows.length > 0) {
-                await Promise.all(expandedRows.map(async (expRow) => {
-                    const expPath = expRow.dataset.path;
-                    if (!expPath) return;
-                    try {
-                        const subUrl = buildRouteUrl('', 'api/snapshot-state', this.rootName, expPath, { snapshot: targetSnapshotId });
-                        const subRes = await fetch(subUrl, { signal });
-                        if (!subRes.ok) return;
-                        const subData = await subRes.json();
-                        if (!subData.entries) return;
+                await Promise.all(
+                    expandedRows.map(async (expRow) => {
+                        const expPath = expRow.dataset.path;
+                        if (!expPath) return;
+                        try {
+                            const subUrl = buildRouteUrl('', 'api/snapshot-state', this.rootName, expPath, {
+                                snapshot: targetSnapshotId,
+                            });
+                            const subRes = await fetch(subUrl, { signal });
+                            if (!subRes.ok) return;
+                            const subData = await subRes.json();
+                            if (!subData.entries) return;
 
-                        const children = Array.from(this.tbody.querySelectorAll(`tr[data-parent="${CSS.escape(expPath)}"]`));
-                        children.forEach(childRow => {
-                            const fn = childRow.dataset.filename || childRow.querySelector('.browser-cell-snapshots')?.dataset.filename;
-                            if (!fn) return;
-                            const childMeta = subData.entries[fn];
-                            if (!childMeta) return;
+                            const children = Array.from(
+                                this.tbody.querySelectorAll(`tr[data-parent="${CSS.escape(expPath)}"]`),
+                            );
+                            children.forEach((childRow) => {
+                                const fn =
+                                    childRow.dataset.filename ||
+                                    childRow.querySelector('.browser-cell-snapshots')?.dataset.filename;
+                                if (!fn) return;
+                                const childMeta = subData.entries[fn];
+                                if (!childMeta) return;
 
-                            const isChildSubDataset = childRow.dataset.isSubDataset === 'true' || (childMeta && childMeta.is_sub_dataset);
-                            const childExists = isChildSubDataset ? true : !!childMeta.does_exist;
-                            childRow.dataset.isMissing = childExists ? 'false' : 'true';
-                            childRow.classList.toggle('row-missing', !childExists);
+                                const isChildSubDataset =
+                                    childRow.dataset.isSubDataset === 'true' || (childMeta && childMeta.is_sub_dataset);
+                                const childExists = isChildSubDataset ? true : !!childMeta.does_exist;
+                                childRow.dataset.isMissing = childExists ? 'false' : 'true';
+                                childRow.classList.toggle('row-missing', !childExists);
 
-                            const childNameCell = childRow.querySelector('.browser-cell-name');
-                            if (childNameCell) {
-                                childNameCell.classList.toggle('stroke', !childExists);
-                                childNameCell.classList.toggle('node-locked', !childMeta.is_accessible);
-                            }
-
-                            const childSizeCell = childRow.querySelector('.browser-cell-size');
-                            if (childSizeCell) {
-                                let displaySize = childMeta.size_human;
-                                if (childMeta.is_folder && !childMeta.has_independent_snapshots && childMeta.size !== undefined && childMeta.size !== null && childMeta.size >= 0) {
-                                    const unit = childMeta.size === 1 ? (window.clientI18n?.['unit.file'] || 'file') : (window.clientI18n?.['unit.files'] || 'files');
-                                    displaySize = `${childMeta.size} ${unit}`;
-                                } else if (childMeta.has_independent_snapshots || (childMeta.is_folder && (childMeta.size === null || childMeta.size < 0))) {
-                                    displaySize = '—';
+                                const childNameCell = childRow.querySelector('.browser-cell-name');
+                                if (childNameCell) {
+                                    childNameCell.classList.toggle('stroke', !childExists);
+                                    childNameCell.classList.toggle('node-locked', !childMeta.is_accessible);
                                 }
-                                childSizeCell.textContent = displaySize;
-                                childSizeCell.dataset.sort = String(childMeta.size);
-                            }
-                            const childOwnerCell = childRow.querySelector('.browser-cell-owner');
-                            if (childOwnerCell) {
-                                childOwnerCell.textContent = childMeta.owner;
-                                childOwnerCell.dataset.sort = childMeta.owner;
-                            }
-                            const childModeCell = childRow.querySelector('.browser-cell-mode');
-                            if (childModeCell) {
-                                childModeCell.textContent = childMeta.mode_human;
-                                childModeCell.dataset.sort = childMeta.mode_octal;
-                            }
-                            const childMtimeCell = childRow.querySelector('.browser-cell-mtime');
-                            if (childMtimeCell) {
-                                childMtimeCell.textContent = childMeta.mtime_fmt;
-                                childMtimeCell.dataset.sort = childMeta.mtime_iso;
-                            }
-                            const childCtimeCell = childRow.querySelector('.browser-cell-ctime');
-                            if (childCtimeCell) {
-                                childCtimeCell.textContent = childMeta.ctime_fmt;
-                                childCtimeCell.dataset.sort = childMeta.ctime_iso;
-                            }
-                        });
-                    } catch (e) {}
-                }));
+
+                                const childSizeCell = childRow.querySelector('.browser-cell-size');
+                                if (childSizeCell) {
+                                    let displaySize = childMeta.size_human;
+                                    if (
+                                        childMeta.is_folder &&
+                                        !childMeta.has_independent_snapshots &&
+                                        childMeta.size !== undefined &&
+                                        childMeta.size !== null &&
+                                        childMeta.size >= 0
+                                    ) {
+                                        const unit =
+                                            childMeta.size === 1
+                                                ? window.clientI18n?.['unit.file'] || 'file'
+                                                : window.clientI18n?.['unit.files'] || 'files';
+                                        displaySize = `${childMeta.size} ${unit}`;
+                                    } else if (
+                                        childMeta.has_independent_snapshots ||
+                                        (childMeta.is_folder && (childMeta.size === null || childMeta.size < 0))
+                                    ) {
+                                        displaySize = '—';
+                                    }
+                                    childSizeCell.textContent = displaySize;
+                                    childSizeCell.dataset.sort = String(childMeta.size);
+                                }
+                                const childOwnerCell = childRow.querySelector('.browser-cell-owner');
+                                if (childOwnerCell) {
+                                    childOwnerCell.textContent = childMeta.owner;
+                                    childOwnerCell.dataset.sort = childMeta.owner;
+                                }
+                                const childModeCell = childRow.querySelector('.browser-cell-mode');
+                                if (childModeCell) {
+                                    childModeCell.textContent = childMeta.mode_human;
+                                    childModeCell.dataset.sort = childMeta.mode_octal;
+                                }
+                                const childMtimeCell = childRow.querySelector('.browser-cell-mtime');
+                                if (childMtimeCell) {
+                                    childMtimeCell.textContent = childMeta.mtime_fmt;
+                                    childMtimeCell.dataset.sort = childMeta.mtime_iso;
+                                }
+                                const childCtimeCell = childRow.querySelector('.browser-cell-ctime');
+                                if (childCtimeCell) {
+                                    childCtimeCell.textContent = childMeta.ctime_fmt;
+                                    childCtimeCell.dataset.sort = childMeta.ctime_iso;
+                                }
+                            });
+                        } catch (e) {}
+                    }),
+                );
             }
 
             if (data.snapshot && typeof data.snapshot.index === 'number') {
@@ -628,11 +684,15 @@ class TreeTable {
 
         const findAndSelect = () => {
             const rows = Array.from(this.tbody.querySelectorAll('tr'));
-            const targetRow = rows.find(r => {
+            const targetRow = rows.find((r) => {
                 const fn = r.dataset.filename || r.querySelector('.browser-cell-snapshots')?.dataset.filename;
                 const path = r.dataset.path;
                 const name = r.querySelector('.browser-cell-name')?.dataset.sort;
-                return fn === targetName || name === targetName || (path && (path.endsWith('/' + targetName) || path === targetName));
+                return (
+                    fn === targetName ||
+                    name === targetName ||
+                    (path && (path.endsWith('/' + targetName) || path === targetName))
+                );
             });
 
             if (targetRow) {
@@ -662,7 +722,7 @@ class TreeTable {
                 this.table.classList.toggle('hide-hidden', !isChecked);
                 localStorage.setItem('zfs_explorer_show_hidden', isChecked ? 'true' : 'false');
                 if (!isChecked) {
-                    this.tbody.querySelectorAll('tr[data-is-hidden="true"]').forEach(row => {
+                    this.tbody.querySelectorAll('tr[data-is-hidden="true"]').forEach((row) => {
                         if (row.dataset.path) {
                             this.collapseDescendants(row.dataset.path);
                         }
@@ -684,7 +744,7 @@ class TreeTable {
                 this.table.classList.toggle('hide-missing', !isChecked);
                 localStorage.setItem('zfs_explorer_show_missing', isChecked ? 'true' : 'false');
                 if (!isChecked) {
-                    this.tbody.querySelectorAll('tr[data-is-missing="true"]').forEach(row => {
+                    this.tbody.querySelectorAll('tr[data-is-missing="true"]').forEach((row) => {
                         if (row.dataset.path) {
                             this.collapseDescendants(row.dataset.path);
                         }
@@ -706,7 +766,7 @@ class TreeTable {
                 this.table.classList.toggle('hide-unchanged', isChecked);
                 localStorage.setItem('zfs_explorer_show_changed_only', isChecked ? 'true' : 'false');
                 if (isChecked) {
-                    this.tbody.querySelectorAll('tr[data-is-changed="false"]').forEach(row => {
+                    this.tbody.querySelectorAll('tr[data-is-changed="false"]').forEach((row) => {
                         if (row.dataset.path) {
                             this.collapseDescendants(row.dataset.path);
                         }
@@ -726,7 +786,14 @@ class TreeTable {
             return '<span class="text-muted" style="color: var(--text-muted, #64748b); font-size: 13px; padding-left: 2px;">–</span>';
         }
         const isSub = isSubDataset === true || isSubDataset === 'true';
-        const colorMap = { g: 'var(--snap-1)', b: 'var(--snap-2)', y: 'var(--snap-3)', r: 'var(--snap-4)', o: 'var(--snap-5)', p: 'var(--snap-6)' };
+        const colorMap = {
+            g: 'var(--snap-1)',
+            b: 'var(--snap-2)',
+            y: 'var(--snap-3)',
+            r: 'var(--snap-4)',
+            o: 'var(--snap-5)',
+            p: 'var(--snap-6)',
+        };
         const count = snapshots.length;
         const barWidth = 20;
         const totalWidth = count * barWidth;
@@ -738,7 +805,10 @@ class TreeTable {
             const char = barStr[i] || 'x';
             const snap = snapshots[i];
             const x = i * barWidth;
-            if (!isSub && (snap.id === currentSnap || decodeURIComponent(snap.id) === decodeURIComponent(currentSnap))) {
+            if (
+                !isSub &&
+                (snap.id === currentSnap || decodeURIComponent(snap.id) === decodeURIComponent(currentSnap))
+            ) {
                 currentIdx = i;
             }
 
@@ -750,7 +820,10 @@ class TreeTable {
             }
         }
 
-        const circle = (currentIdx >= 0 && !isSub) ? `<circle cx="${currentIdx * barWidth + 10}" cy="10" r="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>` : '';
+        const circle =
+            currentIdx >= 0 && !isSub
+                ? `<circle cx="${currentIdx * barWidth + 10}" cy="10" r="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>`
+                : '';
 
         return `<svg class="snapshotbar${isSub ? ' is-sub-dataset' : ''}" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; height: 16px;">${inner}${circle}</svg>`;
     }
@@ -781,8 +854,12 @@ class TreeTable {
             const isCurrent = link.dataset.isCurrent === 'true';
             const isMissing = link.dataset.isMissing === 'true';
 
-            const currentBadge = isCurrent ? `<span class="timeline-tooltip-badge">${window.clientI18n?.['snapshot.current'] || 'Aktuell'}</span>` : '';
-            const missingBadge = isMissing ? `<span class="timeline-tooltip-badge missing">${window.clientI18n?.['badge.missing'] || 'Nicht vorhanden'}</span>` : '';
+            const currentBadge = isCurrent
+                ? `<span class="timeline-tooltip-badge">${window.clientI18n?.['snapshot.current'] || 'Aktuell'}</span>`
+                : '';
+            const missingBadge = isMissing
+                ? `<span class="timeline-tooltip-badge missing">${window.clientI18n?.['badge.missing'] || 'Nicht vorhanden'}</span>`
+                : '';
 
             tooltip.innerHTML = `
                         <div class="timeline-tooltip-title">
@@ -819,26 +896,35 @@ class TreeTable {
 
     initSnapshotObserver() {
         if (this.snapshotObserver) return;
-        this.snapshotObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const td = entry.target;
-                    this.snapshotObserver.unobserve(td);
-                    if (td._snapshotData && td.querySelector('.snapshot-skeleton, .snapshot-skeleton-svg')) {
-                        td.innerHTML = this.buildSnapshotSvg(td._snapshotData.barStr, td._snapshotData.snapshots, td._snapshotData.isSubDataset);
-                        delete td._snapshotData;
+        this.snapshotObserver = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        const td = entry.target;
+                        this.snapshotObserver.unobserve(td);
+                        if (td._snapshotData && td.querySelector('.snapshot-skeleton, .snapshot-skeleton-svg')) {
+                            td.innerHTML = this.buildSnapshotSvg(
+                                td._snapshotData.barStr,
+                                td._snapshotData.snapshots,
+                                td._snapshotData.isSubDataset,
+                            );
+                            delete td._snapshotData;
+                        }
                     }
-                }
-            });
-        }, {
-            root: null,
-            rootMargin: '300px 0px',
-            threshold: 0.01
-        });
+                });
+            },
+            {
+                root: null,
+                rootMargin: '300px 0px',
+                threshold: 0.01,
+            },
+        );
     }
 
     async loadSnapshotBars(container, dirPath) {
-        const skeletons = container.querySelectorAll('.browser-cell-snapshots[data-filename] .snapshot-skeleton, .browser-cell-snapshots[data-filename] .snapshot-skeleton-svg');
+        const skeletons = container.querySelectorAll(
+            '.browser-cell-snapshots[data-filename] .snapshot-skeleton, .browser-cell-snapshots[data-filename] .snapshot-skeleton-svg',
+        );
         if (skeletons.length === 0) return;
 
         this.initSnapshotObserver();
@@ -852,13 +938,14 @@ class TreeTable {
             const bars = data.bars || {};
 
             const cells = container.querySelectorAll('.browser-cell-snapshots[data-filename]');
-            cells.forEach(td => {
+            cells.forEach((td) => {
                 const fn = td.dataset.filename;
                 const row = td.closest('tr');
                 if (bars[fn] && td.querySelector('.snapshot-skeleton, .snapshot-skeleton-svg')) {
                     let barStr = '';
                     let itemSnapshots = snapshots;
-                    let isSubDataset = (td.dataset.isSubDataset === 'true') || (row && row.dataset.isSubDataset === 'true');
+                    let isSubDataset =
+                        td.dataset.isSubDataset === 'true' || (row && row.dataset.isSubDataset === 'true');
 
                     if (typeof bars[fn] === 'object' && bars[fn].is_sub_dataset) {
                         barStr = bars[fn].barStr || '';
@@ -876,7 +963,7 @@ class TreeTable {
                     td.dataset.isSubDataset = isSubDataset ? 'true' : 'false';
 
                     // Determine if file/folder changed across snapshots
-                    const isUnchanged = (barStr.length > 0 && !barStr.includes('x') && new Set(barStr).size === 1);
+                    const isUnchanged = barStr.length > 0 && !barStr.includes('x') && new Set(barStr).size === 1;
                     if (row) {
                         row.dataset.isChanged = isUnchanged ? 'false' : 'true';
                     }
@@ -889,7 +976,7 @@ class TreeTable {
             this.updateZebra();
             this.updateToggleCounts();
         } catch (err) {
-            console.error("Failed to load snapshot bars:", err);
+            console.error('Failed to load snapshot bars:', err);
         }
     }
 
@@ -899,7 +986,7 @@ class TreeTable {
         const hideUnchanged = this.table.classList.contains('hide-unchanged');
         const hasFilterHidden = !!this.tbody.querySelector('tr.filter-hidden');
         const rows = this.tbody.querySelectorAll('tr');
-        const hasDisplayNone = Array.from(rows).some(row => row.style.display === 'none');
+        const hasDisplayNone = Array.from(rows).some((row) => row.style.display === 'none');
         const isFiltered = hideHidden || hideMissing || hideUnchanged || hasFilterHidden || hasDisplayNone;
 
         this.table.classList.toggle('is-filtered', isFiltered);
@@ -931,7 +1018,7 @@ class TreeTable {
     }
 
     bindTreeEvents(container) {
-        container.querySelectorAll('.folder-toggle').forEach(btn => {
+        container.querySelectorAll('.folder-toggle').forEach((btn) => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.toggleFolder(btn);
@@ -953,7 +1040,7 @@ class TreeTable {
         } else {
             const existingChildren = this.getDirectChildren(path);
             if (existingChildren.length > 0) {
-                existingChildren.forEach(child => {
+                existingChildren.forEach((child) => {
                     child.style.display = '';
                 });
                 row.dataset.expanded = 'true';
@@ -962,7 +1049,10 @@ class TreeTable {
             } else {
                 btn.classList.add('loading');
                 try {
-                    const url = buildRouteUrl('', 'ajax', this.rootName, path, { snapshot: this.snapshot, level: level + 1 });
+                    const url = buildRouteUrl('', 'ajax', this.rootName, path, {
+                        snapshot: this.snapshot,
+                        level: level + 1,
+                    });
                     const res = await fetch(url);
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const html = await res.text();
@@ -973,13 +1063,13 @@ class TreeTable {
 
                     if (newRows.length > 0) {
                         let insertAfter = row;
-                        newRows.forEach(newRow => {
+                        newRows.forEach((newRow) => {
                             insertAfter.after(newRow);
                             insertAfter = newRow;
                         });
                         this.bindTreeEvents(temp);
-                        newRows.forEach(newRow => {
-                            newRow.querySelectorAll('.folder-toggle').forEach(toggle => {
+                        newRows.forEach((newRow) => {
+                            newRow.querySelectorAll('.folder-toggle').forEach((toggle) => {
                                 toggle.addEventListener('click', (e) => {
                                     e.stopPropagation();
                                     this.toggleFolder(toggle);
@@ -998,7 +1088,7 @@ class TreeTable {
                     }
                     this.updateZebra();
                 } catch (err) {
-                    console.error("Failed to load folder contents:", err);
+                    console.error('Failed to load folder contents:', err);
                     const errorRow = document.createElement('tr');
                     errorRow.className = 'folder-error-row';
                     errorRow.dataset.parent = path;
@@ -1022,7 +1112,7 @@ class TreeTable {
     collapseDescendants(parentPath) {
         const allRows = Array.from(this.tbody.querySelectorAll('tr'));
         const prefix = parentPath + '/';
-        allRows.forEach(row => {
+        allRows.forEach((row) => {
             const rowPath = row.dataset.path || '';
             const rowParent = row.dataset.parent || '';
             if (rowParent === parentPath || rowPath.startsWith(prefix)) {
@@ -1089,7 +1179,9 @@ class TreeTable {
             direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
         }
 
-        this.table.querySelectorAll('thead tr.header-row th, thead tr.header-row th .sortable').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+        this.table
+            .querySelectorAll('thead tr.header-row th, thead tr.header-row th .sortable')
+            .forEach((h) => h.classList.remove('sort-asc', 'sort-desc'));
         sortEl.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
         th.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
 
@@ -1106,7 +1198,9 @@ class TreeTable {
     }
 
     initSorting() {
-        const sortElements = this.table.querySelectorAll('thead tr.header-row th.sortable, thead tr.header-row th .sortable');
+        const sortElements = this.table.querySelectorAll(
+            'thead tr.header-row th.sortable, thead tr.header-row th .sortable',
+        );
         sortElements.forEach((el) => {
             el.setAttribute('tabindex', '0');
             el.setAttribute('role', 'button');
@@ -1139,7 +1233,7 @@ class TreeTable {
         const allRows = Array.from(this.tbody.querySelectorAll('tr'));
 
         const groups = new Map();
-        allRows.forEach(row => {
+        allRows.forEach((row) => {
             const parent = row.dataset.parent || '';
             if (!groups.has(parent)) groups.set(parent, []);
             groups.get(parent).push(row);
@@ -1185,7 +1279,7 @@ class TreeTable {
         const appendSubtree = (parentPath) => {
             const children = groups.get(parentPath) || [];
             children.sort(compareRows);
-            children.forEach(child => {
+            children.forEach((child) => {
                 sortedRows.push(child);
                 appendSubtree(child.dataset.path);
             });
@@ -1194,18 +1288,18 @@ class TreeTable {
         const topLevelParent = this.table.dataset.subpath || '';
         appendSubtree(topLevelParent);
 
-        allRows.forEach(row => {
+        allRows.forEach((row) => {
             if (!sortedRows.includes(row)) {
                 sortedRows.push(row);
             }
         });
 
-        sortedRows.forEach(row => this.tbody.appendChild(row));
+        sortedRows.forEach((row) => this.tbody.appendChild(row));
     }
 
     initFiltering() {
         const filterInputs = this.table.querySelectorAll('thead tr.column-filter input');
-        filterInputs.forEach(input => {
+        filterInputs.forEach((input) => {
             input.addEventListener('input', () => {
                 this.applyFilter();
                 this.updateZebra();
@@ -1230,16 +1324,16 @@ class TreeTable {
     applyFilter() {
         const filterInputs = Array.from(this.table.querySelectorAll('thead tr.column-filter input'));
         const activeFilters = filterInputs
-            .map(inp => ({
+            .map((inp) => ({
                 colIndex: parseInt(inp.dataset.col, 10),
-                query: inp.value.trim().toLowerCase()
+                query: inp.value.trim().toLowerCase(),
             }))
-            .filter(f => f.query.length > 0);
+            .filter((f) => f.query.length > 0);
 
         const allRows = Array.from(this.tbody.querySelectorAll('tr'));
 
         if (activeFilters.length === 0) {
-            allRows.forEach(row => row.classList.remove('filter-hidden'));
+            allRows.forEach((row) => row.classList.remove('filter-hidden'));
             return;
         }
 
@@ -1249,7 +1343,7 @@ class TreeTable {
 
         const matchMap = new Map();
 
-        allRows.forEach(row => {
+        allRows.forEach((row) => {
             let matches = true;
             for (const f of activeFilters) {
                 const cell = row.children[f.colIndex];
@@ -1261,7 +1355,9 @@ class TreeTable {
                 if (f.colIndex === 1) {
                     text = (row.dataset.filename || cell.dataset.sort || cell.textContent).trim().toLowerCase();
                 } else {
-                    text = (cell.dataset.sort !== undefined ? cell.dataset.sort : cell.textContent).trim().toLowerCase();
+                    text = (cell.dataset.sort !== undefined ? cell.dataset.sort : cell.textContent)
+                        .trim()
+                        .toLowerCase();
                 }
                 if (!text.includes(f.query)) {
                     matches = false;
@@ -1272,7 +1368,7 @@ class TreeTable {
         });
 
         // Propagate match upward only from rows that are otherwise visible
-        allRows.forEach(row => {
+        allRows.forEach((row) => {
             if (matchMap.get(row)) {
                 if (hideHidden && row.dataset.isHidden === 'true') return;
                 if (hideMissing && row.dataset.isMissing === 'true') return;
@@ -1280,7 +1376,7 @@ class TreeTable {
 
                 let parentPath = row.dataset.parent;
                 while (parentPath) {
-                    const parentRow = allRows.find(r => r.dataset.path === parentPath);
+                    const parentRow = allRows.find((r) => r.dataset.path === parentPath);
                     if (parentRow) {
                         matchMap.set(parentRow, true);
                         parentPath = parentRow.dataset.parent;
@@ -1291,7 +1387,7 @@ class TreeTable {
             }
         });
 
-        allRows.forEach(row => {
+        allRows.forEach((row) => {
             row.classList.toggle('filter-hidden', !matchMap.get(row));
         });
         this.updateToggleCounts();
@@ -1310,10 +1406,10 @@ class TreeTable {
         let missingCount = 0;
         let unchangedCount = 0;
         let changedCount = 0;
-        let totalRows = allRows.length;
+        const totalRows = allRows.length;
         let visibleRows = 0;
 
-        allRows.forEach(row => {
+        allRows.forEach((row) => {
             const isHidden = row.dataset.isHidden === 'true';
             const isMissing = row.dataset.isMissing === 'true';
             const isChanged = row.dataset.isChanged === 'true';
@@ -1338,7 +1434,9 @@ class TreeTable {
             badgeHidden.textContent = hiddenCount;
             badgeHidden.style.display = hiddenCount > 0 ? 'inline-block' : 'none';
             badgeHidden.classList.toggle('is-filtering', hideHidden && hiddenCount > 0);
-            badgeHidden.title = hideHidden ? `${hiddenCount} versteckte Dateien ausgeblendet` : `${hiddenCount} versteckte Dateien eingeblendet`;
+            badgeHidden.title = hideHidden
+                ? `${hiddenCount} versteckte Dateien ausgeblendet`
+                : `${hiddenCount} versteckte Dateien eingeblendet`;
         }
 
         const badgeMissing = document.getElementById('badge-missing-count');
@@ -1346,7 +1444,9 @@ class TreeTable {
             badgeMissing.textContent = missingCount;
             badgeMissing.style.display = missingCount > 0 ? 'inline-block' : 'none';
             badgeMissing.classList.toggle('is-filtering', hideMissing && missingCount > 0);
-            badgeMissing.title = hideMissing ? `${missingCount} fehlende Dateien ausgeblendet` : `${missingCount} fehlende Dateien eingeblendet`;
+            badgeMissing.title = hideMissing
+                ? `${missingCount} fehlende Dateien ausgeblendet`
+                : `${missingCount} fehlende Dateien eingeblendet`;
         }
 
         const badgeChanged = document.getElementById('badge-changed-count');
@@ -1355,7 +1455,9 @@ class TreeTable {
                 badgeChanged.textContent = `${changedCount}/${totalRows}`;
                 badgeChanged.style.display = 'inline-block';
                 badgeChanged.classList.toggle('is-filtering', hideUnchanged && unchangedCount > 0);
-                badgeChanged.title = hideUnchanged ? `${unchangedCount} statische Dateien ausgeblendet (${changedCount} sichtbar)` : `${changedCount} geändert von ${totalRows}`;
+                badgeChanged.title = hideUnchanged
+                    ? `${unchangedCount} statische Dateien ausgeblendet (${changedCount} sichtbar)`
+                    : `${changedCount} geändert von ${totalRows}`;
             } else {
                 badgeChanged.style.display = 'none';
             }
@@ -1377,7 +1479,7 @@ class TreeTable {
         const hideMissing = this.table.classList.contains('hide-missing');
         const hideUnchanged = this.table.classList.contains('hide-unchanged');
 
-        return Array.from(this.tbody.querySelectorAll('tr')).filter(row => {
+        return Array.from(this.tbody.querySelectorAll('tr')).filter((row) => {
             if (row.classList.contains('filter-hidden') || row.style.display === 'none') {
                 return false;
             }
@@ -1395,14 +1497,20 @@ class TreeTable {
     }
 
     selectRow(row, options = { updateHash: true }) {
-        this.tbody.querySelectorAll('tr.selected-row').forEach(r => r.classList.remove('selected-row'));
+        this.tbody.querySelectorAll('tr.selected-row').forEach((r) => r.classList.remove('selected-row'));
         this.selectedRow = row;
         if (row) {
             row.classList.add('selected-row');
 
             const rect = row.getBoundingClientRect();
-            const topHeaderHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--top-header-height') || '85', 10);
-            const headerRowHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-row-height') || '27', 10);
+            const topHeaderHeight = parseInt(
+                getComputedStyle(document.documentElement).getPropertyValue('--top-header-height') || '85',
+                10,
+            );
+            const headerRowHeight = parseInt(
+                getComputedStyle(document.documentElement).getPropertyValue('--header-row-height') || '27',
+                10,
+            );
             const totalHeaderOffset = topHeaderHeight + headerRowHeight + 35;
 
             if (rect.top < totalHeaderOffset) {
@@ -1494,8 +1602,12 @@ class TreeTable {
         const prefixMatches = [];
         const containsMatches = [];
 
-        visibleRows.forEach(row => {
-            const name = (row.dataset.filename || row.querySelector('.browser-cell-name')?.dataset.sort || '').toLowerCase();
+        visibleRows.forEach((row) => {
+            const name = (
+                row.dataset.filename ||
+                row.querySelector('.browser-cell-name')?.dataset.sort ||
+                ''
+            ).toLowerCase();
             if (name.startsWith(q)) {
                 prefixMatches.push(row);
             } else if (name.includes(q)) {
@@ -1524,7 +1636,8 @@ class TreeTable {
 
     stepTypeahead(direction) {
         if (!this.typeaheadMatches || this.typeaheadMatches.length === 0) return;
-        this.typeaheadIndex = (this.typeaheadIndex + direction + this.typeaheadMatches.length) % this.typeaheadMatches.length;
+        this.typeaheadIndex =
+            (this.typeaheadIndex + direction + this.typeaheadMatches.length) % this.typeaheadMatches.length;
         this.selectRow(this.typeaheadMatches[this.typeaheadIndex]);
         this.renderTypeaheadHud();
     }
@@ -1632,11 +1745,16 @@ class TreeTable {
                     const currentFolder = currentSub ? currentSub.split('/').pop() : '';
                     const targetHash = currentFolder ? '#' + encodeURIComponent(currentFolder) : '';
                     if (currentSub && currentSub !== '') {
-                        const parentSub = currentSub.includes('/') ? currentSub.substring(0, currentSub.lastIndexOf('/')) : '';
+                        const parentSub = currentSub.includes('/')
+                            ? currentSub.substring(0, currentSub.lastIndexOf('/'))
+                            : '';
                         if (parentSub) {
-                            window.location.href = buildRouteUrl('', 'list', this.rootName, parentSub, { snapshot: this.snapshot }) + targetHash;
+                            window.location.href =
+                                buildRouteUrl('', 'list', this.rootName, parentSub, { snapshot: this.snapshot }) +
+                                targetHash;
                         } else {
-                            window.location.href = buildRouteUrl('', 'list', this.rootName, '', { snapshot: this.snapshot }) + targetHash;
+                            window.location.href =
+                                buildRouteUrl('', 'list', this.rootName, '', { snapshot: this.snapshot }) + targetHash;
                         }
                     } else {
                         window.location.href = `/#${encodeURIComponent(this.rootName)}`;
@@ -1662,7 +1780,9 @@ class TreeTable {
                     this.closeTypeahead();
                     const snapLinks = Array.from(document.querySelectorAll('.snapshots-header-timeline a'));
                     if (snapLinks.length > 1) {
-                        const currentIdx = snapLinks.findIndex(a => a.dataset.isCurrent === 'true' || a.querySelector('.current-snapshot-rect'));
+                        const currentIdx = snapLinks.findIndex(
+                            (a) => a.dataset.isCurrent === 'true' || a.querySelector('.current-snapshot-rect'),
+                        );
                         if (e.key === 'ArrowLeft' && currentIdx > 0) {
                             e.preventDefault();
                             const targetLink = snapLinks[currentIdx - 1];
@@ -1791,7 +1911,7 @@ class TreeTable {
                     // Selected row is currently hidden by filter (e.g. missing item exemption)
                     const allRows = Array.from(this.tbody.querySelectorAll('tr'));
                     const selectedDomIdx = allRows.indexOf(this.selectedRow);
-                    const nextRow = visibleRows.find(r => allRows.indexOf(r) > selectedDomIdx) || visibleRows[0];
+                    const nextRow = visibleRows.find((r) => allRows.indexOf(r) > selectedDomIdx) || visibleRows[0];
                     this.selectRow(nextRow);
                 } else {
                     this.selectRow(visibleRows[0]);
@@ -1817,8 +1937,11 @@ class TreeTable {
                     // Selected row is currently hidden by filter (e.g. missing item exemption)
                     const allRows = Array.from(this.tbody.querySelectorAll('tr'));
                     const selectedDomIdx = allRows.indexOf(this.selectedRow);
-                    const precedingRows = visibleRows.filter(r => allRows.indexOf(r) < selectedDomIdx);
-                    const prevRow = precedingRows.length > 0 ? precedingRows[precedingRows.length - 1] : visibleRows[visibleRows.length - 1];
+                    const precedingRows = visibleRows.filter((r) => allRows.indexOf(r) < selectedDomIdx);
+                    const prevRow =
+                        precedingRows.length > 0
+                            ? precedingRows[precedingRows.length - 1]
+                            : visibleRows[visibleRows.length - 1];
                     this.selectRow(prevRow);
                 } else {
                     this.selectRow(visibleRows[visibleRows.length - 1]);
@@ -1855,7 +1978,7 @@ class TreeTable {
                 if (baseIdx < 0 && this.selectedRow) {
                     const allRows = Array.from(this.tbody.querySelectorAll('tr'));
                     const selectedDomIdx = allRows.indexOf(this.selectedRow);
-                    const nextRow = visibleRows.find(r => allRows.indexOf(r) > selectedDomIdx);
+                    const nextRow = visibleRows.find((r) => allRows.indexOf(r) > selectedDomIdx);
                     baseIdx = nextRow ? visibleRows.indexOf(nextRow) : 0;
                 } else if (baseIdx < 0) {
                     baseIdx = 0;
@@ -1876,7 +1999,7 @@ class TreeTable {
                 if (baseIdx < 0 && this.selectedRow) {
                     const allRows = Array.from(this.tbody.querySelectorAll('tr'));
                     const selectedDomIdx = allRows.indexOf(this.selectedRow);
-                    const precedingRows = visibleRows.filter(r => allRows.indexOf(r) < selectedDomIdx);
+                    const precedingRows = visibleRows.filter((r) => allRows.indexOf(r) < selectedDomIdx);
                     const prevRow = precedingRows.length > 0 ? precedingRows[precedingRows.length - 1] : visibleRows[0];
                     baseIdx = visibleRows.indexOf(prevRow);
                 } else if (baseIdx < 0) {
@@ -1910,7 +2033,7 @@ class TreeTable {
                         this.toggleFolder(toggleBtn);
                     } else {
                         const parentPath = this.selectedRow.dataset.path;
-                        const children = visibleRows.filter(r => r.dataset.parent === parentPath);
+                        const children = visibleRows.filter((r) => r.dataset.parent === parentPath);
                         if (children.length > 0) {
                             this.selectRow(children[0]);
                         }
@@ -1928,7 +2051,7 @@ class TreeTable {
                 } else {
                     const parentPath = this.selectedRow.dataset.parent;
                     if (parentPath) {
-                        const parentRow = visibleRows.find(r => r.dataset.path === parentPath);
+                        const parentRow = visibleRows.find((r) => r.dataset.path === parentPath);
                         if (parentRow) {
                             this.selectRow(parentRow);
                         }
@@ -1947,7 +2070,9 @@ class TreeTable {
                 } else if (isFolder && toggleBtn) {
                     this.toggleFolder(toggleBtn);
                 } else {
-                    const downloadLink = this.selectedRow.querySelector('.action-download') || this.selectedRow.querySelector('.file-download-link');
+                    const downloadLink =
+                        this.selectedRow.querySelector('.action-download') ||
+                        this.selectedRow.querySelector('.file-download-link');
                     if (downloadLink) {
                         downloadLink.click();
                     }

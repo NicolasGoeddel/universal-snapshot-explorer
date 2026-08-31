@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedRow = null;
 
     function selectRow(row, updateHash = true) {
-        rows.forEach(r => r.classList.remove('selected-row'));
+        rows.forEach((r) => r.classList.remove('selected-row'));
         selectedRow = row;
         if (row) {
             row.classList.add('selected-row');
@@ -41,11 +41,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetName = decodeURIComponent(window.location.hash.substring(1).replace(/\+/g, ' '));
         if (!targetName) return;
 
-        const targetRow = rows.find(r => {
+        const targetRow = rows.find((r) => {
             const rootLink = r.querySelector('a.root-link');
             const name = rootLink ? rootLink.textContent.trim() : '';
             const href = r.dataset.href || '';
-            return name === targetName || href.includes(`/list/${encodeURIComponent(targetName)}`) || href.includes(`/list/${targetName}`);
+            return (
+                name === targetName ||
+                href.includes(`/list/${encodeURIComponent(targetName)}`) ||
+                href.includes(`/list/${targetName}`)
+            );
         });
 
         if (targetRow) {
@@ -54,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Click to select or navigate
-    rows.forEach(row => {
+    rows.forEach((row) => {
         row.addEventListener('click', (e) => {
             if (!e.target.closest('a')) {
                 selectRow(row);

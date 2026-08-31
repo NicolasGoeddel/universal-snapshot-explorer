@@ -1,0 +1,35 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
+    "vcs": {
+        "enabled": true,
+        "clientKind": "git",
+        "useIgnoreFile": true
+    },
+    "files": {
+        "includes": ["src/goeddel/use/static/js/**/*.js"]
+    },
+    "formatter": {
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 120
+    },
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "single",
+            "semicolons": "always"
+        }
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": true,
+            "correctness": {
+                "noUnusedVariables": "warn"
+            },
+            "suspicious": {
+                "useIterableCallbackReturn": "off"
+            }
+        }
+    }
+}

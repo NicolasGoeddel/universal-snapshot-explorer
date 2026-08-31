@@ -130,6 +130,15 @@ class TestAppRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("svg", response.headers.get("content-type", ""))
 
+    def test_invalidate_cache_api(self) -> None:
+        response_post = self.client.post("/api/invalidate")
+        self.assertEqual(response_post.status_code, 200)
+        self.assertEqual(response_post.json()["status"], "ok")
+
+        response_get = self.client.get("/api/invalidate")
+        self.assertEqual(response_get.status_code, 200)
+        self.assertEqual(response_get.json()["status"], "ok")
+
 
 if __name__ == "__main__":
     unittest.main()

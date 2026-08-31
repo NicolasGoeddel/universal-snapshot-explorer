@@ -586,6 +586,47 @@ roots:
             self.assertEqual(node1, node2)
             self.assertEqual(node1.compare(node2), set())
 
+    def test_invalidate_all(self) -> None:
+        from goeddel.use.config import RootConfig
+        from goeddel.use.models.root_folder import RootFolder
+
+        cfg = RootConfig(root_path="/mnt/pool/data", sub_path="")
+        rf = RootFolder.get(cfg)
+        rf._snapshots_list = []
+        rf._cache_hits = 5
+
+        RootFolder.invalidate_all()
+
+        self.assertIsNone(rf._snapshots_list)
+        self.assertEqual(rf._cache_hits, 0)
+
+    def test_snapshot_dir_mtime_invalidation(self) -> None:
+        import os
+        import tempfile
+
+        from goeddel.use.config import RootConfig
+        from goeddel.use.models.root_folder import RootFolder
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            snap_dir = os.path.join(temp_dir, ".snapshots")
+            os.makedirs(snap_dir)
+            cfg = RootConfig(root_path=temp_dir, sub_path="", snapshot_dir_name=".snapshots")
+            rf = RootFolder(cfg)
+
+            # Initial call caches snapshots
+            snaps1 = rf.snapshots()
+            self.assertEqual(len(snaps1), 1)  # Only OriginalSnapshot
+
+            # Create a new snapshot subfolder
+            os.makedirs(os.path.join(snap_dir, "snap1"))
+            # Update mtime on snap_dir
+            new_time = os.stat(snap_dir).st_mtime + 10
+            os.utime(snap_dir, (new_time, new_time))
+
+            # Next call should auto-detect mtime change and invalidate cache
+            snaps2 = rf.snapshots()
+            self.assertEqual(len(snaps2), 2)  # snap1 and OriginalSnapshot
+
 
 if __name__ == "__main__":
     unittest.main()

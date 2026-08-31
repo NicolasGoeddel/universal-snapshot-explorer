@@ -83,6 +83,12 @@ document.addEventListener('DOMContentLoaded', () => {
     updateStickyOffsets();
     updateThemeIcon();
 
+    const refreshBtn = document.getElementById('refresh-btn');
+    if (refreshBtn && !refreshBtn._refreshInitialized) {
+        refreshBtn._refreshInitialized = true;
+        refreshBtn.addEventListener('click', () => triggerCacheRefresh());
+    }
+
     const helpBtn = document.getElementById('shortcuts-help-btn');
     if (helpBtn) {
         helpBtn.addEventListener('click', () => toggleShortcutsModal(true));
@@ -125,6 +131,32 @@ document.addEventListener('DOMContentLoaded', () => {
         pathInput.addEventListener('blur', () => {
             setTimeout(disableBreadcrumbPathEdit, 150);
         });
+    }
+});
+
+async function triggerCacheRefresh() {
+    const refreshBtn = document.getElementById('refresh-btn');
+    const icon = refreshBtn ? refreshBtn.querySelector('svg, i') : null;
+    if (icon) {
+        icon.classList.add('spinning');
+    }
+    try {
+        await fetch('/api/invalidate', { method: 'POST' });
+    } catch (_e) {}
+    window.location.reload();
+}
+window.triggerCacheRefresh = triggerCacheRefresh;
+window.setTheme = setTheme;
+
+window.addEventListener('keydown', (e) => {
+    const tag = e.target?.tagName?.toLowerCase() || '';
+    const isInput = tag === 'input' || tag === 'textarea' || tag === 'select';
+
+    if (e.shiftKey && (e.key === 'R' || e.key === 'r') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!isInput) {
+            e.preventDefault();
+            triggerCacheRefresh();
+        }
     }
 });
 
@@ -197,4 +229,9 @@ if (document.readyState !== 'loading') {
     updateStickyOffsets();
     updateThemeIcon();
     initTimelineTooltips();
+    const refreshBtn = document.getElementById('refresh-btn');
+    if (refreshBtn && !refreshBtn._refreshInitialized) {
+        refreshBtn._refreshInitialized = true;
+        refreshBtn.addEventListener('click', () => triggerCacheRefresh());
+    }
 }

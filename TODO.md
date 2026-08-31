@@ -26,10 +26,10 @@
   - Distinguish live subvolumes from snapshot subvolumes by evaluating `top level` ID hierarchies and path patterns (e.g. filter out `.snapshots`, `.snapshots/*/snapshot`, `_btrbk_snapshots/*`).
   - Associate discovered snapshot subvolumes with their corresponding parent live subvolumes and register each live subvolume as an independent root in the Roots Overview dashboard (identical to ZFS dataset discovery).
 - [ ] **Folder-Scoped Inode Rename Tracking & Hash Navigation:** Detect renamed/moved files within the current folder by tracking persistent Inodes (`st_ino`) across snapshots. If a focused `#filename` is missing in a target snapshot, automatically refocus or link to the entry with the matching Inode.
-- [ ] **Automatic & On-Demand Cache Invalidation:**
+- [x] **Automatic & On-Demand Cache Invalidation:**
   - *Mtime-based auto-detection:* Check `os.stat` on snapshot control directory (`.zfs/snapshot` or `.snapshots`) to auto-invalidate cache when snapshots are created/pruned in 24/7 server environments.
-  - *Browser Hard-Reload Header (`Ctrl+F5`):* Intercept `Cache-Control: no-cache` / `Pragma: no-cache` request headers in backend to automatically trigger `root_folder.invalidate()`.
-  - *UI Refresh Button & Shortcut (<kbd>Shift+R</kbd>):* Dedicated rotate icon in toolbar and keyboard shortcut to force cache invalidation with flicker-free DOM update.
+  - *UI Refresh Button & Shortcut (<kbd>Shift+R</kbd>):* Dedicated rotate icon in toolbar and keyboard shortcut to force cache invalidation with spinning micro-animation and smooth page reload via `/api/invalidate`.
+  - *Centralized `RootFolder.invalidate_all()`:* Flushes all root folder instances, shadow instances, path caches, and LRU caches.
 - [ ] **Shadow Config Exporter:** Option in the Root Overview dashboard to export all dynamically discovered Delegated Roots as a ready-to-use `config.yaml`.
 - [ ] **Multi-Snapshot Version Export (`.tar.gz`):** Export all versions of selected files across all snapshots utilizing native POSIX hardlink deduplication (unchanged files are only transferred once in the stream)
 - [ ] **On-Demand Folder Size Calculation:** Recursively calculate the actual folder size on-demand (button/shortcut) with caching at the `Folder` object to avoid unnecessary I/O load

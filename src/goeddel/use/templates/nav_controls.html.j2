@@ -1,4 +1,8 @@
 <div class="nav-controls" style="display: inline-flex; align-items: center; gap: 4px;">
+    <div class="breadcrumb" id="refresh-btn" style="cursor: pointer;" title="{{ t('shortcuts.refresh') }} (Shift+R)">
+        {{ lucide('rotate-cw', size=16) }}
+    </div>
+
     <div class="breadcrumb" id="shortcuts-help-btn" style="cursor: pointer;" title="{{ t('shortcuts.title') }} (h / ?)">
         {{ lucide('keyboard', size=16) }}
     </div>
@@ -90,6 +94,10 @@
                     <tr>
                         <td>{{ t('shortcuts.select_all') }}</td>
                         <td class="shortcuts-key-cell"><kbd>Ctrl</kbd>+<kbd>A</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>{{ t('shortcuts.refresh') }}</td>
+                        <td class="shortcuts-key-cell"><kbd>Shift</kbd>+<kbd>R</kbd></td>
                     </tr>
                     <tr>
                         <td>{{ t('shortcuts.close_or_cancel') }}</td>

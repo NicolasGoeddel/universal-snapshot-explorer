@@ -126,6 +126,7 @@ class RootFolder:
 
         self._path_cache: dict[PathCacheKey, FSNode] = {}
         self._dir_names_cache: dict[PathCacheKey, set[FileName]] = {}
+        self._last_snapshot_dir_mtime: float | None = None
 
         self._cache_hits: int = 0
         self._cache_misses: int = 0
@@ -169,6 +170,17 @@ class RootFolder:
         cls._root_folder_instances[config] = instance
         return instance
 
+    @classmethod
+    def invalidate_all(cls) -> None:
+        """Flushes all caches for all active RootFolder and shadow instances."""
+        for instance in list(cls._root_folder_instances.values()):
+            instance.invalidate()
+        for instance in list(cls._shadow_instances.values()):
+            instance.invalidate()
+        cls._scan_read_only_dir.cache_clear()
+        cls._get_read_only_mime_type.cache_clear()
+        logger.info("All RootFolder and shadow instance caches have been invalidated.")
+
     def invalidate(self) -> None:
         self._path_cache = {}
         self._dir_names_cache = {}
@@ -179,6 +191,7 @@ class RootFolder:
         self._scan_read_only_dir.cache_clear()
         self._get_read_only_mime_type.cache_clear()
         self._cache_hits = 0
+        self._last_snapshot_dir_mtime = None
 
     def warmup_snapshots(self) -> None:
         self._snapshot_provider.warmup_snapshots(self._root_path, self._snapshot_path)
@@ -332,6 +345,20 @@ class RootFolder:
         return self._snapshots_by_id.get(snapshot, self._snapshot_original)
 
     def snapshots(self) -> list[Snapshot]:
+        try:
+            current_mtime = os.stat(self._snapshot_path).st_mtime
+            if self._last_snapshot_dir_mtime is not None and current_mtime != self._last_snapshot_dir_mtime:
+                logger.info(
+                    "Snapshot directory mtime changed for '%s' (%s -> %s) -> Invalidating cache",
+                    self._snapshot_path,
+                    self._last_snapshot_dir_mtime,
+                    current_mtime,
+                )
+                self.invalidate()
+            self._last_snapshot_dir_mtime = current_mtime
+        except OSError:
+            pass
+
         if self._snapshots_list is not None:
             return self._snapshots_list
 

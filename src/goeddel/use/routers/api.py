@@ -30,3 +30,12 @@ def get_snapshot_state_api(request: Request, full_path: str = "", snapshot: str 
     config = get_app_config(request)
     _, directory_path, root_folder = resolve_root_and_subpath(full_path, config)
     return root_folder.get_snapshot_state(directory_path, snapshot)
+
+
+@router.post("/api/invalidate")
+@router.get("/api/invalidate")
+def invalidate_cache_api() -> dict[str, object]:
+    from ..models.root_folder import RootFolder
+
+    RootFolder.invalidate_all()
+    return {"status": "ok", "message": "All caches successfully invalidated"}

@@ -103,16 +103,16 @@
   - Hierarchical tree sorting support with folder-first priority.
   - Direction toggling (`asc`/`desc`/`none`), header visual indicators, and `localStorage` sort state persistence.
   - Universal reusability across Explorer, DetailView, and Roots Overview.
-- [ ] **Generic KeyboardNavigator with Action Registry (`keyboard_nav.js`):**
+- [x] **Generic KeyboardNavigator with Action Registry (`keyboard_nav.js`):**
   - Core row-based focus and navigation engine (`↑`, `↓`, `PageUp`, `PageDown`, `Home`, `End`).
   - Dynamic keybinding registry API (`keyboard.register(key, handler)`).
-  - Pluggable action hooks for custom views (snapshot switching, folder expand/collapse, selection, details).
-  - Dynamic integration with the Keyboard Shortcuts help modal.
-- [ ] **SelectionManager Extraction (`selection_manager.js`):**
-  - Multi-row selection state, Shift-range selection, select all, and floating action bar.
-  - On-the-fly ZIP generation form trigger and missing file warning badges.
-- [ ] **TypeaheadHUD Extraction (`typeahead.js`):**
+  - Pluggable interceptor chain (`keyboard.addInterceptor(fn)`).
+  - Multi-selection Shift+Space keyboard range toggle and live range visual preview.
+  - Universal integration across Explorer, Roots Dashboard, and DetailView.
+- [x] **TypeaheadHUD Extraction (`typeahead.js`):**
   - Self-contained prefix-jump HUD overlay with match counter, cycling, and event dispatching.
+  - Plugs seamlessly into `KeyboardNavigator` interceptor chain.
+- [ ] **SelectionManager Extraction (`selection_manager.js`):**
 - [ ] **SnapshotBars & Lazy Rendering Extraction (`snapshot_bars.js`):**
   - SVG snapshot pill generation, IntersectionObserver batch lazy-loading, and timeline hover tooltips.
 - [ ] **FilterManager Extraction (`filter_manager.js`):**

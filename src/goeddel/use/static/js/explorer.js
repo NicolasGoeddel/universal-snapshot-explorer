@@ -39,11 +39,11 @@ class TreeTable {
         this.initSorting();
         this.initFiltering();
         this.initToggles();
+        this.initMultiSelection();
+        this.initTypeahead();
         this.initKeyboardNavigation();
         this.initTimelineTooltip();
-        this.initTypeahead();
         this.initSnapshotDropdown();
-        this.initMultiSelection();
         this.updateZebra();
         this.updateToggleCounts();
 
@@ -134,18 +134,80 @@ class TreeTable {
         if (btnDownload) {
             btnDownload.addEventListener('click', () => this.downloadSelectedZip());
         }
+
+        // Shift key range selection preview
+        this.isShiftDown = false;
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') {
+                this.isShiftDown = true;
+                this.updateRangePreview(true);
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                this.isShiftDown = false;
+                this.updateRangePreview(false);
+            }
+        });
+        window.addEventListener('blur', () => {
+            this.isShiftDown = false;
+            this.updateRangePreview(false);
+        });
     }
 
-    toggleRowSelection(row) {
+    updateRangePreview(active) {
+        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
+        allRows.forEach((r) => r.classList.remove('range-preview'));
+        if (!active || !this.lastClickedCheckbox || !this.selectedRow) return;
+
+        const visibleRows = this.getVisibleRows();
+        const lastRow = this.lastClickedCheckbox.closest('tr');
+        const lastIdx = visibleRows.indexOf(lastRow);
+        const currentIdx = visibleRows.indexOf(this.selectedRow);
+
+        if (lastIdx >= 0 && currentIdx >= 0 && lastIdx !== currentIdx) {
+            const start = Math.min(lastIdx, currentIdx);
+            const end = Math.max(lastIdx, currentIdx);
+            for (let i = start; i <= end; i++) {
+                visibleRows[i].classList.add('range-preview');
+            }
+        }
+    }
+
+    toggleRowSelection(row, options = {}) {
         if (!row) return;
         const rowPath = row.dataset.path || row.dataset.filename;
-        if (this.selectedPaths.has(rowPath)) {
-            this.selectedPaths.delete(rowPath);
-        } else {
-            this.selectedPaths.add(rowPath);
-        }
         const cb = row.querySelector('input.row-checkbox');
-        if (cb) this.lastClickedCheckbox = cb;
+
+        if (options.range && this.lastClickedCheckbox) {
+            const visibleRows = this.getVisibleRows();
+            const lastRow = this.lastClickedCheckbox.closest('tr');
+            const lastIdx = visibleRows.indexOf(lastRow);
+            const currentIdx = visibleRows.indexOf(row);
+
+            if (lastIdx >= 0 && currentIdx >= 0) {
+                const start = Math.min(lastIdx, currentIdx);
+                const end = Math.max(lastIdx, currentIdx);
+                const shouldSelect = !this.selectedPaths.has(rowPath);
+                for (let i = start; i <= end; i++) {
+                    const r = visibleRows[i];
+                    const p = r.dataset.path || r.dataset.filename;
+                    if (shouldSelect) {
+                        this.selectedPaths.add(p);
+                    } else {
+                        this.selectedPaths.delete(p);
+                    }
+                }
+            }
+        } else {
+            if (this.selectedPaths.has(rowPath)) {
+                this.selectedPaths.delete(rowPath);
+            } else {
+                this.selectedPaths.add(rowPath);
+            }
+            if (cb) this.lastClickedCheckbox = cb;
+        }
+
         this.updateSelectionUI();
     }
 
@@ -334,6 +396,26 @@ class TreeTable {
             circle.setAttribute('cy', '10');
             circle.style.display = '';
         });
+    }
+
+    navigateToAdjacentSnapshot(delta) {
+        const snapLinks = Array.from(document.querySelectorAll('.snapshots-header-timeline a'));
+        if (snapLinks.length <= 1) return;
+        const currentIdx = snapLinks.findIndex(
+            (a) =>
+                a.dataset.isCurrent === 'true' ||
+                a.querySelector('.current-snapshot-rect') ||
+                (a.dataset.snapId && a.dataset.snapId === this.snapshot),
+        );
+        if (currentIdx < 0) return;
+        const targetIdx = currentIdx + delta;
+        if (targetIdx >= 0 && targetIdx < snapLinks.length) {
+            const targetLink = snapLinks[targetIdx];
+            const targetSnapId = targetLink.dataset.snapId || this.extractSnapIdFromHref(targetLink);
+            if (targetSnapId) {
+                this.navigateToSnapshot(targetSnapId);
+            }
+        }
     }
 
     async navigateToSnapshot(targetSnapshotId, options = { pushHistory: true }) {
@@ -732,6 +814,7 @@ class TreeTable {
                 }
                 this.updateZebra();
                 this.updateToggleCounts();
+                this.updateSelectionUI();
             });
         }
 
@@ -754,6 +837,7 @@ class TreeTable {
                 }
                 this.updateZebra();
                 this.updateToggleCounts();
+                this.updateSelectionUI();
             });
         }
 
@@ -776,6 +860,7 @@ class TreeTable {
                 }
                 this.updateZebra();
                 this.updateToggleCounts();
+                this.updateSelectionUI();
             });
         }
     }
@@ -1035,7 +1120,14 @@ class TreeTable {
             this.collapseDescendants(path);
             row.dataset.expanded = 'false';
             btn.classList.remove('opened');
+            if (
+                this.selectedRow &&
+                (this.selectedRow.style.display === 'none' || this.selectedRow.offsetParent === null)
+            ) {
+                this.selectRow(row);
+            }
             this.updateZebra();
+            this.updateToggleCounts();
         } else {
             const existingChildren = this.getDirectChildren(path);
             if (existingChildren.length > 0) {
@@ -1045,6 +1137,7 @@ class TreeTable {
                 row.dataset.expanded = 'true';
                 btn.classList.add('opened');
                 this.updateZebra();
+                this.updateToggleCounts();
             } else {
                 btn.classList.add('loading');
                 try {
@@ -1086,6 +1179,7 @@ class TreeTable {
                         this.sortTree();
                     }
                     this.updateZebra();
+                    this.updateToggleCounts();
                 } catch (err) {
                     console.error('Failed to load folder contents:', err);
                     const errorRow = document.createElement('tr');
@@ -1215,8 +1309,8 @@ class TreeTable {
     }
 
     initFiltering() {
-        const filterInputs = this.table.querySelectorAll('thead tr.column-filter input');
-        filterInputs.forEach((input) => {
+        const filterInputs = Array.from(this.table.querySelectorAll('thead tr.column-filter input'));
+        filterInputs.forEach((input, idx) => {
             input.addEventListener('input', () => {
                 this.applyFilter();
                 this.updateZebra();
@@ -1224,6 +1318,47 @@ class TreeTable {
 
             input.addEventListener('keydown', (e) => {
                 const colIndex = parseInt(input.dataset.col, 10);
+
+                // Escape: Blur filter input and return focus to table
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    input.blur();
+                    const visibleRows = this.getVisibleRows();
+                    if (visibleRows.length > 0) {
+                        this.selectRow(this.selectedRow || visibleRows[0]);
+                    }
+                    return;
+                }
+
+                // Tab cycling across filter inputs
+                if (e.key === 'Tab') {
+                    if (e.shiftKey && idx === 0) {
+                        e.preventDefault();
+                        const last = filterInputs[filterInputs.length - 1];
+                        last.focus();
+                        last.select();
+                        return;
+                    } else if (!e.shiftKey && idx === filterInputs.length - 1) {
+                        e.preventDefault();
+                        const first = filterInputs[0];
+                        first.focus();
+                        first.select();
+                        return;
+                    }
+                }
+
+                // ArrowDown or Enter (without modifiers): Step down into first visible table row
+                if (
+                    (e.key === 'ArrowDown' && !e.ctrlKey && !e.altKey && !e.metaKey) ||
+                    (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey)
+                ) {
+                    e.preventDefault();
+                    input.blur();
+                    const visibleRows = this.getVisibleRows();
+                    this.selectRow(visibleRows.length > 0 ? visibleRows[0] : null);
+                    return;
+                }
+
                 if (e.key === 'ArrowUp' && (e.ctrlKey || e.altKey)) {
                     e.preventDefault();
                     this.sortByColumnIndex(colIndex, 'asc');
@@ -1251,6 +1386,8 @@ class TreeTable {
 
         if (activeFilters.length === 0) {
             allRows.forEach((row) => row.classList.remove('filter-hidden'));
+            this.updateToggleCounts();
+            this.updateSelectionUI();
             return;
         }
 
@@ -1307,12 +1444,32 @@ class TreeTable {
         allRows.forEach((row) => {
             row.classList.toggle('filter-hidden', !matchMap.get(row));
         });
+
+        // Sanitize focused row if it became hidden by the active filter
+        const visibleRows = this.getVisibleRows();
+        if (this.selectedRow && !visibleRows.includes(this.selectedRow)) {
+            this.selectRow(visibleRows.length > 0 ? visibleRows[0] : null, { updateHash: false });
+        }
+
         this.updateToggleCounts();
         this.updateSelectionUI();
     }
 
+    isRowInExpandedHierarchy(row) {
+        let parentPath = row.dataset.parent;
+        const rootPath = this.table.dataset.subpath || '';
+        while (parentPath && parentPath !== rootPath) {
+            const parentRow = this.tbody.querySelector(`tr[data-path="${CSS.escape(parentPath)}"]`);
+            if (!parentRow || parentRow.dataset.expanded !== 'true') {
+                return false;
+            }
+            parentPath = parentRow.dataset.parent;
+        }
+        return true;
+    }
+
     updateToggleCounts() {
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
+        const allRows = Array.from(this.tbody.querySelectorAll('tr')).filter((r) => this.isRowInExpandedHierarchy(r));
         if (allRows.length === 0) return;
 
         const hideHidden = this.table.classList.contains('hide-hidden');
@@ -1414,594 +1571,237 @@ class TreeTable {
     }
 
     selectRow(row, options = { updateHash: true }) {
-        this.tbody.querySelectorAll('tr.selected-row').forEach((r) => r.classList.remove('selected-row'));
-        this.selectedRow = row;
-        if (row) {
-            row.classList.add('selected-row');
-
-            const rect = row.getBoundingClientRect();
-            const topHeaderHeight = parseInt(
-                getComputedStyle(document.documentElement).getPropertyValue('--top-header-height') || '85',
-                10,
-            );
-            const headerRowHeight = parseInt(
-                getComputedStyle(document.documentElement).getPropertyValue('--header-row-height') || '27',
-                10,
-            );
-            const totalHeaderOffset = topHeaderHeight + headerRowHeight + 35;
-
-            if (rect.top < totalHeaderOffset) {
-                window.scrollBy({ top: rect.top - totalHeaderOffset - 6, behavior: 'smooth' });
-            } else if (rect.bottom > window.innerHeight) {
-                window.scrollBy({ top: rect.bottom - window.innerHeight + 20, behavior: 'smooth' });
-            }
-
-            if (options.updateHash !== false) {
-                const filename = row.dataset.filename || row.querySelector('.browser-cell-name')?.dataset.sort || '';
-                if (filename) {
-                    history.replaceState(null, '', '#' + encodeURIComponent(filename));
-                }
-            }
-        } else if (options.updateHash !== false) {
-            if (window.location.hash) {
-                history.replaceState(null, '', window.location.pathname + window.location.search);
-            }
-        }
-    }
-
-    initTypeahead() {
-        let hud = document.getElementById('typeahead-hud');
-        if (!hud) {
-            hud = document.createElement('div');
-            hud.id = 'typeahead-hud';
-            hud.className = 'typeahead-hud';
-            document.body.appendChild(hud);
-        }
-        this.typeaheadHud = hud;
-        this.typeaheadActive = false;
-        this.typeaheadQuery = '';
-        this.typeaheadMatches = [];
-        this.typeaheadIndex = -1;
-    }
-
-    escapeHtml(str) {
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    renderTypeaheadHud() {
-        if (!this.typeaheadHud) this.initTypeahead();
-        if (!this.typeaheadActive || !this.typeaheadQuery) {
-            this.typeaheadHud.classList.remove('visible');
-            return;
-        }
-
-        const total = this.typeaheadMatches.length;
-        const current = total > 0 ? this.typeaheadIndex + 1 : 0;
-        const i18n = window.clientI18n || {};
-
-        let statusHtml = '';
-        if (total > 0) {
-            const matchPattern = i18n['typeahead.match_count'] || 'Treffer {current} von {total}';
-            const matchText = matchPattern.replace('{current}', current).replace('{total}', total);
-            statusHtml = `
-                        <span class="typeahead-hud-status">${matchText}</span>
-                        <span class="typeahead-hud-badge">${i18n['typeahead.next_prev'] || '↑/↓ Wechseln'}</span>
-                        <span class="typeahead-hud-badge">${i18n['typeahead.open'] || 'Enter: Öffnen'}</span>
-                        <span class="typeahead-hud-badge">${i18n['typeahead.exit'] || 'Esc: Beenden'}</span>
-                    `;
+        if (this.keyboard) {
+            this.keyboard.focusRow(row, options);
         } else {
-            statusHtml = `
-                        <span class="typeahead-hud-status typeahead-hud-no-match">${i18n['typeahead.no_matches'] || 'Keine Treffer'}</span>
-                        <span class="typeahead-hud-badge">${i18n['typeahead.exit'] || 'Esc: Beenden'}</span>
-                    `;
-        }
-
-        this.typeaheadHud.innerHTML = `
-                    <div class="typeahead-hud-query-wrap">
-                        <span>🔍</span>
-                        <span class="typeahead-hud-query">${this.escapeHtml(this.typeaheadQuery)}</span>
-                    </div>
-                    ${statusHtml}
-                `;
-        this.typeaheadHud.classList.add('visible');
-    }
-
-    updateTypeaheadMatches() {
-        const visibleRows = this.getVisibleRows();
-        if (!this.typeaheadQuery) {
-            this.typeaheadMatches = [];
-            this.typeaheadIndex = -1;
-            this.renderTypeaheadHud();
-            return;
-        }
-
-        const q = this.typeaheadQuery.toLowerCase();
-        const prefixMatches = [];
-        const containsMatches = [];
-
-        visibleRows.forEach((row) => {
-            const name = (
-                row.dataset.filename ||
-                row.querySelector('.browser-cell-name')?.dataset.sort ||
-                ''
-            ).toLowerCase();
-            if (name.startsWith(q)) {
-                prefixMatches.push(row);
-            } else if (name.includes(q)) {
-                containsMatches.push(row);
-            }
-        });
-
-        this.typeaheadMatches = prefixMatches.length > 0 ? prefixMatches : containsMatches;
-
-        if (this.typeaheadMatches.length > 0) {
-            const existingIdx = this.selectedRow ? this.typeaheadMatches.indexOf(this.selectedRow) : -1;
-            this.typeaheadIndex = existingIdx >= 0 ? existingIdx : 0;
-            this.selectRow(this.typeaheadMatches[this.typeaheadIndex]);
-        } else {
-            this.typeaheadIndex = -1;
-        }
-
-        this.renderTypeaheadHud();
-    }
-
-    handleTypeaheadChar(char) {
-        this.typeaheadActive = true;
-        this.typeaheadQuery += char;
-        this.updateTypeaheadMatches();
-    }
-
-    stepTypeahead(direction) {
-        if (!this.typeaheadMatches || this.typeaheadMatches.length === 0) return;
-        this.typeaheadIndex =
-            (this.typeaheadIndex + direction + this.typeaheadMatches.length) % this.typeaheadMatches.length;
-        this.selectRow(this.typeaheadMatches[this.typeaheadIndex]);
-        this.renderTypeaheadHud();
-    }
-
-    backspaceTypeahead() {
-        if (!this.typeaheadActive) return;
-        this.typeaheadQuery = this.typeaheadQuery.slice(0, -1);
-        if (!this.typeaheadQuery) {
-            this.closeTypeahead();
-        } else {
-            this.updateTypeaheadMatches();
+            this.selectedRow = row;
         }
     }
 
     closeTypeahead() {
-        this.typeaheadActive = false;
-        this.typeaheadQuery = '';
-        this.typeaheadMatches = [];
-        this.typeaheadIndex = -1;
-        if (this.typeaheadHud) {
-            this.typeaheadHud.classList.remove('visible');
+        if (this.typeahead) {
+            this.typeahead.close();
         }
     }
 
+    initTypeahead() {
+        if (typeof TypeaheadHUD === 'undefined') return;
+        this.typeahead = new TypeaheadHUD(this.table, {
+            tbody: this.tbody,
+            getRows: () => this.getVisibleRows(),
+            getSearchText: (row) => row.dataset.filename || row.querySelector('.browser-cell-name')?.dataset.sort || '',
+            onSelect: (row) => this.selectRow(row),
+        });
+    }
+
     initKeyboardNavigation() {
-        // Clicking on a row selects it and closes typeahead
-        this.tbody.addEventListener('click', (e) => {
-            this.closeTypeahead();
-            const row = e.target.closest('tr');
-            if (row && this.tbody.contains(row) && !e.target.closest('a') && !e.target.closest('.folder-toggle')) {
-                this.selectRow(row);
-            }
+        if (typeof KeyboardNavigator === 'undefined') return;
+
+        this.keyboard = new KeyboardNavigator(this.table, {
+            tbody: this.tbody,
+            getRows: () => this.getVisibleRows(),
+            onFocusChange: (row, options) => {
+                this.selectedRow = row;
+                if (row) {
+                    const rect = row.getBoundingClientRect();
+                    const topHeaderHeight = parseInt(
+                        getComputedStyle(document.documentElement).getPropertyValue('--top-header-height') || '85',
+                        10,
+                    );
+                    const headerRowHeight = parseInt(
+                        getComputedStyle(document.documentElement).getPropertyValue('--header-row-height') || '27',
+                        10,
+                    );
+                    const totalHeaderOffset = topHeaderHeight + headerRowHeight + 35;
+
+                    if (rect.top < totalHeaderOffset) {
+                        window.scrollBy({ top: rect.top - totalHeaderOffset - 6, behavior: 'smooth' });
+                    } else if (rect.bottom > window.innerHeight) {
+                        window.scrollBy({ top: rect.bottom - window.innerHeight + 20, behavior: 'smooth' });
+                    }
+
+                    if (options.updateHash !== false) {
+                        const filename =
+                            row.dataset.filename || row.querySelector('.browser-cell-name')?.dataset.sort || '';
+                        if (filename) {
+                            history.replaceState(null, '', '#' + encodeURIComponent(filename));
+                        }
+                    }
+
+                    if (this.isShiftDown) {
+                        this.updateRangePreview(true);
+                    } else {
+                        this.updateRangePreview(false);
+                    }
+                } else if (options.updateHash !== false) {
+                    if (window.location.hash) {
+                        history.replaceState(null, '', window.location.pathname + window.location.search);
+                    }
+                }
+            },
         });
 
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#typeahead-hud') && !e.target.closest('#filebrowser')) {
-                this.closeTypeahead();
+        // 1. Explorer Shortcuts & Modal Interceptor
+        this.keyboard.addInterceptor((e) => {
+            // Modal trap: If shortcuts modal is active, trap all keys and close on Escape
+            const modal = document.getElementById('shortcuts-modal');
+            if (modal && modal.style.display !== 'none') {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    if (typeof toggleShortcutsModal === 'function') toggleShortcutsModal(false);
+                }
+                return true;
             }
-        });
 
-        window.addEventListener('keydown', (e) => {
+            // Global Shortcuts (only when no text input is active)
             const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
             const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
-            const isFilterInput = isInputActive && document.activeElement.closest('.column-filter');
-
-            // Global Ctrl+L / Cmd+L for breadcrumb path edit
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
-                e.preventDefault();
-                if (typeof enableBreadcrumbPathEdit === 'function') {
-                    enableBreadcrumbPathEdit();
-                }
-                return;
-            }
-
-            // Escape key handling
-            if (e.key === 'Escape') {
-                if (this.typeaheadActive) {
+            if (!isInputActive) {
+                if (e.key === '?' || e.key === 'F1' || (e.shiftKey && e.key.toUpperCase() === 'H')) {
                     e.preventDefault();
-                    this.closeTypeahead();
-                    return;
+                    if (typeof toggleShortcutsModal === 'function') toggleShortcutsModal();
+                    return true;
                 }
-                const modal = document.getElementById('shortcuts-modal');
-                if (modal && modal.style.display !== 'none') {
-                    if (typeof toggleShortcutsModal === 'function') toggleShortcutsModal(false);
-                    return;
-                }
-                if (isInputActive) {
-                    document.activeElement.blur();
-                    return;
-                }
-                if (this.selectedRow) {
-                    this.selectRow(null);
-                    return;
-                }
-            }
 
-            // Backspace handling
-            if (e.key === 'Backspace') {
-                if (isInputActive) return;
-                e.preventDefault();
-                if (this.typeaheadActive) {
-                    this.backspaceTypeahead();
-                    return;
-                }
-                // Go to parent directory with hash targeting current folder
-                const subpath = (this.table.dataset.subpath || '').replace(/^\/+|\/+$/g, '');
-                if (subpath) {
-                    const parts = subpath.split('/');
-                    const currentFolder = parts.pop();
-                    const parentSub = parts.join('/');
-                    const targetHash = currentFolder ? '#' + encodeURIComponent(currentFolder) : '';
-                    window.location.href = `/list/${encodeURIComponent(this.rootName)}/${encodePath(parentSub)}?snapshot=${encodeURIComponent(this.snapshot)}${targetHash}`;
-                } else {
-                    window.location.href = `/#${encodeURIComponent(this.rootName)}`;
-                }
-                return;
-            }
-
-            // Alt+ArrowUp: Go to parent directory with hash targeting current folder
-            if (e.altKey && e.key === 'ArrowUp') {
-                if (!isInputActive) {
+                if (e.key === '/' && !this.typeahead?.isActive()) {
                     e.preventDefault();
-                    this.closeTypeahead();
-                    const currentSub = (this.table.dataset.subpath || '').replace(/^\/+|\/+$/g, '');
-                    const currentFolder = currentSub ? currentSub.split('/').pop() : '';
-                    const targetHash = currentFolder ? '#' + encodeURIComponent(currentFolder) : '';
-                    if (currentSub && currentSub !== '') {
-                        const parentSub = currentSub.includes('/')
-                            ? currentSub.substring(0, currentSub.lastIndexOf('/'))
-                            : '';
-                        if (parentSub) {
-                            window.location.href =
-                                buildRouteUrl('', 'list', this.rootName, parentSub, { snapshot: this.snapshot }) +
-                                targetHash;
-                        } else {
-                            window.location.href =
-                                buildRouteUrl('', 'list', this.rootName, '', { snapshot: this.snapshot }) + targetHash;
-                        }
-                    } else {
-                        window.location.href = `/#${encodeURIComponent(this.rootName)}`;
+                    const firstFilter = this.table.querySelector('.column-filter input[data-col="1"]');
+                    if (firstFilter) {
+                        firstFilter.focus();
+                        firstFilter.select();
                     }
-                    return;
+                    return true;
                 }
             }
 
-            // Alt+1 .. Alt+8 quick column sorting (works anywhere outside text input)
-            if (e.altKey && !e.ctrlKey && !e.metaKey && e.key >= '1' && e.key <= '8') {
-                if (!isInputActive) {
-                    const colIdx = parseInt(e.key, 10);
-                    e.preventDefault();
-                    this.closeTypeahead();
-                    this.sortByColumnIndex(colIdx);
-                    return;
-                }
-            }
+            return false;
+        });
 
-            // Switch snapshot: Ctrl+ArrowLeft (previous in timeline) / Ctrl+ArrowRight (next in timeline)
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-                if (!isInputActive) {
-                    this.closeTypeahead();
-                    const snapLinks = Array.from(document.querySelectorAll('.snapshots-header-timeline a'));
-                    if (snapLinks.length > 1) {
-                        const currentIdx = snapLinks.findIndex(
-                            (a) => a.dataset.isCurrent === 'true' || a.querySelector('.current-snapshot-rect'),
-                        );
-                        if (e.key === 'ArrowLeft' && currentIdx > 0) {
-                            e.preventDefault();
-                            const targetLink = snapLinks[currentIdx - 1];
-                            const targetSnapId = targetLink.dataset.snapId || this.extractSnapIdFromHref(targetLink);
-                            if (targetSnapId) this.navigateToSnapshot(targetSnapId);
-                            return;
-                        } else if (e.key === 'ArrowRight' && currentIdx >= 0 && currentIdx < snapLinks.length - 1) {
-                            e.preventDefault();
-                            const targetLink = snapLinks[currentIdx + 1];
-                            const targetSnapId = targetLink.dataset.snapId || this.extractSnapIdFromHref(targetLink);
-                            if (targetSnapId) this.navigateToSnapshot(targetSnapId);
-                            return;
-                        }
-                    }
-                }
-            }
+        // 2. Typeahead Interceptor
+        this.keyboard.addInterceptor((e) => this.typeahead?.handleKeyDown(e));
 
-            // Select all visible rows: Ctrl+A
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-                if (!isInputActive) {
-                    e.preventDefault();
-                    this.closeTypeahead();
-                    this.selectAllVisible();
-                    return;
-                }
-            }
+        // 3. TableSorter Column Sorting Interceptor (Alt+1..Alt+N)
+        this.keyboard.addInterceptor((e) => this.sorter?.handleKeyDown(e));
 
-            // Escape: close typeahead or clear multi-selection
-            if (e.key === 'Escape') {
-                if (this.typeaheadActive) {
-                    e.preventDefault();
-                    this.closeTypeahead();
-                    return;
-                }
-                if (this.selectedPaths && this.selectedPaths.size > 0) {
-                    e.preventDefault();
-                    this.clearMultiSelection();
-                    return;
-                }
-            }
+        // Global shortcuts: Path edit (Ctrl+L)
+        this.keyboard.register('Ctrl+L', () => {
+            if (typeof enableBreadcrumbPathEdit === 'function') enableBreadcrumbPathEdit();
+        });
 
-            // Space: dual role (toggle row selection when not typing query, space in query when active)
-            if (e.key === ' ') {
-                if (this.typeaheadActive) {
-                    e.preventDefault();
-                    this.handleTypeaheadChar(' ');
-                    return;
-                }
-                if (this.selectedRow && !isInputActive) {
-                    e.preventDefault();
-                    this.toggleRowSelection(this.selectedRow);
-                    return;
-                }
-            }
-
-            // When typing inside an input field
-            if (isInputActive) {
-                if (isFilterInput && e.key === 'Enter') {
-                    e.preventDefault();
-                    document.activeElement.blur();
-                    const visibleRows = this.getVisibleRows();
-                    if (visibleRows.length > 0) {
-                        this.selectRow(visibleRows[0]);
-                    }
-                }
+        // Escape: Clear multi-selection -> Deselect focused row
+        this.keyboard.register('Escape', () => {
+            if (this.selectedPaths && this.selectedPaths.size > 0) {
+                this.clearMultiSelection();
                 return;
             }
+            this.selectRow(null);
+        });
 
-            // Shortcuts Help modal: ? or F1
-            if (e.key === '?' || e.key === 'F1') {
-                e.preventDefault();
-                this.closeTypeahead();
-                if (typeof toggleShortcutsModal === 'function') {
-                    toggleShortcutsModal();
-                }
-                return;
+        // Space: Toggle single selection
+        this.keyboard.register('Space', (row) => {
+            if (row) this.toggleRowSelection(row);
+        });
+
+        // Shift+Space: Keyboard Range Selection
+        this.keyboard.register('Shift+Space', (row) => {
+            if (row) this.toggleRowSelection(row, { range: true });
+        });
+
+        // Ctrl+A: Select all visible
+        this.keyboard.register('Ctrl+A', () => {
+            this.selectAllVisible();
+        });
+
+        // Details: Ctrl+I or Alt+Enter
+        this.keyboard.register(['Ctrl+I', 'Alt+Enter'], (row) => {
+            if (row) {
+                const detailsLink = row.querySelector('.action-info');
+                if (detailsLink) detailsLink.click();
             }
+        });
 
-            // Details view: Ctrl+I or Alt+Enter
-            if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') || (e.altKey && e.key === 'Enter')) {
-                if (this.selectedRow) {
-                    e.preventDefault();
-                    this.closeTypeahead();
-                    const detailsLink = this.selectedRow.querySelector('.action-info');
-                    if (detailsLink) {
-                        detailsLink.click();
-                    }
-                    return;
-                }
+        // Enter: Open folder / Follow symlink / Download file
+        this.keyboard.register('Enter', (row) => {
+            if (!row) return;
+            const isFolder = row.dataset.isFolder === 'true';
+            const toggleBtn = row.querySelector('.folder-toggle');
+            const nameLink = row.querySelector('.browser-cell-name a');
+            if (nameLink) {
+                nameLink.click();
+            } else if (isFolder && toggleBtn) {
+                this.toggleFolder(toggleBtn);
+            } else {
+                const downloadLink = row.querySelector('.action-download') || row.querySelector('.file-download-link');
+                if (downloadLink) downloadLink.click();
             }
+        });
 
-            // Focus search filter shortcut: /
-            if (e.key === '/') {
-                e.preventDefault();
-                this.closeTypeahead();
-                const firstFilter = this.table.querySelector('.column-filter input[data-col="1"]');
-                if (firstFilter) {
-                    firstFilter.focus();
-                    firstFilter.select();
-                }
-                return;
-            }
-
-            // Typeahead Tab / Shift+Tab navigation
-            if (e.key === 'Tab' && this.typeaheadActive) {
-                e.preventDefault();
-                this.stepTypeahead(e.shiftKey ? -1 : 1);
-                return;
-            }
-
-            // Navigate Down: ArrowDown
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (this.typeaheadActive) {
-                    this.stepTypeahead(1);
-                    return;
-                }
-                const visibleRows = this.getVisibleRows();
-                if (visibleRows.length === 0) return;
-
-                const currentIndex = this.selectedRow ? visibleRows.indexOf(this.selectedRow) : -1;
-                if (currentIndex >= 0) {
-                    const nextIndex = currentIndex < visibleRows.length - 1 ? currentIndex + 1 : 0;
-                    this.selectRow(visibleRows[nextIndex]);
-                } else if (this.selectedRow) {
-                    // Selected row is currently hidden by filter (e.g. missing item exemption)
-                    const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-                    const selectedDomIdx = allRows.indexOf(this.selectedRow);
-                    const nextRow = visibleRows.find((r) => allRows.indexOf(r) > selectedDomIdx) || visibleRows[0];
-                    this.selectRow(nextRow);
-                } else {
-                    this.selectRow(visibleRows[0]);
-                }
-                return;
-            }
-
-            // Navigate Up: ArrowUp
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (this.typeaheadActive) {
-                    this.stepTypeahead(-1);
-                    return;
-                }
-                const visibleRows = this.getVisibleRows();
-                if (visibleRows.length === 0) return;
-
-                const currentIndex = this.selectedRow ? visibleRows.indexOf(this.selectedRow) : -1;
-                if (currentIndex >= 0) {
-                    const prevIndex = currentIndex > 0 ? currentIndex - 1 : visibleRows.length - 1;
-                    this.selectRow(visibleRows[prevIndex]);
-                } else if (this.selectedRow) {
-                    // Selected row is currently hidden by filter (e.g. missing item exemption)
-                    const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-                    const selectedDomIdx = allRows.indexOf(this.selectedRow);
-                    const precedingRows = visibleRows.filter((r) => allRows.indexOf(r) < selectedDomIdx);
-                    const prevRow =
-                        precedingRows.length > 0
-                            ? precedingRows[precedingRows.length - 1]
-                            : visibleRows[visibleRows.length - 1];
-                    this.selectRow(prevRow);
-                } else {
-                    this.selectRow(visibleRows[visibleRows.length - 1]);
-                }
-                return;
-            }
-
-            // Jump to Start: Home / Pos1
-            if (e.key === 'Home') {
-                e.preventDefault();
-                this.closeTypeahead();
-                const visibleRows = this.getVisibleRows();
-                if (visibleRows.length > 0) this.selectRow(visibleRows[0]);
-                return;
-            }
-
-            // Jump to End: End / Ende
-            if (e.key === 'End') {
-                e.preventDefault();
-                this.closeTypeahead();
-                const visibleRows = this.getVisibleRows();
-                if (visibleRows.length > 0) this.selectRow(visibleRows[visibleRows.length - 1]);
-                return;
-            }
-
-            // Page Down
-            if (e.key === 'PageDown') {
-                e.preventDefault();
-                this.closeTypeahead();
-                const visibleRows = this.getVisibleRows();
-                if (visibleRows.length === 0) return;
-                const pageSize = Math.max(1, Math.floor((window.innerHeight - 180) / 28));
-                let baseIdx = this.selectedRow ? visibleRows.indexOf(this.selectedRow) : -1;
-                if (baseIdx < 0 && this.selectedRow) {
-                    const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-                    const selectedDomIdx = allRows.indexOf(this.selectedRow);
-                    const nextRow = visibleRows.find((r) => allRows.indexOf(r) > selectedDomIdx);
-                    baseIdx = nextRow ? visibleRows.indexOf(nextRow) : 0;
-                } else if (baseIdx < 0) {
-                    baseIdx = 0;
-                }
-                const nextIndex = Math.min(visibleRows.length - 1, baseIdx + pageSize);
-                this.selectRow(visibleRows[nextIndex]);
-                return;
-            }
-
-            // Page Up
-            if (e.key === 'PageUp') {
-                e.preventDefault();
-                this.closeTypeahead();
-                const visibleRows = this.getVisibleRows();
-                if (visibleRows.length === 0) return;
-                const pageSize = Math.max(1, Math.floor((window.innerHeight - 180) / 28));
-                let baseIdx = this.selectedRow ? visibleRows.indexOf(this.selectedRow) : -1;
-                if (baseIdx < 0 && this.selectedRow) {
-                    const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-                    const selectedDomIdx = allRows.indexOf(this.selectedRow);
-                    const precedingRows = visibleRows.filter((r) => allRows.indexOf(r) < selectedDomIdx);
-                    const prevRow = precedingRows.length > 0 ? precedingRows[precedingRows.length - 1] : visibleRows[0];
-                    baseIdx = visibleRows.indexOf(prevRow);
-                } else if (baseIdx < 0) {
-                    baseIdx = 0;
-                }
-                const prevIndex = Math.max(0, baseIdx - pageSize);
-                this.selectRow(visibleRows[prevIndex]);
-                return;
-            }
-
-            if (!this.selectedRow) {
-                // Check if typing starting character
-                if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1 && e.key !== '/' && e.key !== ' ') {
-                    e.preventDefault();
-                    this.handleTypeaheadChar(e.key);
-                }
-                return;
-            }
-
-            const isFolder = this.selectedRow.dataset.isFolder === 'true';
-            const isExpanded = this.selectedRow.dataset.expanded === 'true';
-            const toggleBtn = this.selectedRow.querySelector('.folder-toggle');
+        // ArrowRight: Expand folder or step into first child
+        this.keyboard.register('ArrowRight', (row) => {
+            if (!row) return;
+            const isFolder = row.dataset.isFolder === 'true';
+            const isExpanded = row.dataset.expanded === 'true';
+            const toggleBtn = row.querySelector('.folder-toggle');
             const visibleRows = this.getVisibleRows();
-
-            // Expand / Go into child: ArrowRight
-            if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                this.closeTypeahead();
-                if (isFolder) {
-                    if (!isExpanded && toggleBtn) {
-                        this.toggleFolder(toggleBtn);
-                    } else {
-                        const parentPath = this.selectedRow.dataset.path;
-                        const children = visibleRows.filter((r) => r.dataset.parent === parentPath);
-                        if (children.length > 0) {
-                            this.selectRow(children[0]);
-                        }
-                    }
-                }
-                return;
-            }
-
-            // Collapse / Go to parent: ArrowLeft
-            if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                this.closeTypeahead();
-                if (isFolder && isExpanded && toggleBtn) {
+            if (isFolder) {
+                if (!isExpanded && toggleBtn) {
                     this.toggleFolder(toggleBtn);
                 } else {
-                    const parentPath = this.selectedRow.dataset.parent;
-                    if (parentPath) {
-                        const parentRow = visibleRows.find((r) => r.dataset.path === parentPath);
-                        if (parentRow) {
-                            this.selectRow(parentRow);
-                        }
+                    const parentPath = row.dataset.path;
+                    const children = visibleRows.filter((r) => r.dataset.parent === parentPath);
+                    if (children.length > 0) {
+                        this.selectRow(children[0]);
                     }
                 }
-                return;
             }
+        });
 
-            // Enter action: Open folder / Follow symlink / Download file
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.closeTypeahead();
-                const nameLink = this.selectedRow.querySelector('.browser-cell-name a');
-                if (nameLink) {
-                    nameLink.click();
-                } else if (isFolder && toggleBtn) {
-                    this.toggleFolder(toggleBtn);
-                } else {
-                    const downloadLink =
-                        this.selectedRow.querySelector('.action-download') ||
-                        this.selectedRow.querySelector('.file-download-link');
-                    if (downloadLink) {
-                        downloadLink.click();
+        // ArrowLeft: Collapse folder or go to parent row
+        this.keyboard.register('ArrowLeft', (row) => {
+            if (!row) return;
+            const isFolder = row.dataset.isFolder === 'true';
+            const isExpanded = row.dataset.expanded === 'true';
+            const toggleBtn = row.querySelector('.folder-toggle');
+            const visibleRows = this.getVisibleRows();
+            if (isFolder && isExpanded && toggleBtn) {
+                this.toggleFolder(toggleBtn);
+            } else {
+                const parentPath = row.dataset.parent;
+                if (parentPath) {
+                    const parentRow = visibleRows.find((r) => r.dataset.path === parentPath);
+                    if (parentRow) {
+                        this.selectRow(parentRow);
                     }
                 }
-                return;
             }
+        });
 
-            // Printable alphanumeric characters trigger Typeahead
-            if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1 && e.key !== '/' && e.key !== ' ') {
-                e.preventDefault();
-                this.handleTypeaheadChar(e.key);
-                return;
+        // Snapshot timeline switching: Ctrl+ArrowLeft (prev) / Ctrl+ArrowRight (next)
+        this.keyboard.register('Ctrl+ArrowLeft', () => this.navigateToAdjacentSnapshot(-1));
+        this.keyboard.register('Ctrl+ArrowRight', () => this.navigateToAdjacentSnapshot(1));
+
+        // Navigate to parent directory: Backspace / Alt+ArrowUp
+        const navigateToParent = () => {
+            const subpath = (this.table.dataset.subpath || '').replace(/^\/+|\/+$/g, '');
+            if (subpath) {
+                const parts = subpath.split('/');
+                const currentFolder = parts.pop();
+                const parentSub = parts.join('/');
+                const targetHash = currentFolder ? '#' + encodeURIComponent(currentFolder) : '';
+                window.location.href = `/list/${encodeURIComponent(this.rootName)}/${encodePath(parentSub)}?snapshot=${encodeURIComponent(this.snapshot)}${targetHash}`;
+            } else {
+                window.location.href = `/#${encodeURIComponent(this.rootName)}`;
+            }
+        };
+        this.keyboard.register('Backspace', navigateToParent);
+        this.keyboard.register('Alt+ArrowUp', navigateToParent);
+
+        // Quick filter search focus: /
+        this.keyboard.register('/', () => {
+            const firstFilter = this.table.querySelector('.column-filter input[data-col="1"]');
+            if (firstFilter) {
+                firstFilter.focus();
+                firstFilter.select();
             }
         });
     }

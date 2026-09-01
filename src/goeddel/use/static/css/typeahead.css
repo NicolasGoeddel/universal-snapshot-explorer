@@ -1,0 +1,77 @@
+/* Floating Typeahead Search HUD */
+.typeahead-hud {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 16px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 30px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
+    font-size: 9pt;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
+[data-theme="dark"] .typeahead-hud {
+    background: rgba(30, 41, 59, 0.95);
+    color: #f1f5f9;
+    border-color: #475569;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.typeahead-hud.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+.typeahead-hud-query-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.typeahead-hud-query {
+    font-weight: 700;
+    color: var(--primary-accent);
+    background: rgba(2, 132, 199, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-family: ui-monospace, monospace, sans-serif;
+    font-size: 9.5pt;
+}
+
+[data-theme="dark"] .typeahead-hud-query {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+}
+
+.typeahead-hud-status {
+    font-size: 8.5pt;
+    color: var(--text-muted);
+}
+
+.typeahead-hud-badge {
+    font-size: 7.5pt;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bg-header-alt);
+    border: 1px solid var(--border-color-light);
+    color: var(--text-muted);
+}
+
+.typeahead-hud-no-match {
+    color: #ef4444;
+    font-weight: 600;
+}

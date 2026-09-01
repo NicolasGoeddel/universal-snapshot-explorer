@@ -92,6 +92,35 @@ class TableSorter {
             });
         });
 
+        // Add visual shortcut hint numbers (Alt+1..Alt+N) to sortable headers
+        let sortIndex = 1;
+        Array.from(headerRow.children).forEach((th) => {
+            const isSortable = th.classList.contains('sortable') || th.querySelector('.sortable');
+            if (isSortable) {
+                if (!th.querySelector('.col-shortcut-hint')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'col-shortcut-hint';
+                    badge.textContent = String(sortIndex);
+                    badge.title = `Alt+${sortIndex}`;
+                    th.appendChild(badge);
+                }
+                sortIndex++;
+            }
+        });
+
+        // Global Alt release/blur listener
+        if (!window._tableSorterAltReleaseBound) {
+            window._tableSorterAltReleaseBound = true;
+            window.addEventListener('keyup', (e) => {
+                if (e.key === 'Alt') {
+                    document.body.classList.remove('show-alt-hints');
+                }
+            });
+            window.addEventListener('blur', () => {
+                document.body.classList.remove('show-alt-hints');
+            });
+        }
+
         // Restore initial sort or saved state
         if (this.storageKey) {
             try {
@@ -291,6 +320,50 @@ class TableSorter {
      */
     getSortState() {
         return this.currentSort ? { ...this.currentSort } : null;
+    }
+
+    /**
+     * Get array of 0-based cell indices for all sortable columns in this table.
+     *
+     * @returns {number[]}
+     */
+    getSortableColumnIndices() {
+        const headerRow = this.table.querySelector('thead tr.header-row, thead tr:first-child');
+        if (!headerRow) return [];
+        const indices = [];
+        Array.from(headerRow.children).forEach((th, idx) => {
+            if (th.classList.contains('sortable') || th.querySelector('.sortable')) {
+                indices.push(idx);
+            }
+        });
+        return indices;
+    }
+
+    /**
+     * Interceptor method to handle Alt-key shortcut overlay and Alt+1..Alt+N column sorting.
+     *
+     * @param {KeyboardEvent} e - Keyboard event.
+     * @returns {boolean} True if the event was handled/consumed.
+     */
+    handleKeyDown(e) {
+        // Show column shortcut badges when Alt is pressed
+        if (e.key === 'Alt' && !e.ctrlKey && !e.metaKey) {
+            document.body.classList.add('show-alt-hints');
+            return false;
+        }
+
+        // Handle Alt+1 .. Alt+9 column sorting
+        if (e.altKey && !e.ctrlKey && !e.metaKey && e.key >= '1' && e.key <= '9') {
+            const colNum = parseInt(e.key, 10);
+            const sortableIndices = this.getSortableColumnIndices();
+            if (colNum >= 1 && colNum <= sortableIndices.length) {
+                e.preventDefault();
+                this.sortByColumnIndex(sortableIndices[colNum - 1]);
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

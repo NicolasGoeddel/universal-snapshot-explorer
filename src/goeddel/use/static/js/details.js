@@ -165,6 +165,7 @@ class DetailTable {
             this.columnResizer = new TableColumnResizer(this.table);
         }
         this.initSorting();
+        this.initKeyboard();
     }
 
     initSorting() {
@@ -183,6 +184,16 @@ class DetailTable {
                 applyCategoricalColors();
             },
         });
+    }
+
+    initKeyboard() {
+        if (typeof KeyboardNavigator === 'undefined') return;
+        this.keyboard = new KeyboardNavigator(this.table, {
+            tbody: this.tbody,
+        });
+
+        // TableSorter Column Sorting Interceptor (Alt+1..Alt+N)
+        this.keyboard.addInterceptor((e) => this.sorter?.handleKeyDown(e));
     }
 
     get currentSort() {

@@ -229,7 +229,34 @@ table.filebrowser>thead>tr.header-row>th.sortable.sort-desc::after {
     color: var(--primary-accent);
 }
 
+.col-shortcut-hint {
+    position: absolute;
+    right: 22px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.85);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 14px;
+    height: 14px;
+    font-size: 7pt;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0 2px;
+    border-radius: 3px;
+    background: var(--primary-accent);
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+    z-index: 10;
+}
 
+body.show-alt-hints .col-shortcut-hint {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+}
 
 table.filebrowser>thead>tr.column-filter>td {
     position: sticky;
@@ -1421,84 +1448,6 @@ kbd {
     color: #ffffff;
 }
 
-/* Floating Typeahead Search HUD */
-.typeahead-hud {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    z-index: 99999;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 7px 16px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-    border-radius: 30px;
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
-    font-size: 9pt;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
-}
-
-[data-theme="dark"] .typeahead-hud {
-    background: rgba(30, 41, 59, 0.95);
-    color: #f1f5f9;
-    border-color: #475569;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(0, 0, 0, 0.3);
-}
-
-.typeahead-hud.visible {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(-50%) translateY(0);
-}
-
-.typeahead-hud-query-wrap {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.typeahead-hud-query {
-    font-weight: 700;
-    color: var(--primary-accent);
-    background: rgba(2, 132, 199, 0.1);
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-family: ui-monospace, monospace, sans-serif;
-    font-size: 9.5pt;
-}
-
-[data-theme="dark"] .typeahead-hud-query {
-    background: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
-}
-
-.typeahead-hud-status {
-    font-size: 8.5pt;
-    color: var(--text-muted);
-}
-
-.typeahead-hud-badge {
-    font-size: 7.5pt;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: var(--bg-header-alt);
-    border: 1px solid var(--border-color-light);
-    color: var(--text-muted);
-}
-
-.typeahead-hud-no-match {
-    color: #ef4444;
-    font-weight: 600;
-}
-
 /* Custom Checkbox Styling */
 .custom-checkbox {
     appearance: none;
@@ -1568,6 +1517,25 @@ tr.selected-multi {
 
 tr.selected-multi.selected-row {
     background-color: var(--table-row-selected-bg) !important;
+}
+
+/* Keyboard / Shift-Range Selection Preview */
+tr.range-preview td {
+    background-color: rgba(2, 132, 199, 0.05) !important;
+}
+
+tr.range-preview .custom-checkbox {
+    border-color: var(--primary-accent) !important;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+}
+
+[data-theme="dark"] tr.range-preview td {
+    background-color: rgba(56, 189, 248, 0.08) !important;
+}
+
+[data-theme="dark"] tr.range-preview .custom-checkbox {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
 }
 
 /* Floating Action Bar */
@@ -1709,6 +1677,19 @@ tr.selected-multi.selected-row {
 .action-bar-btn.secondary:hover {
     background-color: var(--bg-surface-hover);
     border-color: var(--text-muted);
+}
+
+.action-kbd-hint {
+    font-size: 7.5pt;
+    font-weight: 500;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-family: inherit;
+    margin-left: 2px;
+    opacity: 0.85;
 }
 
 /* ==========================================================================

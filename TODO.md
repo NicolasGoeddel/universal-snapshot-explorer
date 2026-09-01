@@ -115,7 +115,7 @@
 - [ ] **SelectionManager Extraction (`selection_manager.js`):**
 - [ ] **SnapshotBars & Lazy Rendering Extraction (`snapshot_bars.js`):**
   - SVG snapshot pill generation, IntersectionObserver batch lazy-loading, and timeline hover tooltips.
-- [ ] **FilterManager Extraction (`filter_manager.js`):**
+- [x] **FilterManager Extraction (`filter_manager.js`):**
   - Filter input search, toggle switches (hidden, missing, changed-only), count badges, and row visibility evaluation.
 - [ ] **Slim TreeTable Coordinator (`explorer.js`):**
   - Streamline `explorer.js` to ~150–200 lines acting as an orchestrator for the modular components and managing AJAX directory expansion.

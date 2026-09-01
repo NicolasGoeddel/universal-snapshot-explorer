@@ -87,7 +87,10 @@
          */
         constructor(table, options = {}) {
             this.table = typeof table === 'string' ? document.getElementById(table) : table;
-            if (!this.table) return;
+            if (!this.table) {
+                console.error('[TableColumnResizer] Initialization failed: Table element not found.', table);
+                return;
+            }
 
             this.storageKey = options.storageKey || `use_col_widths_${this.table.id || 'table'}`;
             this.isResizing = false;
@@ -112,13 +115,22 @@
          */
         init() {
             const thead = this.table.querySelector('thead');
-            if (!thead) return;
+            if (!thead) {
+                console.warn('[TableColumnResizer] Table has no <thead> element.', this.table);
+                return;
+            }
 
             const headerRow = thead.querySelector('tr.header-row') || thead.querySelector('tr:first-child');
-            if (!headerRow) return;
+            if (!headerRow) {
+                console.warn('[TableColumnResizer] Table <thead> has no header row.', this.table);
+                return;
+            }
 
             this.ths = Array.from(headerRow.querySelectorAll('th'));
-            if (this.ths.length <= 1) return;
+            if (this.ths.length <= 1) {
+                console.warn('[TableColumnResizer] Table has fewer than 2 columns; resizing skipped.', this.table);
+                return;
+            }
 
             this.loadSavedPercentages();
 
@@ -768,6 +780,16 @@
             setTimeout(() => {
                 this.justResized = false;
             }, 200);
+
+            // Suppress the trailing ghost click dispatched by browser after drag release
+            const suppressGhostClick = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+            };
+            window.addEventListener('click', suppressGhostClick, { capture: true, once: true });
+            setTimeout(() => {
+                window.removeEventListener('click', suppressGhostClick, { capture: true });
+            }, 100);
 
             if (this.activeResizerIndex >= 0 && this.ths[this.activeResizerIndex]) {
                 const resizer = this.ths[this.activeResizerIndex].querySelector(':scope > .col-resizer');

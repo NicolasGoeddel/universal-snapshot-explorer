@@ -29,10 +29,12 @@ class TreeTable {
         this.tbody = table.querySelector('tbody');
         this.rootName = table.dataset.root;
         this.snapshot = table.dataset.snapshot;
-        this.currentSort = null;
         this.selectedRow = null;
         this.snapshotAbortController = null;
 
+        if (typeof TableColumnResizer !== 'undefined') {
+            this.columnResizer = new TableColumnResizer(this.table);
+        }
         this.bindTreeEvents(this.tbody);
         this.initSorting();
         this.initFiltering();
@@ -42,9 +44,6 @@ class TreeTable {
         this.initTypeahead();
         this.initSnapshotDropdown();
         this.initMultiSelection();
-        if (typeof TableColumnResizer !== 'undefined') {
-            this.columnResizer = new TableColumnResizer(this.table);
-        }
         this.updateZebra();
         this.updateToggleCounts();
 
@@ -1164,137 +1163,55 @@ class TreeTable {
         return 0;
     }
 
-    sortByColumnIndex(cellIndex, forcedDirection = null) {
-        const headerRow = this.table.querySelector('thead tr.header-row');
-        if (!headerRow) return;
-        const th = headerRow.children[cellIndex];
-        if (!th) return;
-
-        const sortEl = th.querySelector('.sortable') || (th.classList.contains('sortable') ? th : null);
-        if (!sortEl) return;
-
-        const sortType = sortEl.dataset.sortType || th.dataset.sortType || 'text';
-        let direction = forcedDirection || sortEl.dataset.defaultDir || th.dataset.defaultDir || 'asc';
-        if (!forcedDirection && this.currentSort && this.currentSort.colIndex === cellIndex) {
-            direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
-        }
-
-        this.table
-            .querySelectorAll('thead tr.header-row th, thead tr.header-row th .sortable')
-            .forEach((h) => h.classList.remove('sort-asc', 'sort-desc'));
-        sortEl.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
-        th.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
-
-        th.classList.remove('sort-flash');
-        void th.offsetWidth;
-        th.classList.add('sort-flash');
-
-        this.currentSort = { colIndex: cellIndex, direction, type: sortType };
-        this.sortTree();
-        this.updateZebra();
-        if (this.selectedRow) {
-            this.selectRow(this.selectedRow, { updateHash: false });
-        }
+    initSorting() {
+        if (typeof TableSorter === 'undefined') return;
+        this.sorter = new TableSorter(this.table, {
+            tbody: this.tbody,
+            treeSort: true,
+            storageKey: this.table.id || 'explorer',
+            customComparators: {
+                'snapshot-bar': (_valA, _valB, cellA, cellB) => {
+                    const barA = cellA?.dataset?.barStr || '';
+                    const barB = cellB?.dataset?.barStr || '';
+                    const keyA = this.getBarSortKey(barA);
+                    const keyB = this.getBarSortKey(barB);
+                    return this.compareBarKeys(keyA, keyB);
+                },
+            },
+            rowComparator: (a, b, colIndex, baseCmp) => {
+                if (colIndex === 1) {
+                    const isDirLike = (row) =>
+                        row.dataset.isFolder === 'true' ||
+                        row.dataset.isSubDataset === 'true' ||
+                        row.querySelector('.sub-dataset-link') !== null ||
+                        row.querySelector('.folder-toggle') !== null;
+                    const isDirA = isDirLike(a);
+                    const isDirB = isDirLike(b);
+                    if (isDirA !== isDirB) {
+                        return isDirA ? -1 : 1;
+                    }
+                }
+                return baseCmp;
+            },
+            onSort: () => {
+                this.updateZebra();
+                if (this.selectedRow) {
+                    this.selectRow(this.selectedRow, { updateHash: false });
+                }
+            },
+        });
     }
 
-    initSorting() {
-        const sortElements = this.table.querySelectorAll(
-            'thead tr.header-row th.sortable, thead tr.header-row th .sortable',
-        );
-        sortElements.forEach((el) => {
-            el.setAttribute('tabindex', '0');
-            el.setAttribute('role', 'button');
-            el.addEventListener('click', (e) => {
-                if (e.target.closest('a') || e.target.closest('svg') || e.target.closest('.col-resizer')) {
-                    return;
-                }
-                if (this.columnResizer && this.columnResizer.justResized) {
-                    return;
-                }
-                const th = el.closest('th');
-                const cellIndex = Array.from(th.parentNode.children).indexOf(th);
-                this.sortByColumnIndex(cellIndex);
-            });
+    get currentSort() {
+        return this.sorter?.getSortState() || null;
+    }
 
-            el.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    const th = el.closest('th');
-                    const cellIndex = Array.from(th.parentNode.children).indexOf(th);
-                    this.sortByColumnIndex(cellIndex);
-                }
-            });
-        });
+    sortByColumnIndex(cellIndex, forcedDirection = null) {
+        this.sorter?.sortByColumnIndex(cellIndex, forcedDirection);
     }
 
     sortTree() {
-        if (!this.currentSort) return;
-        const { colIndex, direction, type } = this.currentSort;
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-
-        const groups = new Map();
-        allRows.forEach((row) => {
-            const parent = row.dataset.parent || '';
-            if (!groups.has(parent)) groups.set(parent, []);
-            groups.get(parent).push(row);
-        });
-
-        const compareRows = (a, b) => {
-            if (colIndex === 1) {
-                const isFolderA = a.dataset.isFolder === 'true';
-                const isFolderB = b.dataset.isFolder === 'true';
-                if (isFolderA !== isFolderB) {
-                    return isFolderA ? -1 : 1;
-                }
-            }
-
-            const cellA = a.children[colIndex];
-            const cellB = b.children[colIndex];
-            if (!cellA || !cellB) return 0;
-
-            const valA = cellA.dataset.sort !== undefined ? cellA.dataset.sort : cellA.textContent.trim();
-            const valB = cellB.dataset.sort !== undefined ? cellB.dataset.sort : cellB.textContent.trim();
-
-            let cmp = 0;
-            if (type === 'snapshot-bar') {
-                const barA = cellA.dataset.barStr || '';
-                const barB = cellB.dataset.barStr || '';
-                const keyA = this.getBarSortKey(barA);
-                const keyB = this.getBarSortKey(barB);
-                cmp = this.compareBarKeys(keyA, keyB);
-            } else if (type === 'number') {
-                cmp = (parseFloat(valA) || 0) - (parseFloat(valB) || 0);
-            } else if (type === 'date') {
-                cmp = valA.localeCompare(valB);
-            } else if (type === 'octal') {
-                cmp = parseInt(valA, 8) - parseInt(valB, 8);
-            } else {
-                cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
-            }
-
-            return direction === 'asc' ? cmp : -cmp;
-        };
-
-        const sortedRows = [];
-        const appendSubtree = (parentPath) => {
-            const children = groups.get(parentPath) || [];
-            children.sort(compareRows);
-            children.forEach((child) => {
-                sortedRows.push(child);
-                appendSubtree(child.dataset.path);
-            });
-        };
-
-        const topLevelParent = this.table.dataset.subpath || '';
-        appendSubtree(topLevelParent);
-
-        allRows.forEach((row) => {
-            if (!sortedRows.includes(row)) {
-                sortedRows.push(row);
-            }
-        });
-
-        sortedRows.forEach((row) => this.tbody.appendChild(row));
+        this.sorter?.sort();
     }
 
     initFiltering() {

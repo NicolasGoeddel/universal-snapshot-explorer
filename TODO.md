@@ -97,7 +97,7 @@
 ---
 
 ## 6. Frontend Modularization & Refactoring
-- [ ] **Generic TableSorter Component (`table_sorter.js`):**
+- [x] **Generic TableSorter Component (`table_sorter.js`):**
   - Standalone, generic table sorting engine with pluggable column comparator callbacks (`customComparators`).
   - Multi-type value extraction (numbers, strings, timestamps via `data-sort`).
   - Hierarchical tree sorting support with folder-first priority.

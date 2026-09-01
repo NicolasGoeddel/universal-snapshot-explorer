@@ -161,7 +161,6 @@ class DetailTable {
     constructor(table) {
         this.table = table;
         this.tbody = table.querySelector('tbody');
-        this.currentSort = { colIndex: 0, direction: 'desc', type: 'number' };
         if (typeof TableColumnResizer !== 'undefined') {
             this.columnResizer = new TableColumnResizer(this.table);
         }
@@ -169,63 +168,25 @@ class DetailTable {
     }
 
     initSorting() {
-        const headers = this.table.querySelectorAll('thead tr th.sortable');
-        headers.forEach((th) => {
-            th.addEventListener('click', (e) => {
-                if (e.target.closest('.col-resizer')) {
-                    return;
-                }
-                if (this.columnResizer && this.columnResizer.justResized) {
-                    return;
-                }
-                const cellIndex = Array.from(th.parentNode.children).indexOf(th);
-                const sortType = th.dataset.sortType || 'text';
-                let direction = th.dataset.defaultDir || 'asc';
-                if (this.currentSort && this.currentSort.colIndex === cellIndex) {
-                    direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
-                }
-
-                headers.forEach((h) => h.classList.remove('sort-asc', 'sort-desc'));
-                th.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
-
-                this.currentSort = { colIndex: cellIndex, direction, type: sortType };
-                this.sortRows();
-            });
+        if (typeof TableSorter === 'undefined') return;
+        this.sorter = new TableSorter(this.table, {
+            tbody: this.tbody,
+            treeSort: false,
+            storageKey: this.table.id || 'details',
+            initialSort: { colIndex: 0, direction: 'desc', triggerSort: false },
+            onSort: () => {
+                const rows = Array.from(this.tbody.querySelectorAll('tr'));
+                rows.forEach((row, idx) => {
+                    row.classList.toggle('even', idx % 2 === 0);
+                    row.classList.toggle('odd', idx % 2 !== 0);
+                });
+                applyCategoricalColors();
+            },
         });
     }
 
-    sortRows() {
-        if (!this.currentSort) return;
-        const { colIndex, direction, type } = this.currentSort;
-        const rows = Array.from(this.tbody.querySelectorAll('tr'));
-
-        rows.sort((a, b) => {
-            const cellA = a.children[colIndex];
-            const cellB = b.children[colIndex];
-            if (!cellA || !cellB) return 0;
-
-            const valA = cellA.dataset.sort !== undefined ? cellA.dataset.sort : cellA.textContent.trim();
-            const valB = cellB.dataset.sort !== undefined ? cellB.dataset.sort : cellB.textContent.trim();
-
-            let cmp = 0;
-            if (type === 'number') {
-                cmp = (parseFloat(valA) || 0) - (parseFloat(valB) || 0);
-            } else if (type === 'date') {
-                cmp = valA.localeCompare(valB);
-            } else if (type === 'octal') {
-                cmp = parseInt(valA, 8) - parseInt(valB, 8);
-            } else {
-                cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
-            }
-
-            return direction === 'asc' ? cmp : -cmp;
-        });
-
-        rows.forEach((row, idx) => {
-            row.classList.toggle('even', idx % 2 === 0);
-            row.classList.toggle('odd', idx % 2 !== 0);
-            this.tbody.appendChild(row);
-        });
+    get currentSort() {
+        return this.sorter?.getSortState() || null;
     }
 }
 

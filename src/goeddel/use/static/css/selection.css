@@ -1,0 +1,237 @@
+/**
+ * Universal Snapshot Explorer (USE) - Selection Styles
+ *
+ * Styles for multi-selection checkboxes, range preview highlight,
+ * and the floating action bar HUD.
+ */
+
+/* Prevent text selection when clicking/dragging checkboxes */
+.browser-cell-select,
+.row-checkbox {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Multi-Selected Row Highlight */
+tr.selected-multi {
+    background-color: rgba(2, 132, 199, 0.08) !important;
+}
+
+[data-theme="dark"] tr.selected-multi {
+    background-color: rgba(56, 189, 248, 0.12) !important;
+}
+
+tr.selected-multi.selected-row {
+    background-color: var(--table-row-selected-bg) !important;
+}
+
+/* Keyboard / Shift-Range Selection Preview
+   Uses a distinct, elegant indigo/violet glow that clearly stands out even over already selected rows */
+tr.range-preview td {
+    background-color: rgba(99, 102, 241, 0.12) !important;
+}
+
+tr.range-preview .custom-checkbox {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 2.5px rgba(99, 102, 241, 0.35) !important;
+}
+
+[data-theme="dark"] tr.range-preview td {
+    background-color: rgba(129, 140, 248, 0.18) !important;
+}
+
+[data-theme="dark"] tr.range-preview .custom-checkbox {
+    border-color: #818cf8 !important;
+    box-shadow: 0 0 0 2.5px rgba(129, 140, 248, 0.4) !important;
+}
+
+/* When a row is BOTH selected-multi AND in range-preview */
+tr.selected-multi.range-preview td {
+    background-color: rgba(99, 102, 241, 0.2) !important;
+}
+
+[data-theme="dark"] tr.selected-multi.range-preview td {
+    background-color: rgba(129, 140, 248, 0.26) !important;
+}
+
+/* Floating Action Bar */
+.floating-action-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(0);
+    z-index: 1000;
+    min-width: 480px;
+    max-width: 90vw;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 8px 14px;
+    animation: slideUpActionBar 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.2s ease-in-out;
+}
+
+[data-theme="dark"] .floating-action-bar {
+    background: rgba(30, 41, 59, 0.92);
+    border-color: #475569;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes slideUpActionBar {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.action-bar-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.action-bar-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 9pt;
+    font-weight: 500;
+}
+
+.action-bar-counter {
+    font-weight: 700;
+    color: var(--primary-accent);
+    background: rgba(2, 132, 199, 0.1);
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+[data-theme="dark"] .action-bar-counter {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+}
+
+.action-bar-breakdown {
+    color: var(--text-muted);
+    font-size: 8.5pt;
+}
+
+.action-bar-reveal-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    font-size: inherit;
+    color: var(--primary-accent);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 2px;
+    transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.action-bar-reveal-btn:hover {
+    color: var(--primary-hover);
+    text-decoration-style: solid;
+}
+
+.action-bar-warning {
+    color: #f59e0b;
+    font-size: 8.5pt;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.action-bar-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.action-bar-action-wrapper,
+.action-bar-options-wrapper,
+.action-bar-structure {
+    display: inline-flex;
+    align-items: center;
+}
+
+.action-bar-label {
+    font-size: 8.5pt;
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.action-bar-select {
+    font-size: 8.5pt;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-main);
+    cursor: pointer;
+    outline: none;
+}
+
+.action-bar-select:focus {
+    border-color: var(--primary-accent);
+}
+
+.action-bar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 9pt;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease-in-out;
+}
+
+.action-bar-btn.primary {
+    background-color: var(--primary-accent);
+    color: #ffffff;
+    border-color: var(--primary-accent);
+}
+
+.action-bar-btn.primary:hover {
+    background-color: var(--primary-accent-hover);
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+
+.action-bar-btn.secondary {
+    background-color: var(--bg-surface);
+    color: var(--text-main);
+    border-color: var(--border-color);
+}
+
+.action-bar-btn.secondary:hover {
+    background-color: var(--bg-surface-hover);
+    border-color: var(--text-muted);
+}
+
+.action-kbd-hint {
+    font-size: 7.5pt;
+    font-weight: 500;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-family: inherit;
+    margin-left: 2px;
+    opacity: 0.85;
+}

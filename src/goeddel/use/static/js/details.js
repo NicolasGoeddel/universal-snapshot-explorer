@@ -202,11 +202,6 @@ class DetailTable {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.clientI18nStr) {
-        try {
-            window.clientI18n = JSON.parse(window.clientI18nStr);
-        } catch (e) {}
-    }
     const table = document.getElementById('details');
     if (table) new DetailTable(table);
     applyCategoricalColors();

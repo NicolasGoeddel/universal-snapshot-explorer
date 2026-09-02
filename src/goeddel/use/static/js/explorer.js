@@ -58,257 +58,78 @@ class TreeTable {
         });
     }
 
-    initMultiSelection() {
-        this.selectedPaths = new Set();
-        this.lastClickedCheckbox = null;
-
-        const masterCheckbox = document.getElementById('master-select-checkbox');
-        if (masterCheckbox) {
-            masterCheckbox.addEventListener('click', () => {
-                const visibleRows = this.getVisibleRows();
-                const allVisibleSelected =
-                    visibleRows.length > 0 &&
-                    visibleRows.every((r) => this.selectedPaths.has(r.dataset.path || r.dataset.filename));
-
-                if (allVisibleSelected) {
-                    // Deselect all visible
-                    visibleRows.forEach((r) => this.selectedPaths.delete(r.dataset.path || r.dataset.filename));
-                } else {
-                    // Select all visible
-                    visibleRows.forEach((r) => this.selectedPaths.add(r.dataset.path || r.dataset.filename));
-                }
-                this.updateSelectionUI();
-            });
-        }
-
-        // Table delegation for checkbox clicks & Shift+Click range selection
-        this.tbody.addEventListener('click', (e) => {
-            const checkbox = e.target.closest('input.row-checkbox');
-            if (!checkbox) return;
-
-            const row = checkbox.closest('tr');
-            if (!row) return;
-
-            const rowPath = row.dataset.path || row.dataset.filename;
-            const isChecked = checkbox.checked;
-
-            if (e.shiftKey && this.lastClickedCheckbox && this.lastClickedCheckbox !== checkbox) {
-                const visibleRows = this.getVisibleRows();
-                const lastRow = this.lastClickedCheckbox.closest('tr');
-                const lastIdx = visibleRows.indexOf(lastRow);
-                const currentIdx = visibleRows.indexOf(row);
-
-                if (lastIdx >= 0 && currentIdx >= 0) {
-                    const start = Math.min(lastIdx, currentIdx);
-                    const end = Math.max(lastIdx, currentIdx);
-                    for (let i = start; i <= end; i++) {
-                        const r = visibleRows[i];
-                        const p = r.dataset.path || r.dataset.filename;
-                        if (isChecked) {
-                            this.selectedPaths.add(p);
-                        } else {
-                            this.selectedPaths.delete(p);
-                        }
-                    }
-                }
-            } else {
-                if (isChecked) {
-                    this.selectedPaths.add(rowPath);
-                } else {
-                    this.selectedPaths.delete(rowPath);
-                }
-            }
-
-            this.lastClickedCheckbox = checkbox;
-            this.updateSelectionUI();
-        });
-
-        // Floating action bar buttons
-        const btnClear = document.getElementById('btn-clear-selection');
-        if (btnClear) {
-            btnClear.addEventListener('click', () => this.clearMultiSelection());
-        }
-
-        const btnDownload = document.getElementById('btn-download-zip');
-        if (btnDownload) {
-            btnDownload.addEventListener('click', () => this.downloadSelectedZip());
-        }
-
-        // Shift key range selection preview
-        this.isShiftDown = false;
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Shift') {
-                this.isShiftDown = true;
-                this.updateRangePreview(true);
-            }
-        });
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'Shift') {
-                this.isShiftDown = false;
-                this.updateRangePreview(false);
-            }
-        });
-        window.addEventListener('blur', () => {
-            this.isShiftDown = false;
-            this.updateRangePreview(false);
-        });
+    get selectedPaths() {
+        return this.selectionManager?.selectedPaths || new Set();
     }
 
-    updateRangePreview(active) {
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-        allRows.forEach((r) => r.classList.remove('range-preview'));
-        if (!active || !this.lastClickedCheckbox || !this.selectedRow) return;
+    initMultiSelection() {
+        if (typeof SelectionManager === 'undefined') return;
+        this.selectionManager = new SelectionManager(this.table, {
+            tbody: this.tbody,
+            getVisibleRows: () => this.getVisibleRows(),
+            rootName: this.rootName,
+            getSnapshot: () => this.snapshot,
+            getFocusedRow: () => this.selectedRow,
+        });
 
-        const visibleRows = this.getVisibleRows();
-        const lastRow = this.lastClickedCheckbox.closest('tr');
-        const lastIdx = visibleRows.indexOf(lastRow);
-        const currentIdx = visibleRows.indexOf(this.selectedRow);
-
-        if (lastIdx >= 0 && currentIdx >= 0 && lastIdx !== currentIdx) {
-            const start = Math.min(lastIdx, currentIdx);
-            const end = Math.max(lastIdx, currentIdx);
-            for (let i = start; i <= end; i++) {
-                visibleRows[i].classList.add('range-preview');
-            }
-        }
+        this.selectionManager.registerAction({
+            id: 'zip',
+            labelKey: 'selection.download_zip',
+            label: 'ZIP herunterladen',
+            icon: 'archive',
+            isDefault: true,
+            optionsLabelKey: 'selection.structure',
+            optionsLabel: 'Ordnerstruktur',
+            options: [
+                {
+                    id: 'relative',
+                    labelKey: 'selection.structure_relative',
+                    label: 'Relativ zum aktuellen Ordner (Standard)',
+                    default: true,
+                },
+                {
+                    id: 'absolute',
+                    labelKey: 'selection.structure_absolute',
+                    label: 'Vollständiger Pfad (ab Root)',
+                },
+                {
+                    id: 'flat',
+                    labelKey: 'selection.structure_flat',
+                    label: 'Flach (alle Dateien im ZIP-Root)',
+                },
+            ],
+            execute: (selectedPaths, ctx) => {
+                this.downloadSelectedZip(selectedPaths, ctx.option);
+            },
+        });
     }
 
     toggleRowSelection(row, options = {}) {
-        if (!row) return;
-        const rowPath = row.dataset.path || row.dataset.filename;
-        const cb = row.querySelector('input.row-checkbox');
-
-        if (options.range && this.lastClickedCheckbox) {
-            const visibleRows = this.getVisibleRows();
-            const lastRow = this.lastClickedCheckbox.closest('tr');
-            const lastIdx = visibleRows.indexOf(lastRow);
-            const currentIdx = visibleRows.indexOf(row);
-
-            if (lastIdx >= 0 && currentIdx >= 0) {
-                const start = Math.min(lastIdx, currentIdx);
-                const end = Math.max(lastIdx, currentIdx);
-                const shouldSelect = !this.selectedPaths.has(rowPath);
-                for (let i = start; i <= end; i++) {
-                    const r = visibleRows[i];
-                    const p = r.dataset.path || r.dataset.filename;
-                    if (shouldSelect) {
-                        this.selectedPaths.add(p);
-                    } else {
-                        this.selectedPaths.delete(p);
-                    }
-                }
-            }
-        } else {
-            if (this.selectedPaths.has(rowPath)) {
-                this.selectedPaths.delete(rowPath);
-            } else {
-                this.selectedPaths.add(rowPath);
-            }
-            if (cb) this.lastClickedCheckbox = cb;
-        }
-
-        this.updateSelectionUI();
+        this.selectionManager?.toggleRow(row, options);
     }
 
     selectAllVisible() {
-        const visibleRows = this.getVisibleRows();
-        visibleRows.forEach((r) => this.selectedPaths.add(r.dataset.path || r.dataset.filename));
-        this.updateSelectionUI();
+        this.selectionManager?.selectAllVisible();
     }
 
     clearMultiSelection() {
-        this.selectedPaths.clear();
-        this.lastClickedCheckbox = null;
-        this.updateSelectionUI();
+        this.selectionManager?.clearSelection();
     }
 
     updateSelectionUI() {
-        if (!this.selectedPaths) return;
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-        allRows.forEach((row) => {
-            const path = row.dataset.path || row.dataset.filename;
-            const isSelected = this.selectedPaths.has(path);
-            row.classList.toggle('selected-multi', isSelected);
-            const cb = row.querySelector('input.row-checkbox');
-            if (cb) cb.checked = isSelected;
-        });
-
-        const totalCount = this.selectedPaths.size;
-        const visibleRows = this.getVisibleRows();
-        const visibleSelectedCount = visibleRows.filter((r) =>
-            this.selectedPaths.has(r.dataset.path || r.dataset.filename),
-        ).length;
-        const hiddenSelectedCount = totalCount - visibleSelectedCount;
-
-        const masterCheckbox = document.getElementById('master-select-checkbox');
-        if (masterCheckbox) {
-            if (visibleRows.length > 0 && visibleSelectedCount === visibleRows.length) {
-                masterCheckbox.checked = true;
-                masterCheckbox.indeterminate = false;
-            } else if (visibleSelectedCount > 0) {
-                masterCheckbox.checked = false;
-                masterCheckbox.indeterminate = true;
-            } else {
-                masterCheckbox.checked = false;
-                masterCheckbox.indeterminate = false;
-            }
-        }
-
-        const actionBar = document.getElementById('floating-action-bar');
-        const counter = document.getElementById('selection-counter');
-        const breakdown = document.getElementById('selection-breakdown');
-        const warning = document.getElementById('selection-warning');
-        const i18n = window.clientI18n || {};
-
-        if (totalCount > 0 && actionBar) {
-            actionBar.style.display = 'block';
-            if (counter) {
-                const pattern = i18n['selection.selected_count'] || '{count} ausgewählt';
-                counter.textContent = pattern.replace('{count}', String(totalCount));
-            }
-            if (breakdown) {
-                if (hiddenSelectedCount > 0) {
-                    breakdown.style.display = 'inline';
-                    const pattern = i18n['selection.filter_breakdown'] || '({visible} sichtbar, {hidden} ausgeblendet)';
-                    breakdown.textContent = pattern
-                        .replace('{visible}', String(visibleSelectedCount))
-                        .replace('{hidden}', String(hiddenSelectedCount));
-                } else {
-                    breakdown.style.display = 'none';
-                }
-            }
-            if (warning) {
-                // Check if any selected rows in DOM are missing in the current snapshot
-                const missingCount = allRows.filter(
-                    (r) =>
-                        this.selectedPaths.has(r.dataset.path || r.dataset.filename) && r.dataset.isMissing === 'true',
-                ).length;
-                if (missingCount > 0) {
-                    warning.style.display = 'inline-flex';
-                    const pattern =
-                        i18n['selection.missing_warning'] ||
-                        '{count} Dateien in diesem Snapshot nicht vorhanden (werden übersprungen)';
-                    warning.textContent = '⚠️ ' + pattern.replace('{count}', String(missingCount));
-                } else {
-                    warning.style.display = 'none';
-                }
-            }
-        } else if (actionBar) {
-            actionBar.style.display = 'none';
-        }
+        this.selectionManager?.updateUI();
     }
 
-    downloadSelectedZip() {
-        if (this.selectedPaths.size === 0) return;
-        const paths = Array.from(this.selectedPaths);
+    downloadSelectedZip(pathsSet = null, structure = 'relative') {
+        const paths = pathsSet ? Array.from(pathsSet) : Array.from(this.selectedPaths);
+        if (paths.length === 0) return;
         const snapshot = this.snapshot || '';
         const basePath = this.table.dataset.subpath || '';
-        const structureSelect = document.getElementById('zip-structure-select');
-        const structure = structureSelect ? structureSelect.value : 'relative';
+        const structureVal = structure || 'relative';
 
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = buildRouteUrl('', 'download-zip', this.rootName);
+        form.action = `/download-zip/${encodeURIComponent(this.rootName)}`;
         form.style.display = 'none';
 
         const addField = (name, val) => {
@@ -321,7 +142,7 @@ class TreeTable {
 
         addField('snapshot', snapshot);
         addField('base_path', basePath);
-        addField('structure', structure);
+        addField('structure', structureVal);
         addField('payload', JSON.stringify(paths));
 
         document.body.appendChild(form);
@@ -1047,6 +868,7 @@ class TreeTable {
             }
             this.updateZebra();
             this.updateToggleCounts();
+            this.selectionManager?.updateUI();
         } else {
             const existingChildren = this.getDirectChildren(path);
             if (existingChildren.length > 0) {
@@ -1057,6 +879,7 @@ class TreeTable {
                 btn.classList.add('opened');
                 this.updateZebra();
                 this.updateToggleCounts();
+                this.selectionManager?.updateUI();
             } else {
                 btn.classList.add('loading');
                 try {
@@ -1089,6 +912,7 @@ class TreeTable {
                         });
 
                         this.loadSnapshotBars(this.tbody, path);
+                        this.selectionManager?.onRowsAdded(newRows);
                     }
                     row.dataset.expanded = 'true';
                     btn.classList.add('opened');
@@ -1099,6 +923,7 @@ class TreeTable {
                     }
                     this.updateZebra();
                     this.updateToggleCounts();
+                    this.selectionManager?.updateUI();
                 } catch (err) {
                     console.error('Failed to load folder contents:', err);
                     const errorRow = document.createElement('tr');
@@ -1337,10 +1162,10 @@ class TreeTable {
                         }
                     }
 
-                    if (this.isShiftDown) {
-                        this.updateRangePreview(true);
+                    if (this.selectionManager?.isShiftDown) {
+                        this.selectionManager.updateRangePreview(true, row);
                     } else {
-                        this.updateRangePreview(false);
+                        this.selectionManager?.updateRangePreview(false);
                     }
                 } else if (options.updateHash !== false) {
                     if (window.location.hash) {
@@ -1382,7 +1207,10 @@ class TreeTable {
         // 3. FilterManager Interceptor ('/' to focus search)
         this.keyboard.addInterceptor((e) => this.filterManager?.handleKeyDown(e));
 
-        // 4. TableSorter Column Sorting Interceptor (Alt+1..Alt+N)
+        // 4. SelectionManager Interceptor (Space, Shift+Space, Ctrl+A, Escape)
+        this.keyboard.addInterceptor((e) => this.selectionManager?.handleKeyDown(e, this.selectedRow));
+
+        // 5. TableSorter Column Sorting Interceptor (Alt+1..Alt+N)
         this.keyboard.addInterceptor((e) => this.sorter?.handleKeyDown(e));
 
         // Global shortcuts: Path edit (Ctrl+L)
@@ -1390,28 +1218,9 @@ class TreeTable {
             if (typeof enableBreadcrumbPathEdit === 'function') enableBreadcrumbPathEdit();
         });
 
-        // Escape: Clear multi-selection -> Deselect focused row
+        // Escape: Deselect focused row
         this.keyboard.register('Escape', () => {
-            if (this.selectedPaths && this.selectedPaths.size > 0) {
-                this.clearMultiSelection();
-                return;
-            }
             this.selectRow(null);
-        });
-
-        // Space: Toggle single selection
-        this.keyboard.register('Space', (row) => {
-            if (row) this.toggleRowSelection(row);
-        });
-
-        // Shift+Space: Keyboard Range Selection
-        this.keyboard.register('Shift+Space', (row) => {
-            if (row) this.toggleRowSelection(row, { range: true });
-        });
-
-        // Ctrl+A: Select all visible
-        this.keyboard.register('Ctrl+A', () => {
-            this.selectAllVisible();
         });
 
         // Details: Ctrl+I or Alt+Enter

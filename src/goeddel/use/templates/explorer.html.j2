@@ -116,16 +116,16 @@
                 <span class="action-bar-warning" id="selection-warning" style="display: none;"></span>
             </div>
             <div class="action-bar-controls">
-                <div class="action-bar-structure">
-                    <label for="zip-structure-select" style="font-size: 8.5pt; color: var(--text-muted); margin-right: 4px;">{{ t('selection.structure') }}:</label>
-                    <select id="zip-structure-select" class="action-bar-select">
-                        <option value="relative" selected>{{ t('selection.structure_relative') }}</option>
-                        <option value="absolute">{{ t('selection.structure_absolute') }}</option>
-                        <option value="flat">{{ t('selection.structure_flat') }}</option>
-                    </select>
+                <div class="action-bar-action-wrapper" id="action-select-wrapper" style="display: none;">
+                    <label for="selection-action-select" class="action-bar-label">{{ t('selection.action') }}:</label>
+                    <select id="selection-action-select" class="action-bar-select"></select>
                 </div>
-                <button type="button" id="btn-download-zip" class="action-bar-btn primary">
-                    {{ lucide('archive', size=15) }} <span>{{ t('selection.download_zip') }}</span>
+                <div class="action-bar-options-wrapper" id="action-options-wrapper" style="display: none;">
+                    <label for="selection-option-select" id="action-option-label" class="action-bar-label"></label>
+                    <select id="selection-option-select" class="action-bar-select"></select>
+                </div>
+                <button type="button" id="btn-execute-action" class="action-bar-btn primary">
+                    <span id="btn-execute-label">{{ t('selection.download_zip') }}</span>
                 </button>
                 <button type="button" id="btn-clear-selection" class="action-bar-btn secondary" title="{{ t('selection.clear') }} (Esc)">
                     {{ lucide('x', size=15) }} <span>{{ t('selection.clear') }}</span> <kbd class="action-kbd-hint">Esc</kbd>

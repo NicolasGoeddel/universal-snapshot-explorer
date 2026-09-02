@@ -112,10 +112,24 @@
 - [x] **TypeaheadHUD Extraction (`typeahead.js`):**
   - Self-contained prefix-jump HUD overlay with match counter, cycling, and event dispatching.
   - Plugs seamlessly into `KeyboardNavigator` interceptor chain.
-- [ ] **SelectionManager Extraction (`selection_manager.js`):**
+- [x] **SelectionManager Extraction (`selection_manager.js`):**
+  - Checkbox multi-selection, hierarchical Tri-State tree checkboxes, range select, action bar HUD, and on-the-fly ZIP generation form.
 - [ ] **SnapshotBars & Lazy Rendering Extraction (`snapshot_bars.js`):**
   - SVG snapshot pill generation, IntersectionObserver batch lazy-loading, and timeline hover tooltips.
 - [x] **FilterManager Extraction (`filter_manager.js`):**
   - Filter input search, toggle switches (hidden, missing, changed-only), count badges, and row visibility evaluation.
 - [ ] **Slim TreeTable Coordinator (`explorer.js`):**
   - Streamline `explorer.js` to ~150–200 lines acting as an orchestrator for the modular components and managing AJAX directory expansion.
+
+---
+
+## 7. Performance & Tree Optimization (Upcoming Branch)
+- [ ] **Pre-Indexed DOM Tree Hierarchy ($O(1)$ Lookups):**
+  - Index parent-child relationships directly on table rows (`row._children = [...]` and `row._parent = parentRow`) or maintain a `Map<path, TreeNode>` to eliminate repeated $O(N)$ `querySelectorAll` and `startsWith(prefix)` scans across large tables.
+- [ ] **Input Debouncing for Column Quick-Search (120–150ms):**
+  - Debounce keystrokes in column filter inputs to avoid blocking synchronous DOM evaluation on every character in directories with thousands of files (e.g. `/usr/bin` with 3700+ entries).
+- [ ] **In-Input Match Counter & Reset ("X") Button:**
+  - Display live match count badge (e.g. `14 / 3734`) inside or next to each column search input, with a click-to-clear ("X") button.
+- [ ] **Generator-Based Row Iteration:**
+  - Use generators or direct DOM walker for `getVisibleRows()` to avoid intermediate array allocations during hot loops.
+

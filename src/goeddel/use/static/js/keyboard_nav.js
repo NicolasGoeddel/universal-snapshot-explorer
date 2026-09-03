@@ -360,6 +360,35 @@ class KeyboardNavigator {
     }
 
     /**
+     * Ensure the focused row remains valid and visible.
+     * If the focused row became hidden (e.g. through filtering or parent folder collapse),
+     * moves focus to its closest visible ancestor, or next visible row, or clears focus.
+     */
+    sanitizeFocus() {
+        if (!this.focusedRow) return;
+
+        if (!this.isRowVisible(this.focusedRow)) {
+            // Try to find the closest visible ancestor in the DOM tree
+            let candidate = this.focusedRow._parent;
+            while (candidate && !this.isRowVisible(candidate)) {
+                candidate = candidate._parent;
+            }
+            if (candidate && this.isRowVisible(candidate)) {
+                this.focusRow(candidate);
+                return;
+            }
+
+            // Fallback: pick the first visible row in the table
+            const visible = this.getRows();
+            if (visible.length > 0) {
+                this.focusRow(visible[0]);
+            } else {
+                this.focusRow(null);
+            }
+        }
+    }
+
+    /**
      * Get currently focused row element.
      *
      * @returns {HTMLTableRowElement|null}

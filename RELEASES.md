@@ -6,6 +6,66 @@ This project adheres to [Semantic Versioning (SemVer)](https://semver.org/).
 
 ---
 
+## [2.1.0] - 2026-09-03
+
+> **Minor Release: Hierarchical Roots & Subvolume Overview, Modular Architecture, Performance Engineering & UI Polish**
+
+### 🚀 Highlights & New Features
+
+* **Hierarchical Roots Overview:**
+  * Added collapsible tree view in the Roots dashboard, grouping datasets by ZFS pool and subvolumes by Btrfs root alongside custom manual roots.
+  * Displays aggregate snapshot counts, mount status badges, official vector SVG logos, and integrates with the Typeahead search filter.
+* **Accurate Btrfs Subvolume Discovery:**
+  * Parses `/proc/mounts` options (`subvol`, `subvolid`) to determine exact active mountpoints.
+  * Accurately detects foreign mounts on standard paths (e.g. ext4 on `/home`) via `get_subvolume_info()` and filters internal container mounts.
+* **Interactive Table Column Resizing:**
+  * Added drag handles with two-stage accordion physics, double-click auto-fit reset, vector bar scaling, and `localStorage` persistence.
+* **On-Demand Cache Invalidation:**
+  * Added server-side cache flush button (`#refresh-btn`), global `Shift+R` keyboard shortcut, and snapshot directory `mtime` change detection.
+* **Categorical Color-Coding in DetailView:**
+  * Subtle background tints dynamically identify matching attribute values across snapshots for altered columns.
+
+### ⚡ Performance & Frontend Architecture
+
+* **Modular Frontend Architecture:**
+  * Extracted monolithic frontend scripts into standalone, decoupled components: `TreeTable`, `FilterManager`, `SelectionManager`, `TableSorter`, and `KeyboardNavigator`.
+* **Pre-Indexed DOM Tree Hierarchy:**
+  * Introduced `TreeTable` maintaining $O(1)$ lookups and direct parent/child pointers, dropping filter operation counts from ~7.4M down to ~4k in large directories.
+* **Snapshot Bar Fast-Path & Fluid Loading UX:**
+  * Accelerated backend folder scanning (~12x faster) by bypassing mount checks for regular files.
+  * Added glassmorphic loading overlay with animated 6-color ring, blurred backdrop, and chunked rAF ingestion.
+* **Tri-State Checkboxes & Multi-Selection:**
+  * Implemented hierarchical folder checkboxes (checked, indeterminate, unchecked), `Shift+Space` range selection with live preview, smart reveal, and a dynamic batch action dropdown.
+
+### 🛠️ Refactoring & Type Safety
+
+* **Domain `StrEnum` Architecture:**
+  * Created `src/goeddel/use/enums.py` with standard library `StrEnum`s (`FilesystemType`, `ProviderType`, `RootGroupType`, `StructureMode`, etc.) replacing magic strings across models, configs, and providers with strict static type validation.
+* **Backend Separation of Concerns:**
+  * Encapsulated mount status and snapshot counting directly in `RootFolder`; streamlined the `read_root` router.
+* **Code Quality & Tooling:**
+  * Integrated Biome (`biome.json`) for JavaScript and CSS formatting and linting alongside strict `basedpyright` and `ruff`.
+
+### 🐛 Bug Fixes
+
+* **ExplorerView Icon Alignment:**
+  * Removed inline HTML whitespace gap between folder spacers and Lucide icons for pixel-perfect vertical alignment.
+* **Sub-Dataset Snapshot Routing & Inode Neutrality:**
+  * Fixed detail view routing for sub-datasets and ignored cross-mount `st_ino` variations during snapshot comparison.
+* **Typeahead Segment Matching:**
+  * Fixed prefix-match dropping when navigating hierarchical sub-dataset paths.
+
+### 📚 Documentation
+
+* **Performance Engineering Guide:**
+  * Added comprehensive architecture documentation in [`docs/performance-engineering.md`](docs/performance-engineering.md).
+* **Component Guides:**
+  * Added dedicated guides for filtering ([`docs/table-filtering-guide.md`](docs/table-filtering-guide.md)), selection ([`docs/table-selection-guide.md`](docs/table-selection-guide.md)), and keyboard navigation ([`docs/keyboard-navigation-guide.md`](docs/keyboard-navigation-guide.md)).
+* **Security Documentation:**
+  * Documented kernel VFS read-only safety guarantees when running with `--cap-add=SYS_ADMIN`.
+
+---
+
 ## [2.0.1] - 2026-08-29
 
 > **Bugfix Release: OpenZFS CLI Snapshot Discovery, Root Dataset Resolution & Configuration Guide**

@@ -1104,9 +1104,13 @@ class ExplorerView {
             treeTable: this.treeTable,
             tbody: this.tbody,
             onFilterChange: () => {
-                const visibleRows = this.getVisibleRows();
-                if (this.selectedRow && !visibleRows.includes(this.selectedRow)) {
-                    this.selectRow(visibleRows.length > 0 ? visibleRows[0] : null, { updateHash: false });
+                if (this.keyboard) {
+                    this.keyboard.sanitizeFocus();
+                } else if (this.selectedRow) {
+                    const visibleRows = this.getVisibleRows();
+                    if (!visibleRows.includes(this.selectedRow)) {
+                        this.selectRow(null, { updateHash: false });
+                    }
                 }
                 this.updateZebra();
                 this.updateSelectionUI();

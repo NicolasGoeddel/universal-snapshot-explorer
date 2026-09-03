@@ -362,29 +362,29 @@ class KeyboardNavigator {
     /**
      * Ensure the focused row remains valid and visible.
      * If the focused row became hidden (e.g. through filtering or parent folder collapse),
-     * moves focus to its closest visible ancestor, or next visible row, or clears focus.
+     * moves focus to the closest visible row above it (previous visible sibling or parent),
+     * or the next visible row below it, or clears focus if no rows are visible.
      */
     sanitizeFocus() {
         if (!this.focusedRow) return;
 
         if (!this.isRowVisible(this.focusedRow)) {
-            // Try to find the closest visible ancestor in the DOM tree
-            let candidate = this.focusedRow._parent;
+            // 1. Walk upwards in DOM order to find the nearest preceding visible row (sibling or parent)
+            let candidate = this.focusedRow.previousElementSibling;
             while (candidate && !this.isRowVisible(candidate)) {
-                candidate = candidate._parent;
-            }
-            if (candidate && this.isRowVisible(candidate)) {
-                this.focusRow(candidate);
-                return;
+                candidate = candidate.previousElementSibling;
             }
 
-            // Fallback: pick the first visible row in the table
-            const visible = this.getRows();
-            if (visible.length > 0) {
-                this.focusRow(visible[0]);
-            } else {
-                this.focusRow(null);
+            // 2. If no preceding visible row, search downwards for the nearest following visible row
+            if (!candidate) {
+                candidate = this.focusedRow.nextElementSibling;
+                while (candidate && !this.isRowVisible(candidate)) {
+                    candidate = candidate.nextElementSibling;
+                }
             }
+
+            // 3. Focus the candidate row or clear focus if nothing is visible
+            this.focusRow(candidate || null, { updateHash: false });
         }
     }
 

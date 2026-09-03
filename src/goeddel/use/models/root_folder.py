@@ -523,6 +523,10 @@ class RootFolder:
             "var(--snap-6)": "p",
             "var(--snap-missing)": "x",
         }
+        from ..mounts import MountsManager
+        from ..providers import ProviderRegistry
+
+        mounts_mgr = MountsManager.get_instance()
 
         for filename in all_filenames:
             child_rel_path = os.path.join(path, filename)
@@ -545,40 +549,48 @@ class RootFolder:
                 except Exception as e:
                     logger.error("Failed to load snapshot bar for sub-dataset %s: %s", child_root_name, e)
 
-            # Check for implicit boundaries or mounts
-            from ..mounts import MountsManager
-            from ..providers import ProviderRegistry
+            # Check if this is a known mount in /proc/mounts (in-memory lookup)
+            mount_info = mounts_mgr.get_mount_info(child_abs_path)
 
-            mount_info = MountsManager.get_instance().get_mount_info(child_abs_path)
-            is_mount = mount_info is not None or os.path.ismount(child_abs_path)
-            provider = ProviderRegistry.detect_filesystem(child_abs_path, mount_info)
+            # Fast path: If it's a known regular file and not in /proc/mounts, it cannot be a mount or dataset boundary
+            is_regular_file = False
+            for snap_entries in snapshot_dir_entries:
+                if snap_entries and filename in snap_entries:
+                    mode = snap_entries[filename][2]
+                    if stat.S_ISREG(mode):
+                        is_regular_file = True
+                        break
 
-            if provider.name != "generic":
-                # Implicit snapshot-capable dataset (e.g. Btrfs subvolume or ZFS dataset)
-                try:
-                    is_net = mount_info.is_network_fs if mount_info else False
-                    base_name = self.logical_base_name or self.get_root_name_by_path(self._root_path) or ""
-                    rel_logical = os.path.join(self.logical_sub_path or "", child_rel_path).strip("/")
-                    shadow_rf = self.get_shadow_instance(base_name, rel_logical, child_abs_path, provider.name, is_network=is_net)
-                    child_root_node = shadow_rf.get_file(path="")
-                    child_bar = child_root_node.snapshots_bar
-                    bar_str = "".join(color_map.get(item["color"], "x") for item in child_bar)
+            if not is_regular_file or mount_info is not None:
+                is_mount = mount_info is not None or os.path.ismount(child_abs_path)
+                provider = ProviderRegistry.detect_filesystem(child_abs_path, mount_info)
+
+                if provider.name != "generic":
+                    # Implicit snapshot-capable dataset (e.g. Btrfs subvolume or ZFS dataset)
+                    try:
+                        is_net = mount_info.is_network_fs if mount_info else False
+                        base_name = self.logical_base_name or self.get_root_name_by_path(self._root_path) or ""
+                        rel_logical = os.path.join(self.logical_sub_path or "", child_rel_path).strip("/")
+                        shadow_rf = self.get_shadow_instance(base_name, rel_logical, child_abs_path, provider.name, is_network=is_net)
+                        child_root_node = shadow_rf.get_file(path="")
+                        child_bar = child_root_node.snapshots_bar
+                        bar_str = "".join(color_map.get(item["color"], "x") for item in child_bar)
+                        bars[filename] = {
+                            "is_sub_dataset": True,
+                            "barStr": bar_str,
+                            "snapshots": [{"id": s.id, "name": s.name} for s in shadow_rf.snapshots()],
+                        }
+                        continue
+                    except Exception as e:
+                        logger.error("Failed to load snapshot bar for shadow dataset %s: %s", child_abs_path, e)
+                elif is_mount:
+                    # Generic mount without snapshot provider (e.g. tmpfs, devtmpfs, proc, sysfs, vfat)
                     bars[filename] = {
                         "is_sub_dataset": True,
-                        "barStr": bar_str,
-                        "snapshots": [{"id": s.id, "name": s.name} for s in shadow_rf.snapshots()],
+                        "barStr": "",
+                        "snapshots": [],
                     }
                     continue
-                except Exception as e:
-                    logger.error("Failed to load snapshot bar for shadow dataset %s: %s", child_abs_path, e)
-            elif is_mount:
-                # Generic mount without snapshot provider (e.g. tmpfs, devtmpfs, proc, sysfs, vfat)
-                bars[filename] = {
-                    "is_sub_dataset": True,
-                    "barStr": "",
-                    "snapshots": [],
-                }
-                continue
 
             chars: list[str] = []
             color_index = 0

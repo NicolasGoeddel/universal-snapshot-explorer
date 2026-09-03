@@ -92,6 +92,8 @@
                 return;
             }
 
+            this.options = options;
+            this.observeMutations = options.observeMutations === true;
             this.storageKey = options.storageKey || `use_col_widths_${this.table.id || 'table'}`;
             this.isResizing = false;
             this.activeResizerIndex = -1;
@@ -173,21 +175,18 @@
                 this.elasticColIndex = flexIndices.length > 0 ? flexIndices[0] : -1;
             }
 
-            this.recalculateOptimalWidths();
-            this.updateConstraintThresholds();
-
-            // Setup MutationObserver to watch for newly expanded rows or visibility changes
-            const tbody = this.table.querySelector('tbody');
-            if (tbody) {
-                this.observer = new MutationObserver(() => {
-                    this.recalculateOptimalWidthsDebounced();
-                });
-                this.observer.observe(tbody, {
-                    childList: true,
-                    subtree: true,
-                    attributes: true,
-                    attributeFilter: ['style', 'class'],
-                });
+            // Setup MutationObserver only if explicitly enabled (disabled by default to prevent layout thrashing)
+            if (this.observeMutations) {
+                const tbody = this.table.querySelector('tbody');
+                if (tbody) {
+                    this.observer = new MutationObserver(() => {
+                        this.recalculateOptimalWidthsDebounced();
+                    });
+                    this.observer.observe(tbody, {
+                        childList: true,
+                        subtree: false,
+                    });
+                }
             }
 
             // Apply saved percentage widths if present, otherwise set default initial percentages
@@ -327,9 +326,18 @@
          */
         recalculateOptimalWidths() {
             const ctx = this.createMeasurementContext();
-            const visibleRows = Array.from(this.table.querySelectorAll('tbody tr')).filter((tr) => {
-                return tr.style.display !== 'none' && !tr.classList.contains('row-hidden');
-            });
+            const allRows = this.table.querySelectorAll('tbody tr');
+            const visibleRows = [];
+            for (let i = 0; i < allRows.length && visibleRows.length < 50; i++) {
+                const tr = allRows[i];
+                if (
+                    tr.style.display !== 'none' &&
+                    !tr.classList.contains('row-hidden') &&
+                    !tr.classList.contains('filter-hidden')
+                ) {
+                    visibleRows.push(tr);
+                }
+            }
 
             this.optimalWidths = this.ths.map((th, colIdx) => {
                 if (this.isFixedColumn[colIdx]) {
@@ -364,7 +372,7 @@
                 }
 
                 cellCandidates.sort((a, b) => b.len - a.len);
-                const candidatesToMeasure = Math.min(cellCandidates.length, 40);
+                const candidatesToMeasure = Math.min(cellCandidates.length, 5);
 
                 for (let i = 0; i < candidatesToMeasure; i++) {
                     const cellW = ctx.measureTd(cellCandidates[i].td);
@@ -598,6 +606,9 @@
             const tableRect = this.table.getBoundingClientRect();
             this.totalTableWidth = tableRect.width;
 
+            if (this.optimalWidths.length === 0) {
+                this.recalculateOptimalWidths();
+            }
             this.updateConstraintThresholds();
             this.startWidths = this.ths.map((th) => th.getBoundingClientRect().width);
 
@@ -630,13 +641,31 @@
         onMouseMove(e) {
             if (!this.isResizing) return;
             e.preventDefault();
-            this.updateWidths(e.clientX);
+            this.pendingClientX = e.clientX;
+            if (!this.rafPending) {
+                this.rafPending = true;
+                requestAnimationFrame(() => {
+                    this.rafPending = false;
+                    if (this.isResizing && this.pendingClientX !== null) {
+                        this.updateWidths(this.pendingClientX);
+                    }
+                });
+            }
         }
 
         onTouchMove(e) {
             if (!this.isResizing || e.touches.length !== 1) return;
             e.preventDefault();
-            this.updateWidths(e.touches[0].clientX);
+            this.pendingClientX = e.touches[0].clientX;
+            if (!this.rafPending) {
+                this.rafPending = true;
+                requestAnimationFrame(() => {
+                    this.rafPending = false;
+                    if (this.isResizing && this.pendingClientX !== null) {
+                        this.updateWidths(this.pendingClientX);
+                    }
+                });
+            }
         }
 
         /**
@@ -775,7 +804,12 @@
         }
 
         stopDragging() {
+            if (this.rafPending && this.pendingClientX !== null) {
+                this.updateWidths(this.pendingClientX);
+            }
             this.isResizing = false;
+            this.pendingClientX = null;
+            this.rafPending = false;
             this.justResized = true;
             setTimeout(() => {
                 this.justResized = false;

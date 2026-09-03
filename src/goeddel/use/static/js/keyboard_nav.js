@@ -43,6 +43,16 @@ class KeyboardNavigator {
                 });
             });
         this.onFocusChange = options.onFocusChange || null;
+        this.isRowVisible =
+            options.isRowVisible ||
+            ((row) => {
+                return (
+                    row &&
+                    row.tagName?.toLowerCase() === 'tr' &&
+                    !row.classList.contains('filter-hidden') &&
+                    row.style.display !== 'none'
+                );
+            });
         this.focusedRowClass = options.focusedRowClass || 'selected-row';
         this.focusedRow = null;
 
@@ -59,21 +69,28 @@ class KeyboardNavigator {
         // Click delegation on tbody rows
         this.tbody.addEventListener('click', (e) => {
             const row = e.target.closest('tr');
-            if (
-                row &&
-                this.tbody.contains(row) &&
-                !e.target.closest('a') &&
-                !e.target.closest('.custom-checkbox') &&
-                !e.target.closest('.folder-toggle')
-            ) {
+            if (row && this.tbody.contains(row) && !e.target.closest('a')) {
                 this.focusRow(row);
+                // If a checkbox was clicked, blur it so keyboard navigation takes precedence
+                if (e.target.closest('.custom-checkbox') || e.target.closest('input[type="checkbox"]')) {
+                    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                        document.activeElement.blur();
+                    }
+                }
             }
         });
 
         // Global keydown event dispatcher
         window.addEventListener('keydown', (e) => {
-            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-            const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+            const activeElem = document.activeElement;
+            const activeTag = activeElem ? activeElem.tagName.toLowerCase() : '';
+            const isTextInput =
+                (activeTag === 'input' &&
+                    activeElem.type !== 'checkbox' &&
+                    activeElem.type !== 'radio' &&
+                    activeElem.type !== 'button') ||
+                activeTag === 'textarea' ||
+                activeTag === 'select';
 
             // Run interceptors first (e.g. TypeaheadHUD, modals)
             for (const interceptor of this.interceptors) {
@@ -82,9 +99,14 @@ class KeyboardNavigator {
                 }
             }
 
-            // If input is active, allow native input behaviour
-            if (isInputActive) {
+            // If text input is active, allow native input behaviour
+            if (isTextInput) {
                 return;
+            }
+
+            // If a checkbox or button is active, blur it so table navigation takes priority
+            if (activeElem && (activeElem.type === 'checkbox' || activeElem.tagName.toLowerCase() === 'button')) {
+                activeElem.blur();
             }
 
             // Check custom registered handlers first
@@ -213,15 +235,26 @@ class KeyboardNavigator {
      */
     focusRow(row, options = {}) {
         const { scrollIntoView = true } = options;
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-        allRows.forEach((r) => r.classList.remove(this.focusedRowClass));
+
+        if (this.focusedRow) {
+            this.focusedRow.classList.remove(this.focusedRowClass);
+        } else {
+            const prev = this.tbody.querySelector(`.${this.focusedRowClass}`);
+            if (prev) prev.classList.remove(this.focusedRowClass);
+        }
 
         this.focusedRow = row;
         if (row) {
             row.classList.add(this.focusedRowClass);
             if (scrollIntoView) {
-                row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                row.scrollIntoView({ behavior: 'auto', block: 'nearest' });
             }
+        }
+
+        // Defocus any checkboxes or buttons so that keyboard navigation remains active on table
+        const active = document.activeElement;
+        if (active && (active.type === 'checkbox' || active.tagName.toLowerCase() === 'button')) {
+            active.blur();
         }
 
         if (typeof this.onFocusChange === 'function') {
@@ -235,30 +268,62 @@ class KeyboardNavigator {
      * @param {number} delta - +1 for next row, -1 for previous row.
      */
     stepFocus(delta) {
+        if (!this.focusedRow) {
+            const visibleRows = this.getRows();
+            if (visibleRows.length > 0) {
+                this.focusRow(delta > 0 ? visibleRows[0] : visibleRows[visibleRows.length - 1]);
+            }
+            return;
+        }
+
+        // Fast-path: Walk DOM sibling pointers in O(1) without re-evaluating or copying the entire table
+        if (delta === 1) {
+            let next = this.focusedRow.nextElementSibling;
+            while (next && !this.isRowVisible(next)) {
+                next = next.nextElementSibling;
+            }
+            if (next) {
+                this.focusRow(next);
+                return;
+            }
+            // End of table reached: wrap to the first visible row
+            let first = this.tbody.firstElementChild;
+            while (first && !this.isRowVisible(first)) {
+                first = first.nextElementSibling;
+            }
+            if (first) {
+                this.focusRow(first);
+            }
+            return;
+        }
+
+        if (delta === -1) {
+            let prev = this.focusedRow.previousElementSibling;
+            while (prev && !this.isRowVisible(prev)) {
+                prev = prev.previousElementSibling;
+            }
+            if (prev) {
+                this.focusRow(prev);
+                return;
+            }
+            // Top of table reached: wrap to the last visible row
+            let last = this.tbody.lastElementChild;
+            while (last && !this.isRowVisible(last)) {
+                last = last.previousElementSibling;
+            }
+            if (last) {
+                this.focusRow(last);
+            }
+            return;
+        }
+
+        // Generic fallback for larger deltas
         const visibleRows = this.getRows();
         if (visibleRows.length === 0) return;
-
-        const currentIndex = this.focusedRow ? visibleRows.indexOf(this.focusedRow) : -1;
+        const currentIndex = visibleRows.indexOf(this.focusedRow);
         if (currentIndex >= 0) {
             const nextIndex = (currentIndex + delta + visibleRows.length) % visibleRows.length;
             this.focusRow(visibleRows[nextIndex]);
-        } else if (this.focusedRow) {
-            // Focused row might be hidden (e.g. inside a collapsed folder)
-            const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-            const selectedDomIdx = allRows.indexOf(this.focusedRow);
-            if (delta > 0) {
-                const nextRow = visibleRows.find((r) => allRows.indexOf(r) > selectedDomIdx) || visibleRows[0];
-                this.focusRow(nextRow);
-            } else {
-                const precedingRows = visibleRows.filter((r) => allRows.indexOf(r) < selectedDomIdx);
-                const prevRow =
-                    precedingRows.length > 0
-                        ? precedingRows[precedingRows.length - 1]
-                        : visibleRows[visibleRows.length - 1];
-                this.focusRow(prevRow);
-            }
-        } else {
-            this.focusRow(delta > 0 ? visibleRows[0] : visibleRows[visibleRows.length - 1]);
         }
     }
 
@@ -268,22 +333,30 @@ class KeyboardNavigator {
      * @param {number} direction - +1 for page down, -1 for page up.
      */
     stepPage(direction) {
-        const visibleRows = this.getRows();
-        if (visibleRows.length === 0) return;
+        if (!this.focusedRow) {
+            this.stepFocus(direction > 0 ? 1 : -1);
+            return;
+        }
 
         // Dynamically determine single row height and visible viewport space
-        const rowHeight = visibleRows[0]?.offsetHeight || 28;
+        const rowHeight = this.focusedRow.offsetHeight || 28;
         const tbodyRect = this.tbody.getBoundingClientRect();
         const availableHeight = Math.max(100, window.innerHeight - (tbodyRect.top > 0 ? tbodyRect.top : 100));
         const pageSize = Math.max(1, Math.floor(availableHeight / rowHeight));
 
-        let baseIdx = this.focusedRow ? visibleRows.indexOf(this.focusedRow) : -1;
-        if (baseIdx < 0) {
-            baseIdx = direction > 0 ? 0 : visibleRows.length - 1;
+        let target = this.focusedRow;
+        for (let i = 0; i < pageSize; i++) {
+            let sibling = direction > 0 ? target.nextElementSibling : target.previousElementSibling;
+            while (sibling && !this.isRowVisible(sibling)) {
+                sibling = direction > 0 ? sibling.nextElementSibling : sibling.previousElementSibling;
+            }
+            if (!sibling) break;
+            target = sibling;
         }
 
-        const targetIdx = Math.max(0, Math.min(visibleRows.length - 1, baseIdx + direction * pageSize));
-        this.focusRow(visibleRows[targetIdx]);
+        if (target && target !== this.focusedRow) {
+            this.focusRow(target);
+        }
     }
 
     /**

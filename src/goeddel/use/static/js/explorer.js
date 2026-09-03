@@ -23,7 +23,7 @@ function buildRouteUrl(baseUrl, module, rootName, subpath = '', queryParams = {}
     return url;
 }
 
-class TreeTable {
+class ExplorerView {
     constructor(table) {
         this.table = table;
         this.tbody = table.querySelector('tbody');
@@ -35,6 +35,9 @@ class TreeTable {
         if (typeof TableColumnResizer !== 'undefined') {
             this.columnResizer = new TableColumnResizer(this.table);
         }
+        this.treeTable = new TreeTable(this.table, {
+            subpath: this.table.dataset.subpath || '',
+        });
         this.bindTreeEvents(this.tbody);
         this.initSorting();
         this.initFiltering();
@@ -65,6 +68,7 @@ class TreeTable {
     initMultiSelection() {
         if (typeof SelectionManager === 'undefined') return;
         this.selectionManager = new SelectionManager(this.table, {
+            treeTable: this.treeTable,
             tbody: this.tbody,
             getVisibleRows: () => this.getVisibleRows(),
             rootName: this.rootName,
@@ -344,9 +348,7 @@ class TreeTable {
             if (!data.entries) return;
 
             // Update DOM rows for current directory level
-            const topLevelRows = Array.from(this.tbody.querySelectorAll('tr')).filter(
-                (r) => (r.dataset.parent || '') === baseSubpath,
-            );
+            const topLevelRows = this.treeTable.getChildrenOfPath(baseSubpath);
 
             topLevelRows.forEach((row) => {
                 const filename = row.dataset.filename || row.querySelector('.browser-cell-snapshots')?.dataset.filename;
@@ -468,7 +470,7 @@ class TreeTable {
             });
 
             // Update subfolders if any are expanded
-            const expandedRows = Array.from(this.tbody.querySelectorAll('tr[data-expanded="true"]'));
+            const expandedRows = this.treeTable.getAllRows().filter((r) => r.dataset.expanded === 'true');
             if (expandedRows.length > 0) {
                 await Promise.all(
                     expandedRows.map(async (expRow) => {
@@ -483,9 +485,7 @@ class TreeTable {
                             const subData = await subRes.json();
                             if (!subData.entries) return;
 
-                            const children = Array.from(
-                                this.tbody.querySelectorAll(`tr[data-parent="${CSS.escape(expPath)}"]`),
-                            );
+                            const children = Array.from(this.treeTable.getChildren(expRow));
                             children.forEach((childRow) => {
                                 const fn =
                                     childRow.dataset.filename ||
@@ -584,11 +584,11 @@ class TreeTable {
         if (!targetName) return;
 
         const findAndSelect = () => {
-            const rows = Array.from(this.tbody.querySelectorAll('tr'));
+            const rows = this.treeTable.getAllRows();
             const targetRow = rows.find((r) => {
-                const fn = r.dataset.filename || r.querySelector('.browser-cell-snapshots')?.dataset.filename;
+                const fn = r.dataset.filename;
                 const path = r.dataset.path;
-                const name = r.querySelector('.browser-cell-name')?.dataset.sort;
+                const name = r.children[1]?.dataset?.sort;
                 return (
                     fn === targetName ||
                     name === targetName ||
@@ -649,7 +649,7 @@ class TreeTable {
                 ? `<circle cx="${currentIdx * barWidth + 10}" cy="10" r="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>`
                 : '';
 
-        return `<svg class="snapshotbar${isSub ? ' is-sub-dataset' : ''}" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; height: 16px;">${inner}${circle}</svg>`;
+        return `<svg class="snapshotbar${isSub ? ' is-sub-dataset' : ''}" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; max-width: ${totalWidth}px; height: 16px;">${inner}${circle}</svg>`;
     }
 
     initTimelineTooltip() {
@@ -745,62 +745,121 @@ class TreeTable {
         );
     }
 
+    showSnapshotLoadingOverlay() {
+        const overlay = document.getElementById('snapshot-loading-overlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            // Trigger reflow for clean CSS transition
+            void overlay.offsetHeight;
+            overlay.classList.remove('fade-out');
+            overlay.classList.add('is-visible');
+        }
+        this.table?.classList.add('is-loading-snapshots');
+    }
+
+    hideSnapshotLoadingOverlay() {
+        const overlay = document.getElementById('snapshot-loading-overlay');
+        if (overlay) {
+            overlay.classList.remove('is-visible');
+            overlay.classList.add('fade-out');
+            setTimeout(() => {
+                if (overlay.classList.contains('fade-out')) {
+                    overlay.style.display = 'none';
+                    overlay.classList.remove('fade-out');
+                }
+            }, 300);
+        }
+        this.table?.classList.remove('is-loading-snapshots');
+    }
+
     async loadSnapshotBars(container, dirPath) {
         const skeletons = container.querySelectorAll(
             '.browser-cell-snapshots[data-filename] .snapshot-skeleton, .browser-cell-snapshots[data-filename] .snapshot-skeleton-svg',
         );
-        if (skeletons.length === 0) return;
+        if (skeletons.length === 0) {
+            this.hideSnapshotLoadingOverlay();
+            return;
+        }
 
         this.initSnapshotObserver();
 
         try {
             const url = buildRouteUrl('', 'api/snapshot-bars', this.rootName, dirPath, { snapshot: this.snapshot });
             const res = await fetch(url);
-            if (!res.ok) return;
+            if (!res.ok) {
+                this.hideSnapshotLoadingOverlay();
+                return;
+            }
             const data = await res.json();
             const snapshots = data.snapshots || [];
             const bars = data.bars || {};
 
-            const cells = container.querySelectorAll('.browser-cell-snapshots[data-filename]');
-            cells.forEach((td) => {
-                const fn = td.dataset.filename;
-                const row = td.closest('tr');
-                if (bars[fn] && td.querySelector('.snapshot-skeleton, .snapshot-skeleton-svg')) {
+            const allRows = this.treeTable.getAllRows();
+            const chunkSize = 500;
+            let index = 0;
+
+            const processChunk = () => {
+                const end = Math.min(index + chunkSize, allRows.length);
+                for (; index < end; index++) {
+                    const row = allRows[index];
+                    const fn = row.dataset.filename;
+                    if (!fn || !bars[fn]) continue;
+
+                    const td = row.children[2];
+                    if (!td || td._snapshotData) continue;
+
                     let barStr = '';
                     let itemSnapshots = snapshots;
-                    let isSubDataset =
-                        td.dataset.isSubDataset === 'true' || (row && row.dataset.isSubDataset === 'true');
+                    let isSubDataset = td.dataset.isSubDataset === 'true' || row.dataset.isSubDataset === 'true';
 
-                    if (typeof bars[fn] === 'object' && bars[fn].is_sub_dataset) {
-                        barStr = bars[fn].barStr || '';
-                        itemSnapshots = bars[fn].snapshots || [];
+                    const barEntry = bars[fn];
+                    if (typeof barEntry === 'object' && barEntry.is_sub_dataset) {
+                        barStr = barEntry.barStr || '';
+                        itemSnapshots = barEntry.snapshots || [];
                         isSubDataset = true;
                         td.dataset.isSubDataset = 'true';
-                    } else if (typeof bars[fn] === 'object') {
-                        barStr = bars[fn].barStr || '';
-                        itemSnapshots = bars[fn].snapshots || [];
+                    } else if (typeof barEntry === 'object') {
+                        barStr = barEntry.barStr || '';
+                        itemSnapshots = barEntry.snapshots || [];
                     } else {
-                        barStr = bars[fn] || '';
+                        barStr = barEntry || '';
                     }
 
                     td.dataset.barStr = barStr;
                     td.dataset.isSubDataset = isSubDataset ? 'true' : 'false';
 
                     // Determine if file/folder changed across snapshots
-                    const isUnchanged = barStr.length > 0 && !barStr.includes('x') && new Set(barStr).size === 1;
-                    if (row) {
-                        row.dataset.isChanged = isUnchanged ? 'false' : 'true';
+                    let isUnchanged = false;
+                    if (barStr.length > 0 && !barStr.includes('x')) {
+                        const firstChar = barStr[0];
+                        isUnchanged = true;
+                        for (let j = 1; j < barStr.length; j++) {
+                            if (barStr[j] !== firstChar) {
+                                isUnchanged = false;
+                                break;
+                            }
+                        }
                     }
+                    row.dataset.isChanged = isUnchanged ? 'false' : 'true';
 
                     // Lazy render via IntersectionObserver
                     td._snapshotData = { barStr, snapshots: itemSnapshots, isSubDataset };
                     this.snapshotObserver.observe(td);
                 }
-            });
-            this.updateZebra();
-            this.updateToggleCounts();
+
+                if (index < allRows.length) {
+                    requestAnimationFrame(processChunk);
+                } else {
+                    this.updateZebra();
+                    this.updateToggleCounts();
+                    this.hideSnapshotLoadingOverlay();
+                }
+            };
+
+            processChunk();
         } catch (err) {
             console.error('Failed to load snapshot bars:', err);
+            this.hideSnapshotLoadingOverlay();
         }
     }
 
@@ -809,36 +868,24 @@ class TreeTable {
         const hideMissing = this.table.classList.contains('hide-missing');
         const hideUnchanged = this.table.classList.contains('hide-unchanged');
         const hasFilterHidden = !!this.tbody.querySelector('tr.filter-hidden');
-        const rows = this.tbody.querySelectorAll('tr');
-        const hasDisplayNone = Array.from(rows).some((row) => row.style.display === 'none');
+        const allRows = this.treeTable.getAllRows();
+        const hasDisplayNone = allRows.some((row) => row.style.display === 'none');
         const isFiltered = hideHidden || hideMissing || hideUnchanged || hasFilterHidden || hasDisplayNone;
 
         this.table.classList.toggle('is-filtered', isFiltered);
         if (!isFiltered) {
-            rows.forEach((row) => {
+            allRows.forEach((row) => {
                 row.classList.remove('even', 'odd');
             });
             return;
         }
 
-        let visibleIdx = 0;
-        rows.forEach((row) => {
-            if (row.classList.contains('filter-hidden') || row.style.display === 'none') {
-                return;
-            }
-            if (hideHidden && row.dataset.isHidden === 'true') {
-                return;
-            }
-            if (hideMissing && row.dataset.isMissing === 'true') {
-                return;
-            }
-            if (hideUnchanged && row.dataset.isChanged === 'false') {
-                return;
-            }
-            row.classList.toggle('odd', visibleIdx % 2 === 0);
-            row.classList.toggle('even', visibleIdx % 2 !== 0);
-            visibleIdx++;
-        });
+        const visibleRows = this.getVisibleRows();
+        for (let i = 0; i < visibleRows.length; i++) {
+            const row = visibleRows[i];
+            row.classList.toggle('odd', i % 2 === 0);
+            row.classList.toggle('even', i % 2 !== 0);
+        }
     }
 
     bindTreeEvents(container) {
@@ -911,6 +958,7 @@ class TreeTable {
                             });
                         });
 
+                        this.treeTable.indexRows(newRows, row);
                         this.loadSnapshotBars(this.tbody, path);
                         this.selectionManager?.onRowsAdded(newRows);
                     }
@@ -943,21 +991,19 @@ class TreeTable {
     }
 
     getDirectChildren(parentPath) {
-        return Array.from(this.tbody.querySelectorAll(`tr[data-parent="${CSS.escape(parentPath)}"]`));
+        const pRow = this.treeTable.getRowByPath(parentPath);
+        return pRow ? Array.from(this.treeTable.getChildren(pRow)) : [];
     }
 
     collapseDescendants(parentPath) {
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
-        const prefix = parentPath + '/';
-        allRows.forEach((row) => {
-            const rowPath = row.dataset.path || '';
-            const rowParent = row.dataset.parent || '';
-            if (rowParent === parentPath || rowPath.startsWith(prefix)) {
-                row.style.display = 'none';
-                row.dataset.expanded = 'false';
-                const toggle = row.querySelector('.folder-toggle');
-                if (toggle) toggle.classList.remove('opened');
-            }
+        const pRow = this.treeTable.getRowByPath(parentPath);
+        if (!pRow) return;
+        const descendants = this.treeTable.getDescendants(pRow);
+        descendants.forEach((row) => {
+            row.style.display = 'none';
+            row.dataset.expanded = 'false';
+            const toggle = row.querySelector('.folder-toggle');
+            if (toggle) toggle.classList.remove('opened');
         });
     }
 
@@ -1055,6 +1101,7 @@ class TreeTable {
     initFiltering() {
         if (typeof FilterManager === 'undefined') return;
         this.filterManager = new FilterManager(this.table, {
+            treeTable: this.treeTable,
             tbody: this.tbody,
             onFilterChange: () => {
                 const visibleRows = this.getVisibleRows();
@@ -1083,25 +1130,7 @@ class TreeTable {
     }
 
     getVisibleRows() {
-        const hideHidden = this.table.classList.contains('hide-hidden');
-        const hideMissing = this.table.classList.contains('hide-missing');
-        const hideUnchanged = this.table.classList.contains('hide-unchanged');
-
-        return Array.from(this.tbody.querySelectorAll('tr')).filter((row) => {
-            if (row.classList.contains('filter-hidden') || row.style.display === 'none') {
-                return false;
-            }
-            if (hideHidden && row.dataset.isHidden === 'true') {
-                return false;
-            }
-            if (hideMissing && row.dataset.isMissing === 'true') {
-                return false;
-            }
-            if (hideUnchanged && row.dataset.isChanged === 'false') {
-                return false;
-            }
-            return true;
-        });
+        return this.filterManager ? this.filterManager.getVisibleRows() : this.treeTable.getVisibleRows();
     }
 
     selectRow(row, options = { updateHash: true }) {
@@ -1134,6 +1163,13 @@ class TreeTable {
         this.keyboard = new KeyboardNavigator(this.table, {
             tbody: this.tbody,
             getRows: () => this.getVisibleRows(),
+            isRowVisible: (row) => {
+                if (!row || row.classList.contains('filter-hidden') || row.style.display === 'none') return false;
+                if (this.table.classList.contains('hide-hidden') && row.dataset.isHidden === 'true') return false;
+                if (this.table.classList.contains('hide-missing') && row.dataset.isMissing === 'true') return false;
+                if (this.table.classList.contains('hide-unchanged') && row.dataset.isChanged === 'false') return false;
+                return true;
+            },
             onFocusChange: (row, options) => {
                 this.selectedRow = row;
                 if (row) {
@@ -1149,16 +1185,19 @@ class TreeTable {
                     const totalHeaderOffset = topHeaderHeight + headerRowHeight + 35;
 
                     if (rect.top < totalHeaderOffset) {
-                        window.scrollBy({ top: rect.top - totalHeaderOffset - 6, behavior: 'smooth' });
+                        window.scrollBy({ top: rect.top - totalHeaderOffset - 6, behavior: 'auto' });
                     } else if (rect.bottom > window.innerHeight) {
-                        window.scrollBy({ top: rect.bottom - window.innerHeight + 20, behavior: 'smooth' });
+                        window.scrollBy({ top: rect.bottom - window.innerHeight + 20, behavior: 'auto' });
                     }
 
                     if (options.updateHash !== false) {
                         const filename =
                             row.dataset.filename || row.querySelector('.browser-cell-name')?.dataset.sort || '';
                         if (filename) {
-                            history.replaceState(null, '', '#' + encodeURIComponent(filename));
+                            if (this.hashUpdateTimeout) clearTimeout(this.hashUpdateTimeout);
+                            this.hashUpdateTimeout = setTimeout(() => {
+                                history.replaceState(null, '', '#' + encodeURIComponent(filename));
+                            }, 80);
                         }
                     }
 
@@ -1312,6 +1351,12 @@ class TreeTable {
 document.addEventListener('DOMContentLoaded', () => {
     const table = document.getElementById('filebrowser');
     if (table) {
-        window.treeTable = new TreeTable(table);
+        window.explorerView = new ExplorerView(table);
+        // Alias for backwards compatibility
+        window.treeTable = window.explorerView;
     }
 });
+
+if (typeof window !== 'undefined') {
+    window.ExplorerView = ExplorerView;
+}

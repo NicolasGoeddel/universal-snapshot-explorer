@@ -22,3 +22,6 @@ zfs-snapshot-explorer.code-workspace
 .coverage
 htmlcov/
 
+# Profiling dumps
+*.json.gz
+

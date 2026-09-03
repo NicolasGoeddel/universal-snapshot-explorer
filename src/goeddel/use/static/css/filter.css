@@ -1,0 +1,177 @@
+/**
+ * Universal Snapshot Explorer (USE) - FilterManager & Toolbar Styles
+ */
+
+/* Column Filter Row in Table Header */
+table.filebrowser>thead>tr.column-filter>td {
+    position: sticky;
+    top: calc(var(--top-header-height, 85px) + var(--header-row-height, 27px));
+    background-color: var(--bg-header-alt) !important;
+    padding: 2px 4px;
+    z-index: 39;
+    border-bottom: 2px solid var(--border-color-light);
+}
+
+.filter-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.filter-input-wrapper input,
+table.filebrowser>thead>tr.column-filter>td>input {
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 3px 5px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    color: var(--text-main);
+    font-size: 9pt;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.filter-input-wrapper.has-filter input {
+    padding-right: 48px;
+}
+
+.filter-input-wrapper input:focus,
+table.filebrowser>thead>tr.column-filter>td>input:focus {
+    outline: none;
+    border-color: var(--primary-accent);
+    box-shadow: 0 0 3px rgba(0, 119, 204, 0.4);
+}
+
+.filter-badge {
+    position: absolute;
+    right: 20px;
+    font-size: 7.5pt;
+    font-weight: 600;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background-color: rgba(2, 132, 199, 0.12);
+    color: var(--primary-accent);
+    pointer-events: none;
+    user-select: none;
+}
+
+[data-theme="dark"] .filter-badge {
+    background-color: rgba(56, 189, 248, 0.18);
+    color: #38bdf8;
+}
+
+.filter-clear-btn {
+    position: absolute;
+    right: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    color: var(--text-muted);
+    font-size: 11pt;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.filter-clear-btn:hover {
+    color: var(--text-main);
+    background-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .filter-clear-btn:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Explorer Filter Toolbar */
+.explorer-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin: 4px 0 2px 0;
+    padding: 5px 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--badge-missing-border);
+    border-radius: 4px;
+    font-size: 9pt;
+}
+
+.toggle-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--icon-color);
+    font-weight: 500;
+}
+
+.toggle-control span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.toggle-control input[type="checkbox"] {
+    cursor: pointer;
+    margin: 0;
+    accent-color: var(--primary-accent);
+}
+
+.toggle-control:hover {
+    color: var(--text-main);
+}
+
+.toggle-badge {
+    display: inline-block;
+    font-size: 7.5pt;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 10px;
+    background: var(--bg-header-alt);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    margin-left: 4px;
+    line-height: 1.2;
+    vertical-align: middle;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.toggle-badge.is-filtering {
+    background: rgba(245, 158, 11, 0.2) !important;
+    color: #d97706 !important;
+    border-color: rgba(245, 158, 11, 0.45) !important;
+}
+
+[data-theme="dark"] .toggle-badge.is-filtering {
+    background: rgba(245, 158, 11, 0.25) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.5) !important;
+}
+
+/* Visibility toggles & filtered states */
+table.filebrowser.hide-hidden tr[data-is-hidden="true"] {
+    display: none !important;
+}
+
+table.filebrowser.hide-missing tr[data-is-missing="true"]:not(.selected-row) {
+    display: none !important;
+}
+
+table.filebrowser.hide-unchanged tr[data-is-changed="false"]:not(.selected-row) {
+    display: none !important;
+}
+
+.filter-hidden {
+    display: none !important;
+}

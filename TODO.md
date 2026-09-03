@@ -118,18 +118,22 @@
   - SVG snapshot pill generation, IntersectionObserver batch lazy-loading, and timeline hover tooltips.
 - [x] **FilterManager Extraction (`filter_manager.js`):**
   - Filter input search, toggle switches (hidden, missing, changed-only), count badges, and row visibility evaluation.
-- [ ] **Slim TreeTable Coordinator (`explorer.js`):**
-  - Streamline `explorer.js` to ~150–200 lines acting as an orchestrator for the modular components and managing AJAX directory expansion.
+- [x] **Slim ExplorerView Coordinator (`explorer.js`) & Standalone TreeTable (`tree_table.js`):**
+  - Extracted `TreeTable` into standalone pure DOM tree hierarchy component with `Map` path lookup, `row._parent`, and `row._children = new Set()`.
+  - Renamed `explorer.js` class to `ExplorerView` acting as orchestrator for modular components (`TreeTable`, `FilterManager`, `SelectionManager`, `TableSorter`, `KeyboardNavigator`).
 
 ---
 
-## 7. Performance & Tree Optimization (Upcoming Branch)
-- [ ] **Pre-Indexed DOM Tree Hierarchy ($O(1)$ Lookups):**
-  - Index parent-child relationships directly on table rows (`row._children = [...]` and `row._parent = parentRow`) or maintain a `Map<path, TreeNode>` to eliminate repeated $O(N)$ `querySelectorAll` and `startsWith(prefix)` scans across large tables.
-- [ ] **Input Debouncing for Column Quick-Search (120–150ms):**
-  - Debounce keystrokes in column filter inputs to avoid blocking synchronous DOM evaluation on every character in directories with thousands of files (e.g. `/usr/bin` with 3700+ entries).
-- [ ] **In-Input Match Counter & Reset ("X") Button:**
-  - Display live match count badge (e.g. `14 / 3734`) inside or next to each column search input, with a click-to-clear ("X") button.
+## 7. Performance & Tree Optimization
+- [x] **Pre-Indexed DOM Tree Hierarchy ($O(1)$ Lookups & $O(\text{subtree})$ Operations):**
+  - Standalone `TreeTable` maintains fast `Map<string, HTMLTableRowElement>` path lookup, direct parent pointers (`row._parent`), and child sets (`row._children = new Set()`).
+  - Eliminated repeated $O(N)$ full-table `querySelectorAll` and string `startsWith` scans across `FilterManager`, `SelectionManager`, and `explorer.js`.
+  - Instant upward match propagation in `FilterManager.applyFilter()` drops operation count from $\sim 7.4\text{ million}$ down to $\sim 4000$ operations in 3,700-row directories.
+- [x] **Input Debouncing for Column Quick-Search (120ms):**
+  - 120ms debounce on keystrokes in column filter inputs, with immediate execution on <kbd>Enter</kbd>, <kbd>Escape</kbd>, and <kbd>Tab</kbd> to ensure butter-smooth typing in large directories (e.g. `/usr/bin`).
+- [x] **In-Input Match Counter & Reset ("X") Button:**
+  - Display isolated per-column match count badge (e.g. `14`) inside active filter inputs, with a click-to-clear ("X") button to reset and refocus immediately.
 - [ ] **Generator-Based Row Iteration:**
   - Use generators or direct DOM walker for `getVisibleRows()` to avoid intermediate array allocations during hot loops.
+
 

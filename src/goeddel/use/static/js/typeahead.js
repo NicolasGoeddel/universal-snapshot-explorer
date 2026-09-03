@@ -227,9 +227,16 @@ class TypeaheadHUD {
      * @returns {boolean} True if the event was consumed by typeahead.
      */
     handleKeyDown(e) {
-        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-        const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
-        if (isInputActive) return false;
+        const activeElem = document.activeElement;
+        const activeTag = activeElem ? activeElem.tagName.toLowerCase() : '';
+        const isTextInput =
+            (activeTag === 'input' &&
+                activeElem.type !== 'checkbox' &&
+                activeElem.type !== 'radio' &&
+                activeElem.type !== 'button') ||
+            activeTag === 'textarea' ||
+            activeTag === 'select';
+        if (isTextInput) return false;
 
         // If active, handle special control keys
         if (this.active) {

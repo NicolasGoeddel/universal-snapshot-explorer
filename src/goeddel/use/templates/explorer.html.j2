@@ -39,7 +39,19 @@
         </div>
     </div>
 
-    <table id="filebrowser" class="filebrowser" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}">
+    <div id="snapshot-loading-overlay" class="snapshot-loading-overlay is-visible" aria-live="polite">
+        <div class="snapshot-loading-card">
+            <div class="snapshot-loading-spinner-wrapper">
+                <div class="snapshot-loading-conic-ring"></div>
+                <div class="snapshot-loading-inner-icon">
+                    {{ lucide('hourglass', size=18) }}
+                </div>
+            </div>
+            <span class="snapshot-loading-text">{{ t('loading.snapshots') }}</span>
+        </div>
+    </div>
+
+    <table id="filebrowser" class="filebrowser is-loading-snapshots" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}" data-loading-text="{{ t('loading.snapshots') }}">
         <thead>
             <tr class="header-row">
                 <th class="browser-header-select" data-fixed-width="32" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">
@@ -52,7 +64,7 @@
                             <span>{{ t('table.snapshots') }}</span>
                         </div>
                         <div class="snapshots-header-timeline">
-                            <svg class="snapshotbar header-snapshotbar" viewBox="-1 -1 {{ (breadcrumbs.snapshots | length) * 20 + 2 }} 18" preserveAspectRatio="none" style="width: 100%;">
+                            <svg class="snapshotbar header-snapshotbar" viewBox="-1 -1 {{ (breadcrumbs.snapshots | length) * 20 + 2 }} 18" preserveAspectRatio="none" style="width: 100%; max-width: {{ (breadcrumbs.snapshots | length) * 20 }}px;">
                                 {%- set current_snap_id = folder.snapshot.id -%}
                                 {% for item in folder.snapshots_bar %}
                                 {% set snap = item.snapshot %}
@@ -91,14 +103,56 @@
             </tr>
             <tr class="column-filter">
                 <td class="browser-filter-select"></td>
-                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="1"></td>
+                <td>
+                    <div class="filter-input-wrapper">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="1">
+                        <span class="filter-badge" style="display: none;"></span>
+                        <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
+                    </div>
+                </td>
                 <td></td>
-                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="3"></td>
-                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="4"></td>
-                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="5"></td>
-                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="6"></td>
-                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="7"></td>
-                <td><input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="8"></td>
+                <td>
+                    <div class="filter-input-wrapper">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="3">
+                        <span class="filter-badge" style="display: none;"></span>
+                        <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
+                    </div>
+                </td>
+                <td>
+                    <div class="filter-input-wrapper">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="4">
+                        <span class="filter-badge" style="display: none;"></span>
+                        <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
+                    </div>
+                </td>
+                <td>
+                    <div class="filter-input-wrapper">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="5">
+                        <span class="filter-badge" style="display: none;"></span>
+                        <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
+                    </div>
+                </td>
+                <td>
+                    <div class="filter-input-wrapper">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="6">
+                        <span class="filter-badge" style="display: none;"></span>
+                        <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
+                    </div>
+                </td>
+                <td>
+                    <div class="filter-input-wrapper">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="7">
+                        <span class="filter-badge" style="display: none;"></span>
+                        <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
+                    </div>
+                </td>
+                <td>
+                    <div class="filter-input-wrapper">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="8">
+                        <span class="filter-badge" style="display: none;"></span>
+                        <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
+                    </div>
+                </td>
                 <td></td>
             </tr>
         </thead>

@@ -1,6 +1,10 @@
 /**
  * Universal Snapshot Explorer (USE) - SelectionManager
  *
+ * Dependencies:
+ * - TreeTable: Requires a TreeTable instance or pre-indexed rows (row._parent, row._children Set)
+ *   for O(1) parent-child traversals, O(subtree) descendant operations, and efficient tri-state calculation.
+ *
  * Encapsulates all multi-selection and batch export operations:
  *  1. Checkbox multi-selection with persistent Set of selected paths.
  *  2. Hierarchical Tri-State Folder Checkboxes (checked / indeterminate / unchecked) across tree levels.
@@ -19,6 +23,7 @@ class SelectionManager {
      *
      * @param {HTMLTableElement|string} table - Table DOM element or element ID string.
      * @param {Object} [options={}] - Configuration options.
+     * @param {TreeTable|null} [options.treeTable=null] - TreeTable instance for O(1) hierarchy & traversal.
      * @param {HTMLElement} [options.tbody] - Custom <tbody> element (defaults to table.querySelector('tbody')).
      * @param {function(): Array<HTMLTableRowElement>} [options.getVisibleRows] - Function returning list of visible rows.
      * @param {function(Set<string>, number): void} [options.onSelectionChange] - Callback when selection changes.
@@ -38,17 +43,16 @@ class SelectionManager {
             return;
         }
 
-        this.getVisibleRows =
-            options.getVisibleRows ||
-            (() => {
-                return Array.from(this.tbody.querySelectorAll('tr')).filter((row) => {
-                    return (
-                        !row.classList.contains('filter-hidden') &&
-                        row.style.display !== 'none' &&
-                        row.offsetParent !== null
-                    );
-                });
-            });
+        this.treeTable = options.treeTable;
+        if (!this.treeTable) {
+            console.error(
+                '[SelectionManager] Initialization failed: Mandatory TreeTable instance missing.',
+                this.table,
+            );
+            return;
+        }
+
+        this.getVisibleRows = options.getVisibleRows || (() => this.treeTable.getVisibleRows());
 
         this.onSelectionChange = options.onSelectionChange || null;
         this.rootName = options.rootName || this.table.dataset.root || '';
@@ -212,11 +216,10 @@ class SelectionManager {
         }
 
         if (row.dataset.isFolder === 'true' && path) {
-            const prefix = path + '/';
-            const rows = allRows || Array.from(this.tbody.querySelectorAll('tr'));
-            rows.forEach((desc) => {
-                const dp = desc.dataset.path || '';
-                if (dp.startsWith(prefix)) {
+            const descendants = this.treeTable.getDescendants(row);
+            descendants.forEach((desc) => {
+                const dp = desc.dataset.path || desc.dataset.filename || '';
+                if (dp) {
                     if (select) {
                         this.selectedPaths.add(dp);
                     } else {
@@ -231,7 +234,7 @@ class SelectionManager {
      * Bind listeners for checkboxes, action bar, master checkbox, and Shift key preview.
      */
     init() {
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
+        const allRows = this.treeTable.getAllRows();
 
         // Synchronize initial state from any pre-checked checkboxes (e.g. across F5 page reload)
         this.tbody.querySelectorAll('input.row-checkbox:checked').forEach((cb) => {
@@ -262,9 +265,10 @@ class SelectionManager {
                         return cb && cb.checked && !cb.indeterminate;
                     });
 
-                const rows = Array.from(this.tbody.querySelectorAll('tr'));
+                const rows = this.treeTable.getAllRows();
                 visibleRows.forEach((r) => this.setRowSelected(r, !allVisibleChecked, rows));
                 this.updateUI();
+                masterCheckbox.blur();
             });
         }
 
@@ -287,7 +291,7 @@ class SelectionManager {
                 if (lastIdx >= 0 && currentIdx >= 0) {
                     const start = Math.min(lastIdx, currentIdx);
                     const end = Math.max(lastIdx, currentIdx);
-                    const rows = Array.from(this.tbody.querySelectorAll('tr'));
+                    const rows = this.treeTable.getAllRows();
                     for (let i = start; i <= end; i++) {
                         this.setRowSelected(visibleRows[i], isChecked, rows);
                     }
@@ -298,6 +302,14 @@ class SelectionManager {
 
             this.lastClickedCheckbox = checkbox;
             this.updateUI();
+            checkbox.blur();
+        });
+
+        // Ensure checkboxes never retain browser focus and steal keyboard navigation
+        this.table.addEventListener('focusin', (e) => {
+            if (e.target.matches?.('input.row-checkbox') || e.target.id === 'master-select-checkbox') {
+                e.target.blur();
+            }
         });
 
         // Mouse hover with Shift key held updates visual range preview
@@ -358,7 +370,7 @@ class SelectionManager {
      * @param {HTMLTableRowElement|null} [targetRow=null] - Specific target row (or currently focused row).
      */
     updateRangePreview(active, targetRow = null) {
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
+        const allRows = this.treeTable.getAllRows();
         allRows.forEach((r) => r.classList.remove('range-preview'));
         if (!active || !this.lastClickedCheckbox) return;
 
@@ -401,7 +413,7 @@ class SelectionManager {
                 const start = Math.min(lastIdx, currentIdx);
                 const end = Math.max(lastIdx, currentIdx);
                 const shouldSelect = !this.selectedPaths.has(rowPath);
-                const allRows = Array.from(this.tbody.querySelectorAll('tr'));
+                const allRows = this.treeTable.getAllRows();
                 for (let i = start; i <= end; i++) {
                     this.setRowSelected(visibleRows[i], shouldSelect, allRows);
                 }
@@ -446,7 +458,7 @@ class SelectionManager {
      */
     selectAllVisible() {
         const visibleRows = this.getVisibleRows();
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
+        const allRows = this.treeTable.getAllRows();
         visibleRows.forEach((r) => this.setRowSelected(r, true, allRows));
         this.updateUI();
     }
@@ -469,7 +481,7 @@ class SelectionManager {
      * @returns {{ totalCount: number, visibleCount: number, hiddenCount: number, fullySelectedCollapsedFolders: Set<string> }}
      */
     getSelectionCounts() {
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
+        const allRows = this.treeTable.getAllRows();
         const visibleRowsSet = new Set(this.getVisibleRows());
 
         // 1. Identify which folders are fully selected and collapsed
@@ -481,8 +493,7 @@ class SelectionManager {
             const isExpanded = row.dataset.expanded === 'true';
             if (isExpanded) return; // Only collapsed folders encapsulate their children
 
-            const prefix = path + '/';
-            const loadedDescendants = allRows.filter((r) => (r.dataset.path || '').startsWith(prefix));
+            const loadedDescendants = Array.from(this.treeTable.getDescendants(row));
             const isDirectlySelected = this.selectedPaths.has(path);
             const allLoadedSelected =
                 loadedDescendants.length === 0 ||
@@ -510,7 +521,7 @@ class SelectionManager {
                 continue;
             }
 
-            const row = allRows.find((r) => (r.dataset.path || r.dataset.filename) === path);
+            const row = this.treeTable.getRowByPath(path);
             if (row && visibleRowsSet.has(row)) {
                 visibleCount++;
             } else {
@@ -527,7 +538,7 @@ class SelectionManager {
      * Fully selected folders are NOT expanded because their content is already visibly selected.
      */
     revealHiddenSelection() {
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
+        const allRows = this.treeTable.getAllRows();
         const { fullySelectedCollapsedFolders } = this.getSelectionCounts();
 
         // 1. Reset text filter inputs if any are active
@@ -596,7 +607,7 @@ class SelectionManager {
      * Recompute all checkbox states (including folder indeterminate states) and action bar HUD.
      */
     updateUI() {
-        const allRows = Array.from(this.tbody.querySelectorAll('tr'));
+        const allRows = this.treeTable.getAllRows();
 
         // 1. Update row checkboxes and calculate tri-state folder checkboxes (bottom-up in reverse)
         allRows
@@ -618,9 +629,7 @@ class SelectionManager {
                     const prefix = path ? path + '/' : '';
 
                     // Find all descendant rows loaded in the DOM
-                    const loadedDescendants = prefix
-                        ? allRows.filter((r) => (r.dataset.path || '').startsWith(prefix))
-                        : [];
+                    const loadedDescendants = Array.from(this.treeTable.getDescendants(row));
 
                     if (loadedDescendants.length > 0) {
                         const allLoadedSelected = loadedDescendants.every((r) =>
@@ -795,9 +804,16 @@ class SelectionManager {
      * @returns {boolean} True if the event was consumed.
      */
     handleKeyDown(e, focusedRow) {
-        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-        const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
-        if (isInputActive) return false;
+        const activeElem = document.activeElement;
+        const activeTag = activeElem ? activeElem.tagName.toLowerCase() : '';
+        const isTextInput =
+            (activeTag === 'input' &&
+                activeElem.type !== 'checkbox' &&
+                activeElem.type !== 'radio' &&
+                activeElem.type !== 'button') ||
+            activeTag === 'textarea' ||
+            activeTag === 'select';
+        if (isTextInput) return false;
 
         // Escape: Clear multi-selection if active
         if (e.key === 'Escape') {

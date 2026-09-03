@@ -52,6 +52,8 @@ This project adheres to [Semantic Versioning (SemVer)](https://semver.org/).
   * Removed inline HTML whitespace gap between folder spacers and Lucide icons for pixel-perfect vertical alignment.
 * **Sub-Dataset Snapshot Routing & Inode Neutrality:**
   * Fixed detail view routing for sub-datasets and ignored cross-mount `st_ino` variations during snapshot comparison.
+* **Keyboard Focus Sanitization:**
+  * Added `sanitizeFocus()` to `KeyboardNavigator` to gracefully move focus to the parent row when collapsing folders or groups in tree views.
 * **Typeahead Segment Matching:**
   * Fixed prefix-match dropping when navigating hierarchical sub-dataset paths.
 

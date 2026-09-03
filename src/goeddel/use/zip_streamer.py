@@ -4,14 +4,13 @@ import os
 import stat
 import zipfile
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
+
+from .enums import CompressionMode, StructureMode
 
 if TYPE_CHECKING:
     from .models.root_folder import RootFolder
     from .models.snapshot import Snapshot
-
-StructureMode = Literal["relative", "absolute", "flat"]
-CompressionMode = Literal["deflate", "store"]
 
 
 class ChunkedZipStreamer:
@@ -75,8 +74,8 @@ def stream_zip_archive(
     snapshot: str | Snapshot | None,
     paths: list[str],
     base_folder_path: str = "",
-    structure_mode: StructureMode = "relative",
-    compression: CompressionMode = "deflate",
+    structure_mode: StructureMode = StructureMode.RELATIVE,
+    compression: CompressionMode = CompressionMode.DEFLATE,
 ) -> Generator[bytes, None, None]:
     """
     Generates a streaming ZIP archive from selected paths within a root folder snapshot.
@@ -87,7 +86,7 @@ def stream_zip_archive(
     clean_base = base_folder_path.strip("/").replace("\\", "/")
 
     streamer = ChunkedZipStreamer()
-    zip_compression = zipfile.ZIP_DEFLATED if compression == "deflate" else zipfile.ZIP_STORED
+    zip_compression = zipfile.ZIP_DEFLATED if compression == CompressionMode.DEFLATE else zipfile.ZIP_STORED
 
     # Use allowZip64=True for archives > 4GB or with > 65k entries
     zf = zipfile.ZipFile(streamer, mode="w", compression=zip_compression, allowZip64=True)
@@ -96,9 +95,9 @@ def stream_zip_archive(
 
     def make_arcname(rel_path_from_root: str) -> str:
         clean_rel = rel_path_from_root.strip("/").replace("\\", "/")
-        if structure_mode == "absolute":
+        if structure_mode == StructureMode.ABSOLUTE:
             return clean_rel
-        elif structure_mode == "flat":
+        elif structure_mode == StructureMode.FLAT:
             base_name = os.path.basename(clean_rel)
             if not base_name:
                 base_name = "archive"

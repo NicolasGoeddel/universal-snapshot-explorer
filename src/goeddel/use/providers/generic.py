@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
+from ..enums import FilesystemType
 from .base import FilesystemProvider
 
 if TYPE_CHECKING:
@@ -13,8 +14,8 @@ if TYPE_CHECKING:
 class GenericProvider(FilesystemProvider):
     @property
     @override
-    def name(self) -> str:
-        return "generic"
+    def name(self) -> FilesystemType:
+        return FilesystemType.GENERIC
 
     @override
     def detect_boundary(self, live_path: str, mount_info: MountInfo | None) -> bool:
@@ -35,9 +36,9 @@ class GenericProvider(FilesystemProvider):
             return "CIFS/SMB Mount"
         if fstype == "tmpfs":
             return "tmpfs Mount"
-        if fstype == "zfs":
+        if fstype == FilesystemType.ZFS:
             return "ZFS Dataset (unconfigured)"
-        if fstype == "btrfs":
+        if fstype == FilesystemType.BTRFS:
             return "Btrfs Mount (unconfigured)"
         return f"Mount ({fstype})"
 

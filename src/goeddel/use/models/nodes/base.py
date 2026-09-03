@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Protocol, override
 
 from ...config import RootConfig
+from ...enums import ChangedAttribute
 from ..snapshot import Snapshot
 from ..types import (
     FileName,
@@ -29,7 +30,7 @@ class SnapshotVersionDetail:
     is_created: bool
     is_deleted: bool
     is_missing: bool
-    changed_attributes: set[str]
+    changed_attributes: set[ChangedAttribute]
 
 
 class RootFolderProtocol(Protocol):
@@ -281,26 +282,26 @@ class FSNode:
             )
         return False
 
-    def compare(self, o: object) -> set[str]:
+    def compare(self, o: object) -> set[ChangedAttribute]:
         if not isinstance(o, FSNode):
             raise ValueError(f"Cannot compare {o.__class__} with {self.__class__}")
-        changed_attributes: set[str] = set()
+        changed_attributes: set[ChangedAttribute] = set()
         if self.name != o.name:
-            changed_attributes.add("name")
+            changed_attributes.add(ChangedAttribute.NAME)
         if self.uid != o.uid:
-            changed_attributes.add("uid")
+            changed_attributes.add(ChangedAttribute.UID)
         if self.gid != o.gid:
-            changed_attributes.add("gid")
+            changed_attributes.add(ChangedAttribute.GID)
         if self.mode != o.mode:
-            changed_attributes.add("mode")
+            changed_attributes.add(ChangedAttribute.MODE)
         if self.ctime != o.ctime:
-            changed_attributes.add("ctime")
+            changed_attributes.add(ChangedAttribute.CTIME)
         if self.mtime != o.mtime:
-            changed_attributes.add("mtime")
+            changed_attributes.add(ChangedAttribute.MTIME)
         if self.size != o.size:
-            changed_attributes.add("size")
+            changed_attributes.add(ChangedAttribute.SIZE)
         if self.does_exist != o.does_exist:
-            changed_attributes.add("does_exist")
+            changed_attributes.add(ChangedAttribute.DOES_EXIST)
         return changed_attributes
 
     @property
@@ -351,7 +352,7 @@ class FSNode:
             curr_node = self._root_folder.get_file(path=self.path, snapshot=snap)
             is_created = False
             is_deleted = False
-            changed_attrs: set[str] = set()
+            changed_attrs: set[ChangedAttribute] = set()
 
             if prev_node is not None:
                 if not prev_node.does_exist and curr_node.does_exist:

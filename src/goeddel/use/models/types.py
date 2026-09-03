@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypedDict
 
+from ..enums import FilesystemType, RootGroupType
+
 if TYPE_CHECKING:
     from .snapshot import Snapshot
 
@@ -56,3 +58,11 @@ class RootViewItem(TypedDict):
     sub_path: str
     snapshots_count: int
     is_mounted: bool
+    parent_name: str | None
+    level: int
+    has_children: bool
+    display_name: str
+    group_type: RootGroupType
+    is_group_header: bool
+    dataset_name: str | None
+    filesystem_type: FilesystemType

@@ -17,13 +17,11 @@
             </td>
             <td class="browser-cell-name{{ ' node-locked' if not entry.is_accessible else '' }}" style="padding-left: calc(6px + 20px * {{ level | default(0) }});" data-sort="{{ entry.name }}">
                 {%- if entry.sub_dataset_root_name is not none -%}
-                <span class="folder-spacer"></span>
-                {{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class}) }}
+                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class}) }}
                 <a href="{{ route_url(module, entry.sub_dataset_root_name, '', entry.snapshot.id) }}" class="sub-dataset-link" title="{{ entry.display_type }}">{{ entry.name }}</a>
                 <span class="symlink-target-badge">{{ entry.display_type }}</span>
                 {%- elif entry.is_kernel_fs -%}
-                <span class="folder-spacer"></span>
-                {{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class}) }}
+                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class}) }}
                 <span title="{{ entry.display_type }}">{{ entry.name }} <span class="symlink-target-badge">{{ entry.display_type }}</span></span>
                 {%- elif entry.is_folder -%}
                 {%- if not entry.is_sub_dataset -%}
@@ -43,8 +41,7 @@
                 <span class="symlink-target-badge">{{ entry.display_type }}</span>
                 {%- endif -%}
                 {%- elif entry.is_symlink -%}
-                <span class="folder-spacer"></span>
-                {{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class}) }}
+                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class}) }}
                 {%- if entry.symlink_is_broken -%}
                 <span class="symlink-broken" title="{{ t('error.broken_symlink') }}: {{ entry.symlink_target }}">{{ entry.name }} <span class="symlink-target-badge">➔ {{ entry.symlink_target }} ({{ t('badge.missing') }})</span></span>
                 {%- elif entry.symlink_target_is_dir -%}
@@ -61,8 +58,7 @@
                     {%- endif -%}
                 {%- endif -%}
                 {%- else -%}
-                <span class="folder-spacer"></span>
-                {{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class ~ (' file-locked' if not entry.is_accessible else '')}) }}
+                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class ~ (' file-locked' if not entry.is_accessible else '')}) }}
                 {%- if entry.is_accessible -%}
                 <a href="{{ route_url('download', root_name, entry.logical_path, entry.snapshot.id) }}" class="file-download-link" title="{{ t('action.download') }}">{{ entry.name }}</a>
                 {%- else -%}
@@ -140,8 +136,7 @@
                 <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ filename }}">
             </td>
             <td class="browser-cell-name stroke" style="padding-left: calc(6px + 20px * {{ level | default(0) }});" data-sort="{{ filename }}">
-                <span class="folder-spacer"></span>
-                {%- if entry.is_folder -%}
+                <span class="folder-spacer"></span>{%- if entry.is_folder -%}
                 {{ lucide('folder-x', size=16, **{'class': 'file-icon icon-missing'}) }}
                 <a href="{{ route_url(module, root_name, entry.logical_path, folder.snapshot.id) }}">{{ filename }}</a>
                 {%- else -%}

@@ -7,6 +7,7 @@ from typing import cast
 from unittest.mock import patch
 
 from goeddel.use.config import RootConfig
+from goeddel.use.enums import FilesystemType
 from goeddel.use.models.folder import Folder
 from goeddel.use.models.root_folder import RootFolder
 from goeddel.use.models.snapshot import OriginalSnapshot
@@ -73,9 +74,9 @@ truenas.local:/mnt/pool/backups /data/backups nfs4 rw,relatime,vers=4.2 0 0
         }
 
         # Configure RootFolder instances
-        parent_cfg = RootConfig(root_path="/mnt/pool/parent", sub_path="", filesystem_type="zfs")
-        nfs_zfs_cfg = RootConfig(root_path="/mnt/pool/parent/nfs_configured_zfs", sub_path="", filesystem_type="zfs")
-        btrfs_cfg = RootConfig(root_path="/mnt/pool/parent/btrfs_child", sub_path="", filesystem_type="btrfs")
+        parent_cfg = RootConfig(root_path="/mnt/pool/parent", sub_path="", filesystem_type=FilesystemType.ZFS)
+        nfs_zfs_cfg = RootConfig(root_path="/mnt/pool/parent/nfs_configured_zfs", sub_path="", filesystem_type=FilesystemType.ZFS)
+        btrfs_cfg = RootConfig(root_path="/mnt/pool/parent/btrfs_child", sub_path="", filesystem_type=FilesystemType.BTRFS)
 
         RootFolder.set_root_configs(
             {
@@ -137,7 +138,7 @@ truenas.local:/mnt/pool/backups /data/backups nfs4 rw,relatime,vers=4.2 0 0
         }
         MountsManager.get_instance()._cache = mounts_map
 
-        parent_cfg = RootConfig(root_path="/mnt/pool/parent", sub_path="", filesystem_type="zfs")
+        parent_cfg = RootConfig(root_path="/mnt/pool/parent", sub_path="", filesystem_type=FilesystemType.ZFS)
         RootFolder.set_root_configs({"parent-root": parent_cfg})
         root_folder = RootFolder(parent_cfg)
 

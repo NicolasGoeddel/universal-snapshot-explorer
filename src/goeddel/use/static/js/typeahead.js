@@ -150,7 +150,9 @@ class TypeaheadHUD {
         visibleRows.forEach((row) => {
             const rawName = this.getSearchText(row);
             const name = String(rawName).toLowerCase();
-            if (name.startsWith(q)) {
+            const parts = name.split(/[/\s_-]+/);
+            const isPrefix = name.startsWith(q) || parts.some((p) => p.startsWith(q));
+            if (isPrefix) {
                 prefixMatches.push(row);
             } else if (name.includes(q)) {
                 containsMatches.push(row);

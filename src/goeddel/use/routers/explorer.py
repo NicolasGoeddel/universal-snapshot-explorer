@@ -8,14 +8,14 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 
 from ..dependencies import get_app_config, get_base_url, templates
+from ..enums import CompressionMode, StructureMode
 from ..i18n import get_client_translations, get_language, get_translator
 from ..logger import logger
 from ..models.folder import Folder
-from ..models.root_folder import RootFolder
-from ..models.types import RootViewItem
 from ..utils.path_resolver import resolve_root_and_subpath
+from ..utils.roots_hierarchy import build_root_hierarchy
 from ..utils.ui import get_breadcrumbs, render_error_response
-from ..zip_streamer import CompressionMode, StructureMode, stream_zip_archive
+from ..zip_streamer import stream_zip_archive
 
 router = APIRouter()
 
@@ -31,27 +31,14 @@ def get_favicon() -> FileResponse:
 def read_root(request: Request) -> HTMLResponse:
     config = get_app_config(request)
     lang = get_language(request)
-    roots_info: list[RootViewItem] = []
-    for r_name, r_cfg in config.roots.items():
-        root_folder = RootFolder.get(r_cfg)
-        is_mounted = os.path.isdir(root_folder.real_path())
-        snaps = root_folder.snapshots() if is_mounted else []
-        roots_info.append(
-            {
-                "name": r_name,
-                "root_path": r_cfg.root_path,
-                "sub_path": r_cfg.sub_path,
-                "snapshots_count": len(snaps) if is_mounted else 0,
-                "is_mounted": is_mounted,
-            }
-        )
+    hierarchical_roots = build_root_hierarchy(config.roots)
 
     return templates.TemplateResponse(
         request=request,
-        name="index.html.j2",
+        name="root_view.html.j2",
         context={
             "request": request,
-            "roots": roots_info,
+            "roots": hierarchical_roots,
             "t": get_translator(lang),
             "lang": lang,
             "client_i18n": get_client_translations(lang),
@@ -197,8 +184,8 @@ async def download_zip_archive(
     paths: list[str] = []
     snapshot: str | None = None
     base_path: str = ""
-    structure: StructureMode = "relative"
-    compression: CompressionMode = "deflate"
+    structure: StructureMode = StructureMode.RELATIVE
+    compression: CompressionMode = CompressionMode.DEFLATE
 
     if "application/json" in content_type:
         body = cast(dict[str, object], await request.json())
@@ -207,8 +194,14 @@ async def download_zip_archive(
             paths = [str(p) for p in cast(list[object], raw_paths)]
         snapshot = cast(str | None, body.get("snapshot"))
         base_path = str(body.get("base_path", ""))
-        structure = cast(StructureMode, body.get("structure", "relative"))
-        compression = cast(CompressionMode, body.get("compression", "deflate"))
+        try:
+            structure = StructureMode(str(body.get("structure", StructureMode.RELATIVE)))
+        except ValueError:
+            structure = StructureMode.RELATIVE
+        try:
+            compression = CompressionMode(str(body.get("compression", CompressionMode.DEFLATE)))
+        except ValueError:
+            compression = CompressionMode.DEFLATE
     else:
         raw_bytes = await request.body()
         qs = parse_qs(raw_bytes.decode("utf-8", errors="replace"))
@@ -216,8 +209,14 @@ async def download_zip_archive(
         raw_snapshot = qs.get("snapshot", [None])[0]
         snapshot = raw_snapshot if raw_snapshot else None
         base_path = qs.get("base_path", [""])[0]
-        structure = cast(StructureMode, qs.get("structure", ["relative"])[0])
-        compression = cast(CompressionMode, qs.get("compression", ["deflate"])[0])
+        try:
+            structure = StructureMode(str(qs.get("structure", [StructureMode.RELATIVE])[0]))
+        except ValueError:
+            structure = StructureMode.RELATIVE
+        try:
+            compression = CompressionMode(str(qs.get("compression", [CompressionMode.DEFLATE])[0]))
+        except ValueError:
+            compression = CompressionMode.DEFLATE
 
         form_paths = qs.get("paths", [])
         if form_paths:

@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 from typing import ClassVar
 
+from .enums import FilesystemType
 from .logger import logger
 
 
@@ -67,8 +68,9 @@ class MountsManager:
     }
 
     SNAPSHOT_CAPABLE_FS: ClassVar[set[str]] = {
-        "zfs",
-        "btrfs",
+        FilesystemType.ZFS,
+        FilesystemType.BTRFS,
+        FilesystemType.CEPHFS,
         "ceph",
     }
 

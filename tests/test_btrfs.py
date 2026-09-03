@@ -12,6 +12,7 @@ from goeddel.use.btrfs import (
     BtrfsSubvolume,
 )
 from goeddel.use.config import RootConfig, load_config
+from goeddel.use.enums import FilesystemType
 from goeddel.use.models.root_folder import RootFolder
 from goeddel.use.models.snapshot import OriginalSnapshot
 
@@ -144,7 +145,7 @@ tmpfs /tmp tmpfs rw,nosuid,nodev 0 0
             cfg = RootConfig(
                 root_path=tmpdir,
                 sub_path="",
-                filesystem_type="btrfs",
+                filesystem_type=FilesystemType.BTRFS,
                 snapshot_dir_name=".snapshots",
             )
             root_folder = RootFolder(cfg, snapshot_provider=provider)
@@ -190,7 +191,7 @@ roots:
                 self.assertNotIn(str(home_mount).strip("/"), cfg.roots)
 
                 discovered = cfg.roots[str(root_mount).strip("/")]
-                self.assertEqual(discovered.filesystem_type, "btrfs")
+                self.assertEqual(discovered.filesystem_type, FilesystemType.BTRFS)
                 self.assertEqual(discovered.control_dir_name, ".snapshots")
                 self.assertEqual(discovered.user_map, "/etc/passwd")
 

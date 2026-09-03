@@ -4,6 +4,7 @@ import datetime
 import os
 from typing import TYPE_CHECKING, override
 
+from ..enums import FilesystemType
 from ..logger import logger
 from .nodes import FSNode, RootFolderProtocol
 from .snapshot import Snapshot
@@ -83,7 +84,7 @@ class Folder(FSNode):
             from ..providers import ProviderRegistry
 
             provider = ProviderRegistry.detect_filesystem(live_path, self.mount_info)
-            if provider.name != "generic":
+            if provider.name != FilesystemType.GENERIC:
                 return True
         except Exception:
             pass
@@ -105,7 +106,7 @@ class Folder(FSNode):
             from ..providers import ProviderRegistry
 
             provider = ProviderRegistry.detect_filesystem(live_path, self.mount_info)
-            return provider.name != "generic"
+            return provider.name != FilesystemType.GENERIC
         except Exception:
             return False
 
@@ -129,7 +130,7 @@ class Folder(FSNode):
 
         # Check for implicit boundary
         provider = ProviderRegistry.detect_filesystem(live_path, self.mount_info)
-        if provider.name != "generic":
+        if provider.name != FilesystemType.GENERIC:
             return provider.get_display_name(self.mount_info, is_sub_dataset=True)
 
         if self.is_mount:
@@ -150,7 +151,7 @@ class Folder(FSNode):
             from ..providers import ProviderRegistry
 
             provider = ProviderRegistry.detect_filesystem(live_path, self.mount_info)
-            if provider.name != "generic":
+            if provider.name != FilesystemType.GENERIC:
                 return provider.get_icon()
         except Exception:
             pass
@@ -238,7 +239,7 @@ class Folder(FSNode):
                 from ..providers import ProviderRegistry
 
                 provider = ProviderRegistry.detect_filesystem(live_path, self.mount_info)
-                if provider.name != "generic":
+                if provider.name != FilesystemType.GENERIC:
                     base_name = self._root_folder.logical_base_name or self._root_folder.get_root_name_for_path(self._root_folder.root_path) or ""
                     rel_logical = os.path.join(self._root_folder.logical_sub_path or "", self.logical_path).strip("/")
                     is_net = self.mount_info.is_network_fs if self.mount_info else False

@@ -59,7 +59,7 @@
 - [x] **Keyboard Navigation:** Navigate with `↑`/`↓`, expand/collapse folders with `→`/`←`, `Enter` for actions, `i`/`d` for details, `/` for quick search, `Ctrl+L` for path editing, and `h`/`?` for shortcut help
 - [x] **Toolbar Indicators:** Dynamic counter badges & filter statistics for hidden, missing, and unchanged files
 - [x] **Modernized Root Overview:** Snapshot count per root, keyboard navigation & reusable header widgets (`nav_controls.html.j2`)
-- [ ] **Hierarchical Roots Overview / Sub-Dataset Tree View:** Render nested datasets and subvolumes as an indented tree or grouped view with individual snapshot counts in the Roots dashboard.
+- [x] **Hierarchical Roots Overview / Sub-Dataset Tree View:** Render nested datasets and subvolumes as an indented tree or grouped view with individual snapshot counts in the Roots dashboard.
 - [x] **Symlink Resolution & Navigation:** Intelligent handling of symlinks in the web interface: If symlink points to a folder $\rightarrow$ follow link and open ListView of target folder; if it points to a file $\rightarrow$ open target folder with row highlighted (`#filename`); if symlink is invalid/dead (dangling symlink) $\rightarrow$ display special icon (`link-2-off`) & error indicator instead of a download error 404
 - [x] **DetailView Button for Current Folder:** Add info button (`i`) on the far right of the table header in ListView to consistently navigate to the DetailView of the currently opened folder
 - [x] **Fixed Alignment of Action Icons:** Align icons in the right action column (`.browser-cell-actions`) left-aligned with a fixed grid, so that the info icon (`i`) on folder rows aligns perfectly with the info icons on file rows

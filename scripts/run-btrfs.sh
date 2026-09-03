@@ -28,6 +28,7 @@ fi
 
 echo "Starting Btrfs Snapshot Explorer container on port ${port} with root '${btrfs_root}'..."
 docker run -it --rm \
+    --cap-add=SYS_ADMIN \
     -p "${port}:8080" \
     "${volumes[@]}" \
     zfs-snapshot-explorer

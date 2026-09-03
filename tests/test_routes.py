@@ -71,6 +71,8 @@ class TestAppRoutes(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("mock-root", response.text)
+        self.assertIn("root-group-row", response.text)
+        self.assertIn("data-level=", response.text)
 
     def test_explorer_view(self) -> None:
         response = self.client.get("/list/mock-root")

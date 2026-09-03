@@ -11,6 +11,7 @@ from typing import ClassVar, Self
 import magic
 
 from ..config import RootConfig
+from ..enums import FilesystemType, ProviderType
 from ..logger import logger
 from .file import File
 from .folder import Folder
@@ -62,9 +63,9 @@ class RootFolder:
 
         provider = ProviderRegistry.get(fstype)
 
-        provider_type = provider.name
-        if is_network:
-            provider_type = "filesystem"
+        provider_type = ProviderType.CLI
+        if is_network or provider.name == FilesystemType.GENERIC:
+            provider_type = ProviderType.FILESYSTEM
 
         config = RootConfig(
             root_path=physical_path,
@@ -198,6 +199,29 @@ class RootFolder:
 
     def ensure_snapshot_accessible(self, snapshot: Snapshot) -> bool:
         return self._snapshot_provider.ensure_snapshot_accessible(snapshot, self._root_path, self._snapshot_path)
+
+    def is_mounted(self) -> bool:
+        """Checks whether the root's underlying directory exists and is a valid mount."""
+        real_p = self.real_path()
+        if not os.path.isdir(real_p):
+            return False
+        if self._config.filesystem_type == FilesystemType.BTRFS:
+            from ..btrfs.client import BtrfsClient
+
+            b_client = BtrfsClient()
+            if b_client.is_available():
+                info = b_client.get_subvolume_info(real_p)
+                if not info:
+                    return False
+        return True
+
+    def active_snapshot_count(self) -> int:
+        """Returns the count of active snapshots excluding the live system pseudo-snapshot."""
+        if not self.is_mounted():
+            return 0
+        from .snapshot import OriginalSnapshot
+
+        return len([s for s in self.snapshots() if not isinstance(s, OriginalSnapshot)])
 
     def real_path(self, path: FilePath | None = None, snapshot: Snapshot | None = None) -> str:
         norm_path = None
@@ -565,7 +589,7 @@ class RootFolder:
                 is_mount = mount_info is not None or os.path.ismount(child_abs_path)
                 provider = ProviderRegistry.detect_filesystem(child_abs_path, mount_info)
 
-                if provider.name != "generic":
+                if provider.name != FilesystemType.GENERIC:
                     # Implicit snapshot-capable dataset (e.g. Btrfs subvolume or ZFS dataset)
                     try:
                         is_net = mount_info.is_network_fs if mount_info else False

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, override
 
+from ..enums import FilesystemType, ProviderType
 from .base import FilesystemProvider
 
 if TYPE_CHECKING:
@@ -14,8 +15,8 @@ if TYPE_CHECKING:
 class ZfsProvider(FilesystemProvider):
     @property
     @override
-    def name(self) -> str:
-        return "zfs"
+    def name(self) -> FilesystemType:
+        return FilesystemType.ZFS
 
     @override
     def detect_boundary(self, live_path: str, mount_info: MountInfo | None) -> bool:
@@ -36,7 +37,7 @@ class ZfsProvider(FilesystemProvider):
     @override
     def create_snapshot_provider(self, config: RootConfig) -> ISnapshotProvider:
         # If it's explicitly set to filesystem or if we auto-detected a network mount (which uses filesystem provider type)
-        if config.provider_type == "filesystem":
+        if config.provider_type == ProviderType.FILESYSTEM:
             from ..models.snapshot_provider import FilesystemSnapshotProvider
 
             return FilesystemSnapshotProvider()

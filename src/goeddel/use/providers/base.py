@@ -3,6 +3,8 @@ from __future__ import annotations
 import abc
 from typing import TYPE_CHECKING
 
+from ..enums import FilesystemType
+
 if TYPE_CHECKING:
     from ..config import RootConfig
     from ..models.snapshot_provider import ISnapshotProvider
@@ -14,8 +16,8 @@ class FilesystemProvider(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def name(self) -> str:
-        """The name/ID of the provider (e.g. 'zfs')."""
+    def name(self) -> FilesystemType:
+        """The name/ID of the provider (e.g. FilesystemType.ZFS)."""
         pass
 
     @abc.abstractmethod
@@ -42,15 +44,15 @@ class FilesystemProvider(abc.ABC):
 class ProviderRegistry:
     """Registry to manage and discover filesystem providers."""
 
-    _providers: dict[str, FilesystemProvider] = {}
-    _default_provider_name: str = "generic"
+    _providers: dict[FilesystemType | str, FilesystemProvider] = {}
+    _default_provider_name: FilesystemType = FilesystemType.GENERIC
 
     @classmethod
     def register(cls, provider: FilesystemProvider) -> None:
         cls._providers[provider.name] = provider
 
     @classmethod
-    def get(cls, name: str) -> FilesystemProvider:
+    def get(cls, name: FilesystemType | str) -> FilesystemProvider:
         return cls._providers.get(name) or cls._providers[cls._default_provider_name]
 
     @classmethod

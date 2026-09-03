@@ -7,6 +7,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 
 from ..dependencies import get_app_config, get_base_url, templates
+from ..enums import FilesystemType
 from ..i18n import get_client_translations, get_language, get_translator
 from ..models.nodes import FSNode
 from ..models.root_folder import RootFolder
@@ -58,11 +59,11 @@ def get_breadcrumbs(
                 is_boundary = True
 
                 # Determine icon from the shadow root's filesystem type
-                fs_type = root_folder.config.filesystem_type or "generic"
-                if fs_type == "zfs":
+                fs_type = root_folder.config.filesystem_type or FilesystemType.GENERIC
+                if fs_type == FilesystemType.ZFS:
                     icon_name = "database"
                     icon_class = "icon-implicit-dataset"
-                elif fs_type == "btrfs":
+                elif fs_type == FilesystemType.BTRFS:
                     icon_name = "hard-drive"
                     icon_class = "icon-mount"
                 else:

@@ -251,6 +251,9 @@ class TreeTable {
         if (!row || row.dataset.isFolder !== 'true') return;
         row.dataset.expanded = 'false';
 
+        const toggleBtn = row.querySelector('.folder-toggle');
+        if (toggleBtn) toggleBtn.classList.remove('opened');
+
         const descendants = this.getDescendants(row);
         descendants.forEach((desc) => {
             desc.style.display = 'none';
@@ -270,6 +273,9 @@ class TreeTable {
     expandFolder(row) {
         if (!row || row.dataset.isFolder !== 'true') return;
         row.dataset.expanded = 'true';
+
+        const toggleBtn = row.querySelector('.folder-toggle');
+        if (toggleBtn) toggleBtn.classList.add('opened');
 
         // Re-show descendants whose immediate parent hierarchy is expanded
         const descendants = this.getDescendants(row);

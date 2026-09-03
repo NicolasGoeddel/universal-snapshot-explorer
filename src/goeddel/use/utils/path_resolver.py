@@ -4,6 +4,7 @@ import os
 from urllib.parse import unquote_plus
 
 from ..config import AppConfig
+from ..enums import FilesystemType
 from ..models.root_folder import RootFolder
 from ..providers import ProviderRegistry
 
@@ -66,7 +67,7 @@ def resolve_root_and_subpath(
 
                     provider = ProviderRegistry.detect_filesystem(live_path, f.mount_info)
                     fstype = provider.name
-                    if provider.name == "generic" and f.is_mount and f.mount_info:
+                    if provider.name == FilesystemType.GENERIC and f.is_mount and f.mount_info:
                         fstype = f.mount_info.fstype
 
                     # The logical boundary path must include the parent shadow's boundary if any

@@ -19,8 +19,13 @@ Instead of browsing snapshots one by one or mounting snapshot directories manual
 ### Explorer View (Multi-Snapshot Timeline)
 ![Explorer View](assets/explorer.png)
 
-### Roots Dashboard (Dataset Overview) *(v1.0.0 preview)*
-![Roots Dashboard](assets/dashboard.png)
+### Roots Dashboard (Hierarchical Overview)
+<p align="center">
+  <img src="assets/dashboard-truenas.png" alt="Roots Dashboard - TrueNAS / OpenZFS Pools" width="100%">
+</p>
+<p align="center">
+  <img src="assets/dashboard-btrfs.png" alt="Roots Dashboard - Btrfs Subvolumes" width="100%">
+</p>
 
 ### File Details & Version History
 ![File Details & Version History](assets/detail.png)

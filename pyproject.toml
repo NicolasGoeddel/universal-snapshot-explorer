@@ -1,6 +1,6 @@
 [project]
 name = "universal-snapshot-explorer"
-version = "2.1.0"
+version = "2.1.1"
 description = "Universal Snapshot Explorer (USE) - High-performance web explorer and audit tool for ZFS, Btrfs and POSIX snapshots"
 authors = [
     { name = "Nicolas Göddel", email = "github@goeddel.net" }

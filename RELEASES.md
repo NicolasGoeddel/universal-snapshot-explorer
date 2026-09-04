@@ -6,6 +6,22 @@ This project adheres to [Semantic Versioning (SemVer)](https://semver.org/).
 
 ---
 
+## [2.1.1] - 2026-09-04
+
+> **Patch Release: Upstream Security Fixes, Lockfile Dependency Upgrades & Automated Vulnerability Auditing**
+
+### 🔒 Security & Dependency Upgrades
+
+* **Upstream Security Patches (Starlette CVE-2026-48818 & related advisories):**
+  * Upgraded `starlette` from `1.0.0` to `1.6.0` in `uv.lock`, patching Windows UNC path handling in `StaticFiles` (CVE-2026-48818) along with Host-header validation and form parsing improvements.
+  * Upgraded `idna` (3.11 -> 3.19) and `click` (8.3.2 -> 8.5.0) to eliminate all known CVEs from the dependency tree.
+* **Automated CI Vulnerability Auditing:**
+  * Integrated `uv audit` directly into the GitHub Actions CI pipeline (`.github/workflows/ci.yml`) to automatically flag and block vulnerable dependencies on pull requests and commits.
+* **Repository Cleanup:**
+  * Removed obsolete debug script from root repository directory.
+
+---
+
 ## [2.1.0] - 2026-09-03
 
 > **Minor Release: Hierarchical Roots & Subvolume Overview, Modular Architecture, Performance Engineering & UI Polish**

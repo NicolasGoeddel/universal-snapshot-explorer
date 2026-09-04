@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      - name: Audit dependencies for vulnerabilities
+        run: uv audit
+
       - name: Run Ruff Linter & Formatter Check
         run: |
           uv run ruff check src tests

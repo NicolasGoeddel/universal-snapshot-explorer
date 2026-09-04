@@ -136,4 +136,34 @@
 - [ ] **Generator-Based Row Iteration:**
   - Use generators or direct DOM walker for `getVisibleRows()` to avoid intermediate array allocations during hot loops.
 
+---
+
+## 8. Multi-Instance Federation & Remote Access (API, Security & Proxying)
+- [ ] **Headless Daemon Mode (`web_ui: false`):**
+  - Option in `config.yaml` to run USE as a pure API daemon for federation backends without HTML templates or static assets.
+  - Default remains `web_ui: true` to preserve full backwards compatibility.
+- [ ] **Custom CA Support & Strict TLS Verification:**
+  - Support custom CA certificate bundles (`tls.ca_cert`) for homelabs running internal CAs (StepCA, pfSense, mkcert).
+  - Configurable `tls.insecure_skip_verify: false` with prominent warning logs in the console if TLS certificate verification is explicitly disabled.
+- [ ] **Reverse-Proxy Scheme & Plaintext Token Warning:**
+  - Inspect `X-Forwarded-Proto` and `request.url.scheme` to detect unencrypted HTTP traffic from non-localhost clients and log clear security warnings when tokens are transmitted without TLS.
+- [ ] **Multi-Token Client Authentication (`api.tokens`):**
+  - Multi-client token registry with distinct client names (e.g. `nicolas-desktop`, `living-room-pc`) for granular revocation and audit logging.
+- [ ] **Granular Root-Level ACLs (`allowed_roots` with Globbing):**
+  - Restrict tokens to specific roots or glob patterns (e.g. `tank/media/*`), compatible with both explicit and auto-discovered roots.
+  - Conceal unauthorized roots in RootView dashboard and API listings (prevent information disclosure).
+- [ ] **Sub-Dataset Boundary & URL Tampering Protection:**
+  - Enforce access checks in `resolve_root_and_subpath` and `_walk_shadow` to prevent manual URL manipulation into unauthorized child datasets.
+  - Display lock indicators (`folder-lock`) for unauthorized child dataset mountpoints within authorized parent folders.
+  - Prevent ZIP archive streamer from traversing into forbidden child datasets.
+- [ ] **Unified RootView Dashboard with Host Sections (Option C):**
+  - Group all remote roots under a dedicated, collapsible top-level section per remote host (e.g. `▼ TrueNAS (192.168.1.50) [● Online]`).
+  - Preserve nested ZFS/Btrfs pool hierarchies inside each host section.
+- [ ] **Resilient Offline Handling:**
+  - Non-blocking remote health checks; offline remote hosts are marked with an offline pill without slowing down or crashing local roots.
+- [ ] **Remote Proxy Route Handlers:**
+  - Transparent proxying of folder listings, file detail views, MIME types, and streaming file/ZIP downloads directly from remote instances.
+- [ ] **Comprehensive Federation & Security Test Suite:**
+  - Integration tests for token authentication, multi-token revocation, CA validation, URL tampering 403s, and ZIP traversal boundary isolation.
+
 

@@ -46,6 +46,7 @@ class ExplorerView {
         this.initKeyboardNavigation();
         this.initTimelineTooltip();
         this.initSnapshotDropdown();
+        this.initSnapshotCriteria();
         this.updateZebra();
         this.updateToggleCounts();
 
@@ -169,6 +170,54 @@ class ExplorerView {
                     }
                 }
             });
+        }
+    }
+
+    initSnapshotCriteria() {
+        if (typeof SnapshotCriteriaManager !== 'undefined') {
+            this.criteriaManager = new SnapshotCriteriaManager({
+                onChange: (activeAttributes) => {
+                    this.activeCriteria = activeAttributes;
+                    this.reloadSnapshotBars();
+                },
+            });
+            this.activeCriteria = this.criteriaManager.getActiveAttributes();
+        } else {
+            this.activeCriteria = null;
+        }
+    }
+
+    reloadSnapshotBars() {
+        const allRows = this.treeTable.getAllRows();
+        allRows.forEach((row) => {
+            const td = row.children[2];
+            if (td) {
+                delete td._snapshotData;
+                td.innerHTML = '<div class="snapshot-skeleton"></div>';
+            }
+        });
+        this.loadSnapshotBars(this.tbody, this.table.dataset.subpath || '');
+    }
+
+    updateHeaderTimeline(headerBarStr) {
+        const headerTimeline = document.querySelector('.snapshots-header-timeline .header-snapshotbar');
+        if (!headerTimeline || !headerBarStr) return;
+        const links = Array.from(headerTimeline.querySelectorAll('a'));
+        const count = Math.min(links.length, headerBarStr.length);
+        for (let i = 0; i < count; i++) {
+            const char = headerBarStr[i] || 'x';
+            const prevChar = i > 0 ? headerBarStr[i - 1] : null;
+            const nextChar = i < count - 1 ? headerBarStr[i + 1] : null;
+            const roundLeft = prevChar === null || prevChar !== char;
+            const roundRight = nextChar === null || nextChar !== char;
+            const x = i * 20;
+            const pathD = this.getPillPath(x + 0.5, 1, 19, 15, 5, roundLeft, roundRight);
+
+            const path = links[i].querySelector('path');
+            if (path) {
+                path.setAttribute('d', pathD);
+                path.setAttribute('fill', char === 'x' ? 'var(--snap-missing)' : `var(--snap-${char})`);
+            }
         }
     }
 
@@ -802,7 +851,11 @@ class ExplorerView {
         this.initSnapshotObserver();
 
         try {
-            const url = buildRouteUrl('', 'api/snapshot-bars', this.rootName, dirPath, { snapshot: this.snapshot });
+            const queryParams = { snapshot: this.snapshot };
+            if (this.activeCriteria && this.activeCriteria.length > 0 && this.activeCriteria.length < 5) {
+                queryParams.attributes = this.activeCriteria.join(',');
+            }
+            const url = buildRouteUrl('', 'api/snapshot-bars', this.rootName, dirPath, queryParams);
             const res = await fetch(url);
             if (!res.ok) {
                 this.hideSnapshotLoadingOverlay();
@@ -811,6 +864,10 @@ class ExplorerView {
             const data = await res.json();
             const snapshots = data.snapshots || [];
             const bars = data.bars || {};
+
+            if (data.header_bar && dirPath === (this.table.dataset.subpath || '')) {
+                this.updateHeaderTimeline(data.header_bar);
+            }
 
             const allRows = this.treeTable.getAllRows();
             const chunkSize = 500;
@@ -871,6 +928,7 @@ class ExplorerView {
                     this.updateZebra();
                     this.updateToggleCounts();
                     this.hideSnapshotLoadingOverlay();
+                    this.filterManager?.applyFilters();
                 }
             };
 

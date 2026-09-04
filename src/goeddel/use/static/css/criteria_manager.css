@@ -1,0 +1,122 @@
+/* Snapshot Criteria Dropdown in Toolbar */
+.snapshot-criteria-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.criteria-dropdown-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-main);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    user-select: none;
+}
+
+.criteria-dropdown-btn:hover {
+    background-color: var(--row-hover);
+    border-color: var(--primary-accent);
+}
+
+.criteria-dropdown-btn.has-custom-criteria {
+    border-color: var(--primary-accent);
+    color: var(--primary-accent);
+    font-weight: 600;
+}
+
+.criteria-badge {
+    background-color: var(--primary-accent);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 1px 6px;
+    line-height: 1;
+}
+
+.criteria-dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    min-width: 240px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+    z-index: 1050;
+    padding: 8px 0;
+}
+
+.criteria-dropdown-content::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 0;
+    right: 0;
+    height: 6px;
+}
+
+.snapshot-criteria-dropdown.open .criteria-dropdown-content,
+.snapshot-criteria-dropdown:hover .criteria-dropdown-content {
+    display: block;
+}
+
+.criteria-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 12px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-color-light);
+    margin-bottom: 4px;
+}
+
+.criteria-reset-btn {
+    background: none;
+    border: none;
+    color: var(--primary-accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.criteria-reset-btn:hover {
+    text-decoration: underline;
+}
+
+.criteria-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.12s ease;
+}
+
+.criteria-checkbox-item:hover {
+    background-color: var(--row-hover);
+}
+
+.criteria-checkbox-item input[type="checkbox"] {
+    cursor: pointer;
+}

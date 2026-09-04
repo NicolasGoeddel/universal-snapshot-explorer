@@ -9,11 +9,17 @@ router = APIRouter()
 
 
 @router.get("/api/snapshot-bars/{full_path:path}")
-def get_snapshot_bars_api(request: Request, full_path: str = "", snapshot: str | None = None) -> dict[str, object]:
+def get_snapshot_bars_api(
+    request: Request,
+    full_path: str = "",
+    snapshot: str | None = None,
+    attributes: str | None = None,
+) -> dict[str, object]:
     _ = (request, snapshot)
     config = get_app_config(request)
     _, directory_path, root_folder = resolve_root_and_subpath(full_path, config)
-    return root_folder.get_snapshot_bars_data(directory_path)
+    parsed_attrs = [a.strip() for a in attributes.split(",") if a.strip()] if attributes else None
+    return root_folder.get_snapshot_bars_data(directory_path, attributes=parsed_attrs)
 
 
 @router.get("/api/file-mimetypes/{full_path:path}")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 import os
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from dataclasses import dataclass
 from typing import Protocol, override
 
@@ -344,11 +344,12 @@ class FSNode:
         Returns the list in display order (reverse=True means newest/Original first).
         """
         chronological_snaps = self._root_folder.snapshots_chronological()
+        bar = self.get_snapshots_bar()
+        snap_colors = {item["snapshot"].id: item["color"] for item in bar}
         results: list[SnapshotVersionDetail] = []
-        color_index = 0
         prev_node: FSNode | None = None
 
-        for i, snap in enumerate(chronological_snaps):
+        for snap in chronological_snaps:
             curr_node = self._root_folder.get_file(path=self.path, snapshot=snap)
             is_created = False
             is_deleted = False
@@ -357,16 +358,12 @@ class FSNode:
             if prev_node is not None:
                 if not prev_node.does_exist and curr_node.does_exist:
                     is_created = True
-                    if i > 0:
-                        color_index += 1
                 elif prev_node.does_exist and not curr_node.does_exist:
                     is_deleted = True
                 elif curr_node.does_exist and prev_node.does_exist:
                     changed_attrs = curr_node.compare(prev_node)
-                    if changed_attrs:
-                        color_index += 1
 
-            color = (color_index % SNAPSHOT_COLORS) + 1 if curr_node.does_exist else None
+            color = snap_colors.get(snap.id) if curr_node.does_exist else None
             results.append(
                 SnapshotVersionDetail(
                     entry=curr_node,
@@ -384,12 +381,22 @@ class FSNode:
             return list(reversed(results))
         return results
 
-    @property
-    def snapshots_bar(self) -> list[SnapshotBarItem]:
+    def get_snapshots_bar(self, attributes: Sequence[str] | None = None) -> list[SnapshotBarItem]:
         # TODO Externalize into a view class
         results: list[SnapshotBarItem] = []
         color_index = 0
         previous_file: FSNode | None = None
+
+        relevant_attrs: set[ChangedAttribute] | None = None
+        if attributes is not None:
+            attr_map: dict[str, set[ChangedAttribute]] = {
+                "size": {ChangedAttribute.SIZE},
+                "mtime": {ChangedAttribute.MTIME},
+                "ctime": {ChangedAttribute.CTIME},
+                "mode": {ChangedAttribute.MODE},
+                "owner": {ChangedAttribute.UID, ChangedAttribute.GID},
+            }
+            relevant_attrs = {ca for a in attributes for ca in attr_map.get(a, set())}
 
         for i, file in enumerate(self.siblings()):
             if not file.does_exist:
@@ -400,9 +407,20 @@ class FSNode:
             if i > 0:
                 if previous_file is not None and not previous_file.does_exist:
                     color_index += 1
-                elif file != previous_file:
-                    color_index += 1
+                elif relevant_attrs is None:
+                    if file != previous_file:
+                        color_index += 1
+                else:
+                    if previous_file is not None:
+                        diff = file.compare(previous_file)
+                        if diff & relevant_attrs:
+                            color_index += 1
+
             results.append({"color": (color_index % SNAPSHOT_COLORS) + 1, "snapshot": file.snapshot, "missing": False})
             previous_file = file
 
         return results
+
+    @property
+    def snapshots_bar(self) -> list[SnapshotBarItem]:
+        return self.get_snapshots_bar()

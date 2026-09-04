@@ -158,6 +158,12 @@ class TestAppRoutes(unittest.TestCase):
             self.assertIsInstance(item["color"], int)
             self.assertFalse(item["missing"])
 
+        # Verify version_history colors align with snapshots_bar (newest to oldest)
+        history = file_node.version_history(reverse=True)
+        self.assertEqual(len(history), 3)
+        for h_item, b_item in zip(history, bar_items, strict=True):
+            self.assertEqual(h_item.color, b_item["color"])
+
         # 3. Verify explorer view template renders generic snapshot bar macro with pills
         resp_explorer = self.client.get("/list/mock-root")
         self.assertEqual(resp_explorer.status_code, 200)
@@ -168,6 +174,28 @@ class TestAppRoutes(unittest.TestCase):
         resp_error = self.client.get("/list/mock-root/-/nonexistent_file.txt")
         self.assertEqual(resp_error.status_code, 404)
         self.assertIn("snapshots-header-timeline error-timeline-bar", resp_error.text)
+
+    def test_snapshot_bar_attribute_criteria(self) -> None:
+        # file1.txt has identical size (2 bytes: "v1", "v2", "v3") across all 3 versions,
+        # but different timestamps (mtime/ctime).
+        # 1. When filtering by size only, all snapshots must have the same color ('111')
+        resp_size = self.client.get("/api/snapshot-bars/mock-root?attributes=size")
+        self.assertEqual(resp_size.status_code, 200)
+        data_size = resp_size.json()
+        self.assertEqual(data_size["bars"]["file1.txt"], "111")
+        self.assertIn("header_bar", data_size)
+
+        # 2. When filtering by mtime only, colors must change across snapshots ('123')
+        resp_mtime = self.client.get("/api/snapshot-bars/mock-root?attributes=mtime")
+        self.assertEqual(resp_mtime.status_code, 200)
+        data_mtime = resp_mtime.json()
+        self.assertEqual(data_mtime["bars"]["file1.txt"], "123")
+
+        # 3. Explorer HTML contains the snapshot-criteria dropdown and script
+        resp_explorer = self.client.get("/list/mock-root")
+        self.assertEqual(resp_explorer.status_code, 200)
+        self.assertIn("criteria_manager.js", resp_explorer.text)
+        self.assertIn("criteria_manager.css", resp_explorer.text)
 
 
 if __name__ == "__main__":

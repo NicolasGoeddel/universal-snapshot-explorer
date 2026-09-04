@@ -14,11 +14,11 @@ function applyCategoricalColors() {
     ];
 
     const rows = Array.from(table.querySelectorAll('tbody tr'));
-    // Sort chronologically (oldest snapshot to newest) to assign consistent color palettes
-    const chronoRows = [...rows].sort((a, b) => {
+    // Sort from newest snapshot to oldest snapshot (matching ExplorerView color order)
+    const orderedRows = [...rows].sort((a, b) => {
         const idxA = parseInt(a.dataset.chronologicalIndex || '0', 10);
         const idxB = parseInt(b.dataset.chronologicalIndex || '0', 10);
-        return idxA - idxB;
+        return idxB - idxA;
     });
 
     colSelectors.forEach((selector) => {
@@ -30,9 +30,9 @@ function applyCategoricalColors() {
             }
         });
 
-        // Collect unique values in chronological order from existing entries
+        // Collect unique values in order from newest snapshot to oldest
         const uniqueValues = [];
-        chronoRows.forEach((tr) => {
+        orderedRows.forEach((tr) => {
             if (tr.dataset.doesExist !== 'true') return;
             const cell = tr.querySelector(selector);
             if (!cell) return;
@@ -45,7 +45,7 @@ function applyCategoricalColors() {
 
         // Only apply categorical colors if there are 2 or more distinct values across snapshots
         if (uniqueValues.length >= 2) {
-            chronoRows.forEach((tr) => {
+            orderedRows.forEach((tr) => {
                 if (tr.dataset.doesExist !== 'true') return;
                 const cell = tr.querySelector(selector);
                 if (!cell) return;

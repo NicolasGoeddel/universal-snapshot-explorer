@@ -516,7 +516,7 @@ class RootFolder:
     def _scan_read_only_dir(real_dir: str, control_dir_name: str) -> dict[str, tuple[int, int, int, int, int, int]] | None:
         return RootFolder._scan_dir_live(real_dir, control_dir_name)
 
-    def get_snapshot_bars_data(self, path: FilePath) -> dict[str, object]:
+    def get_snapshot_bars_data(self, path: FilePath, attributes: Sequence[str] | None = None) -> dict[str, object]:
         """
         Scans directory entries across all snapshots using fast batch os.scandir
         with LRU-cached read-only snapshots and returns a compact snapshot color map.
@@ -536,6 +536,19 @@ class RootFolder:
             if entries_map:
                 all_filenames.update(entries_map.keys())
 
+        # Map attribute names to indices in stat tuple:
+        # sig = (uid [0], gid [1], mode [2], mtime_ns [3], ctime_ns [4], size [5])
+        sig_indices: tuple[int, ...] | None = None
+        if attributes is not None:
+            attr_index_map: dict[str, tuple[int, ...]] = {
+                "owner": (0, 1),
+                "mode": (2,),
+                "mtime": (3,),
+                "ctime": (4,),
+                "size": (5,),
+            }
+            sig_indices = tuple(idx for a in attributes for idx in attr_index_map.get(a, ()))
+
         bars: dict[str, object] = {}
         from ..mounts import MountsManager
         from ..providers import ProviderRegistry
@@ -552,7 +565,7 @@ class RootFolder:
                     child_root_folder = self.get_instance_by_name(child_root_name)
                     if child_root_folder:
                         child_root_node = child_root_folder.get_file(path="")
-                        child_bar = child_root_node.snapshots_bar
+                        child_bar = child_root_node.get_snapshots_bar(attributes=attributes)
                         bar_str = "".join("x" if item["missing"] or item["color"] is None else str(item["color"]) for item in child_bar)
                         bars[filename] = {
                             "is_sub_dataset": True,
@@ -587,7 +600,7 @@ class RootFolder:
                         rel_logical = os.path.join(self.logical_sub_path or "", child_rel_path).strip("/")
                         shadow_rf = self.get_shadow_instance(base_name, rel_logical, child_abs_path, provider.name, is_network=is_net)
                         child_root_node = shadow_rf.get_file(path="")
-                        child_bar = child_root_node.snapshots_bar
+                        child_bar = child_root_node.get_snapshots_bar(attributes=attributes)
                         bar_str = "".join("x" if item["missing"] or item["color"] is None else str(item["color"]) for item in child_bar)
                         bars[filename] = {
                             "is_sub_dataset": True,
@@ -616,7 +629,8 @@ class RootFolder:
                     previous_sig = None
                     continue
 
-                sig = snap_entries[filename]
+                raw_sig = snap_entries[filename]
+                sig = tuple(raw_sig[idx] for idx in sig_indices) if sig_indices is not None else raw_sig
                 if i > 0:
                     if previous_sig is None:
                         color_index += 1
@@ -628,9 +642,18 @@ class RootFolder:
 
             bars[filename] = "".join(chars)
 
+        header_bar_str = ""
+        try:
+            folder_node = self.get_file(path=path)
+            header_items = folder_node.get_snapshots_bar(attributes=attributes)
+            header_bar_str = "".join("x" if item["missing"] or item["color"] is None else str(item["color"]) for item in header_items)
+        except Exception as e:
+            logger.debug("Failed to calculate header snapshot bar: %s", e)
+
         return {
             "snapshots": [{"id": s.id, "name": s.name} for s in snapshots],
             "bars": bars,
+            "header_bar": header_bar_str,
         }
 
     def get_snapshot_state(self, path: FilePath, snapshot: str | None) -> dict[str, object]:

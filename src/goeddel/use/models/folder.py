@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import os
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
 from ..enums import FilesystemType
@@ -225,14 +226,13 @@ class Folder(FSNode):
             return None
         return self.item_count
 
-    @property
     @override
-    def snapshots_bar(self) -> list[SnapshotBarItem]:
+    def get_snapshots_bar(self, attributes: Sequence[str] | None = None) -> list[SnapshotBarItem]:
         if self.is_sub_dataset:
             if self.sub_dataset_root_name is not None:
                 child_root = self._root_folder.get_instance_by_name(self.sub_dataset_root_name)
                 if child_root:
-                    return child_root.get_file(path="").snapshots_bar
+                    return child_root.get_file(path="").get_snapshots_bar(attributes=attributes)
 
             try:
                 live_path = self._root_folder.real_path(self.path, self._root_folder.get_snapshot("Original"))
@@ -244,12 +244,17 @@ class Folder(FSNode):
                     rel_logical = os.path.join(self._root_folder.logical_sub_path or "", self.logical_path).strip("/")
                     is_net = self.mount_info.is_network_fs if self.mount_info else False
                     shadow_rf = self._root_folder.get_shadow_instance(base_name, rel_logical, live_path, provider.name, is_network=is_net)
-                    return shadow_rf.get_file(path="").snapshots_bar
+                    return shadow_rf.get_file(path="").get_snapshots_bar(attributes=attributes)
             except Exception:
                 pass
             return []
 
-        return super().snapshots_bar
+        return super().get_snapshots_bar(attributes=attributes)
+
+    @property
+    @override
+    def snapshots_bar(self) -> list[SnapshotBarItem]:
+        return self.get_snapshots_bar()
 
     def __getitem__(self, filename: FileName) -> FSNode:
         if self.children is None:

@@ -1,3 +1,4 @@
+{% from 'snapshots_bar.svg.j2' import render_snapshot_bar %}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
@@ -81,34 +82,7 @@
                 </h4>
                 <div class="error-timeline-wrapper">
                     <div class="snapshots-header-timeline error-timeline-bar">
-                        <svg class="snapshotbar" viewBox="-1 -1 {{ (snapshots_bar | length) * 20 + 2 }} 21" preserveAspectRatio="none" style="width: 100%; height: 24px; max-width: {{ (snapshots_bar | length) * 24 + 4 }}px;">
-                            {% set current_snap_id = snapshot.id if snapshot else 'Original' %}
-                            {% for item in snapshots_bar %}
-                            {% set snap = item.snapshot %}
-                            {% set x = loop.index0 * 20 %}
-                            {% set is_current = (snap.id == current_snap_id) %}
-                            <a href="{{ route_url('list', root_name, path, snap.id) }}"
-                               data-snap-id="{{ snap.id }}"
-                               data-snap-name="{{ snap.name }}"
-                               data-snap-time="{{ snap.timestamp_formatted if snap.timestamp_formatted else '' }}"
-                               data-is-current="{{ 'true' if is_current else 'false' }}"
-                               data-is-missing="{{ 'true' if item.missing else 'false' }}">
-                                {% if item.missing %}
-                                    <rect x="{{ x + 0.5 }}" y="1" width="19" height="18" rx="2" ry="2" fill="{{ item.color }}" stroke="rgba(0,0,0,0.25)" stroke-width="1"/>
-                                    <line x1="{{ x + 3.5 }}" y1="4" x2="{{ x + 15.5 }}" y2="16" stroke="#ef4444" stroke-width="1.5"/>
-                                    <line x1="{{ x + 15.5 }}" y1="4" x2="{{ x + 3.5 }}" y2="16" stroke="#ef4444" stroke-width="1.5"/>
-                                {% else %}
-                                    <rect x="{{ x + 0.5 }}" y="1" width="19" height="18" rx="2" ry="2" 
-                                           fill="{{ item.color }}"
-                                           stroke="rgba(0,0,0,0.15)" stroke-width="1"
-                                           class="header-snap-rect {{ 'current-snapshot-rect' if is_current else '' }}" />
-                                {% endif %}
-                                {% if is_current %}
-                                <circle cx="{{ x + 10 }}" cy="10" r="3.5" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>
-                                {% endif %}
-                            </a>
-                            {% endfor %}
-                        </svg>
+                        {{ render_snapshot_bar(snapshots_bar, current_snapshot_id=snapshot.id if snapshot else 'Original', is_header=false, with_links=true, root_name=root_name, path=path, module='list') }}
                     </div>
                 </div>
             </div>

@@ -141,6 +141,34 @@ class TestAppRoutes(unittest.TestCase):
         self.assertEqual(response_get.status_code, 200)
         self.assertEqual(response_get.json()["status"], "ok")
 
+    def test_snapshot_bar_colors_and_template_rendering(self) -> None:
+        # 1. Verify /api/snapshot-bars returns numerical color chars (1, 2, 3...) instead of color names
+        response = self.client.get("/api/snapshot-bars/mock-root")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["bars"]["file1.txt"], "123")
+
+        # 2. Verify backend node snapshot_bar returns integer colors
+        root_cfg = self.config.roots["mock-root"]
+        rf = RootFolder.get(root_cfg)
+        file_node = rf.get_file(path="file1.txt")
+        bar_items = file_node.snapshots_bar
+        self.assertEqual(len(bar_items), 3)
+        for item in bar_items:
+            self.assertIsInstance(item["color"], int)
+            self.assertFalse(item["missing"])
+
+        # 3. Verify explorer view template renders generic snapshot bar macro with pills
+        resp_explorer = self.client.get("/list/mock-root")
+        self.assertEqual(resp_explorer.status_code, 200)
+        self.assertIn('class="snapshotbar header-snapshotbar"', resp_explorer.text)
+        self.assertIn('class="header-snap-rect', resp_explorer.text)
+
+        # 4. Verify 404 error page renders generic snapshot bar macro in error timeline
+        resp_error = self.client.get("/list/mock-root/-/nonexistent_file.txt")
+        self.assertEqual(resp_error.status_code, 404)
+        self.assertIn("snapshots-header-timeline error-timeline-bar", resp_error.text)
+
 
 if __name__ == "__main__":
     unittest.main()

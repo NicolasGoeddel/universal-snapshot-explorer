@@ -44,7 +44,7 @@
                             <span class="badge badge-missing">{{ t('badge.missing') }}</span>
                         {%- endif -%}
                     {%- else -%}
-                        <span class="version-badge" style="background-color: {{ v.color }};" title="Color: {{ v.color }}"></span>
+                        <span class="version-badge" style="background-color: var(--snap-{{ v.color }});" title="Color: {{ v.color }}"></span>
                         <div class="snapshot-name-group">
                             <strong>{{ entry.snapshot.name }}</strong>
                             {%- if entry.snapshot.has_timestamp -%}

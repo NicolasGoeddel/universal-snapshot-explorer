@@ -13,11 +13,11 @@
     --border-color-light: #e2e8f0;
 
     --snap-1: #10b981;
-    --snap-2: #3b82f6;
-    --snap-3: #f59e0b;
-    --snap-4: #ef4444;
-    --snap-5: #8b5cf6;
-    --snap-6: #ec4899;
+    --snap-2: #f59e0b;
+    --snap-3: #ec4899;
+    --snap-4: #3b82f6;
+    --snap-5: #ef4444;
+    --snap-6: #8b5cf6;
     --snap-missing: #000000;
 
     --breadcrumb-bg: var(--primary-accent);
@@ -47,11 +47,11 @@
     --cat-1-text: color-mix(in srgb, var(--snap-1) 70%, #000000);
     --cat-1-border: color-mix(in srgb, var(--snap-1) 30%, transparent);
 
-    --cat-2-bg: color-mix(in srgb, var(--snap-2) 14%, transparent);
+    --cat-2-bg: color-mix(in srgb, var(--snap-2) 16%, transparent);
     --cat-2-text: color-mix(in srgb, var(--snap-2) 70%, #000000);
     --cat-2-border: color-mix(in srgb, var(--snap-2) 30%, transparent);
 
-    --cat-3-bg: color-mix(in srgb, var(--snap-3) 16%, transparent);
+    --cat-3-bg: color-mix(in srgb, var(--snap-3) 14%, transparent);
     --cat-3-text: color-mix(in srgb, var(--snap-3) 70%, #000000);
     --cat-3-border: color-mix(in srgb, var(--snap-3) 30%, transparent);
 
@@ -77,16 +77,16 @@
 
     --snap-1: #047857;
     /* darker emerald */
-    --snap-2: #1d4ed8;
-    /* darker blue */
-    --snap-3: #b45309;
+    --snap-2: #b45309;
     /* darker amber */
-    --snap-4: #b91c1c;
-    /* darker red */
-    --snap-5: #6d28d9;
-    /* darker violet */
-    --snap-6: #be185d;
+    --snap-3: #be185d;
     /* darker pink */
+    --snap-4: #1d4ed8;
+    /* darker blue */
+    --snap-5: #b91c1c;
+    /* darker red */
+    --snap-6: #6d28d9;
+    /* darker violet */
     --snap-missing: #000000;
 
     --breadcrumb-bg: #1e3a8a;
@@ -117,11 +117,11 @@
     --cat-1-text: color-mix(in srgb, var(--snap-1) 60%, #ffffff);
     --cat-1-border: color-mix(in srgb, var(--snap-1) 40%, transparent);
 
-    --cat-2-bg: color-mix(in srgb, var(--snap-2) 32%, transparent);
+    --cat-2-bg: color-mix(in srgb, var(--snap-2) 35%, transparent);
     --cat-2-text: color-mix(in srgb, var(--snap-2) 60%, #ffffff);
     --cat-2-border: color-mix(in srgb, var(--snap-2) 40%, transparent);
 
-    --cat-3-bg: color-mix(in srgb, var(--snap-3) 35%, transparent);
+    --cat-3-bg: color-mix(in srgb, var(--snap-3) 32%, transparent);
     --cat-3-text: color-mix(in srgb, var(--snap-3) 60%, #ffffff);
     --cat-3-border: color-mix(in srgb, var(--snap-3) 40%, transparent);
 
@@ -1527,12 +1527,18 @@ kbd {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    height: auto;
     padding: 6px 12px;
     background-color: var(--bg-body);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     max-width: 100%;
     overflow-x: auto;
+}
+
+.error-timeline-bar .snapshotbar {
+    height: 20px;
+    display: block;
 }
 
 .error-actions-group {

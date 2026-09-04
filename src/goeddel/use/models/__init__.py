@@ -7,6 +7,7 @@ from .root_folder import RootFolder
 from .snapshot import OriginalSnapshot, Snapshot
 from .snapshot_provider import FilesystemSnapshotProvider, ISnapshotProvider
 from .types import (
+    SNAPSHOT_COLORS,
     BreadcrumbPath,
     BreadcrumbsData,
     FileName,
@@ -48,6 +49,7 @@ __all__ = [
     "RootName",
     "RootViewItem",
     "PathCacheKey",
+    "SNAPSHOT_COLORS",
     "SnapshotBarItem",
     "BreadcrumbPath",
     "BreadcrumbsData",

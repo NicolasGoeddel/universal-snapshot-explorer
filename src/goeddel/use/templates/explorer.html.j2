@@ -1,3 +1,4 @@
+{% from 'snapshots_bar.svg.j2' import render_snapshot_bar %}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
@@ -64,28 +65,7 @@
                             <span>{{ t('table.snapshots') }}</span>
                         </div>
                         <div class="snapshots-header-timeline">
-                            <svg class="snapshotbar header-snapshotbar" viewBox="-1 -1 {{ (breadcrumbs.snapshots | length) * 20 + 2 }} 18" preserveAspectRatio="none" style="width: 100%; max-width: {{ (breadcrumbs.snapshots | length) * 20 }}px;">
-                                {%- set current_snap_id = folder.snapshot.id -%}
-                                {% for item in folder.snapshots_bar %}
-                                {% set snap = item.snapshot %}
-                                {% set x = loop.index0 * 20 %}
-                                {% set is_current = (snap.id == current_snap_id) %}
-                                <a href="{{ base_url }}/list/{{ root_name | quote_plus }}/{{ directory_path | quote_path }}?snapshot={{ snap.id | quote_plus }}"
-                                   data-snap-id="{{ snap.id }}"
-                                   data-snap-name="{{ snap.name }}"
-                                   data-snap-time="{{ snap.timestamp_formatted if snap.timestamp_formatted else '' }}"
-                                   data-is-current="{{ 'true' if is_current else 'false' }}"
-                                   data-is-missing="{{ 'true' if item.missing else 'false' }}">
-                                    <rect x="{{ x + 0.5 }}" y="1" width="19" height="15" rx="2" ry="2" 
-                                           fill="{{ item.color }}"
-                                           stroke="rgba(0,0,0,0.15)" stroke-width="1"
-                                           class="header-snap-rect {{ 'current-snapshot-rect' if is_current else '' }}" />
-                                    {% if is_current %}
-                                    <circle cx="{{ x + 10 }}" cy="8.5" r="3.5" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>
-                                    {% endif %}
-                                </a>
-                                {% endfor %}
-                            </svg>
+                            {{ render_snapshot_bar(folder.snapshots_bar, current_snapshot_id=folder.snapshot.id, is_header=true, with_links=true, root_name=root_name, path=directory_path, module='list') }}
                         </div>
                     </div>
                 </th>

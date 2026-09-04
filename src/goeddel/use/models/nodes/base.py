@@ -10,6 +10,7 @@ from ...config import RootConfig
 from ...enums import ChangedAttribute
 from ..snapshot import Snapshot
 from ..types import (
+    SNAPSHOT_COLORS,
     FileName,
     FilePath,
     GroupId,
@@ -26,7 +27,7 @@ class SnapshotVersionDetail:
 
     entry: FSNode
     prev_entry: FSNode | None
-    color: str
+    color: int | None
     is_created: bool
     is_deleted: bool
     is_missing: bool
@@ -345,7 +346,6 @@ class FSNode:
         chronological_snaps = self._root_folder.snapshots_chronological()
         results: list[SnapshotVersionDetail] = []
         color_index = 0
-        colors = ["var(--snap-1)", "var(--snap-2)", "var(--snap-3)", "var(--snap-4)", "var(--snap-5)", "var(--snap-6)"]
         prev_node: FSNode | None = None
 
         for i, snap in enumerate(chronological_snaps):
@@ -366,7 +366,7 @@ class FSNode:
                     if changed_attrs:
                         color_index += 1
 
-            color = colors[color_index % len(colors)] if curr_node.does_exist else "var(--snap-missing)"
+            color = (color_index % SNAPSHOT_COLORS) + 1 if curr_node.does_exist else None
             results.append(
                 SnapshotVersionDetail(
                     entry=curr_node,
@@ -389,12 +389,11 @@ class FSNode:
         # TODO Externalize into a view class
         results: list[SnapshotBarItem] = []
         color_index = 0
-        colors = ["var(--snap-1)", "var(--snap-2)", "var(--snap-3)", "var(--snap-4)", "var(--snap-5)", "var(--snap-6)"]
         previous_file: FSNode | None = None
 
         for i, file in enumerate(self.siblings()):
             if not file.does_exist:
-                results.append({"color": "var(--snap-missing)", "snapshot": file.snapshot, "missing": True})
+                results.append({"color": None, "snapshot": file.snapshot, "missing": True})
                 previous_file = file
                 continue
 
@@ -403,7 +402,7 @@ class FSNode:
                     color_index += 1
                 elif file != previous_file:
                     color_index += 1
-            results.append({"color": colors[color_index % len(colors)], "snapshot": file.snapshot, "missing": False})
+            results.append({"color": (color_index % SNAPSHOT_COLORS) + 1, "snapshot": file.snapshot, "missing": False})
             previous_file = file
 
         return results

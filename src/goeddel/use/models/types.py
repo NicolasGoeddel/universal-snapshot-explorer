@@ -26,9 +26,12 @@ type RootName = str
 type PathCacheKey = tuple[FilePath, Snapshot]
 
 
+SNAPSHOT_COLORS: int = 6
+
+
 # Template view models
 class SnapshotBarItem(TypedDict):
-    color: str
+    color: int | None
     snapshot: Snapshot
     missing: bool
 

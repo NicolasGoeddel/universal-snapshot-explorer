@@ -19,6 +19,7 @@ from .nodes import FSNode, MissingNode
 from .snapshot import OriginalSnapshot, Snapshot
 from .snapshot_provider import ISnapshotProvider
 from .types import (
+    SNAPSHOT_COLORS,
     FileName,
     FilePath,
     GroupId,
@@ -535,18 +536,7 @@ class RootFolder:
             if entries_map:
                 all_filenames.update(entries_map.keys())
 
-        color_chars = ["g", "b", "y", "r", "o", "p"]
         bars: dict[str, object] = {}
-
-        color_map = {
-            "var(--snap-1)": "g",
-            "var(--snap-2)": "b",
-            "var(--snap-3)": "y",
-            "var(--snap-4)": "r",
-            "var(--snap-5)": "o",
-            "var(--snap-6)": "p",
-            "var(--snap-missing)": "x",
-        }
         from ..mounts import MountsManager
         from ..providers import ProviderRegistry
 
@@ -563,7 +553,7 @@ class RootFolder:
                     if child_root_folder:
                         child_root_node = child_root_folder.get_file(path="")
                         child_bar = child_root_node.snapshots_bar
-                        bar_str = "".join(color_map.get(item["color"], "x") for item in child_bar)
+                        bar_str = "".join("x" if item["missing"] or item["color"] is None else str(item["color"]) for item in child_bar)
                         bars[filename] = {
                             "is_sub_dataset": True,
                             "barStr": bar_str,
@@ -598,7 +588,7 @@ class RootFolder:
                         shadow_rf = self.get_shadow_instance(base_name, rel_logical, child_abs_path, provider.name, is_network=is_net)
                         child_root_node = shadow_rf.get_file(path="")
                         child_bar = child_root_node.snapshots_bar
-                        bar_str = "".join(color_map.get(item["color"], "x") for item in child_bar)
+                        bar_str = "".join("x" if item["missing"] or item["color"] is None else str(item["color"]) for item in child_bar)
                         bars[filename] = {
                             "is_sub_dataset": True,
                             "barStr": bar_str,
@@ -633,7 +623,7 @@ class RootFolder:
                     elif sig != previous_sig:
                         color_index += 1
 
-                chars.append(color_chars[color_index % len(color_chars)])
+                chars.append(str((color_index % SNAPSHOT_COLORS) + 1))
                 previous_sig = sig
 
             bars[filename] = "".join(chars)

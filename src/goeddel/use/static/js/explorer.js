@@ -605,19 +605,31 @@ class ExplorerView {
         setTimeout(findAndSelect, 120);
     }
 
+    getPillPath(x, y, w, h, r, roundLeft, roundRight) {
+        const x0 = x;
+        const x1 = x + w;
+        const y0 = y;
+        const y1 = y + h;
+        const rL = roundLeft ? r : 0;
+        const rR = roundRight ? r : 0;
+
+        if (!roundLeft && !roundRight) {
+            return `M ${x0} ${y0} H ${x1} V ${y1} H ${x0} Z`;
+        }
+        if (roundLeft && !roundRight) {
+            return `M ${x0 + rL} ${y0} H ${x1} V ${y1} H ${x0 + rL} A ${rL} ${rL} 0 0 1 ${x0} ${y1 - rL} V ${y0 + rL} A ${rL} ${rL} 0 0 1 ${x0 + rL} ${y0} Z`;
+        }
+        if (!roundLeft && roundRight) {
+            return `M ${x0} ${y0} H ${x1 - rR} A ${rR} ${rR} 0 0 1 ${x1} ${y0 + rR} V ${y1 - rR} A ${rR} ${rR} 0 0 1 ${x1 - rR} ${y1} H ${x0} Z`;
+        }
+        return `M ${x0 + rL} ${y0} H ${x1 - rR} A ${rR} ${rR} 0 0 1 ${x1} ${y0 + rR} V ${y1 - rR} A ${rR} ${rR} 0 0 1 ${x1 - rR} ${y1} H ${x0 + rL} A ${rL} ${rL} 0 0 1 ${x0} ${y1 - rL} V ${y0 + rL} A ${rL} ${rL} 0 0 1 ${x0 + rL} ${y0} Z`;
+    }
+
     buildSnapshotSvg(barStr, snapshots, isSubDataset = false) {
         if (!barStr || !snapshots || snapshots.length === 0) {
             return '<span class="text-muted" style="color: var(--text-muted, #64748b); font-size: 13px; padding-left: 2px;">–</span>';
         }
         const isSub = isSubDataset === true || isSubDataset === 'true';
-        const colorMap = {
-            g: 'var(--snap-1)',
-            b: 'var(--snap-2)',
-            y: 'var(--snap-3)',
-            r: 'var(--snap-4)',
-            o: 'var(--snap-5)',
-            p: 'var(--snap-6)',
-        };
         const count = snapshots.length;
         const barWidth = 20;
         const totalWidth = count * barWidth;
@@ -636,11 +648,17 @@ class ExplorerView {
                 currentIdx = i;
             }
 
+            const prevChar = i > 0 ? barStr[i - 1] || 'x' : null;
+            const nextChar = i < count - 1 ? barStr[i + 1] || 'x' : null;
+            const roundLeft = prevChar === null || prevChar !== char;
+            const roundRight = nextChar === null || nextChar !== char;
+            const pathD = this.getPillPath(x + 0.5, 1, 19, 18, 6, roundLeft, roundRight);
+
             if (char === 'x') {
-                inner += `<rect x="${x + 0.5}" y="1" width="19" height="18" rx="2" ry="2" fill="var(--snap-missing)" stroke="rgba(0,0,0,0.25)" stroke-width="1"/><line x1="${x + 3}" y1="3.5" x2="${x + 16.5}" y2="16.5" stroke="#ef4444" stroke-width="1.5"/><line x1="${x + 16.5}" y1="3.5" x2="${x + 3}" y2="16.5" stroke="#ef4444" stroke-width="1.5"/>`;
+                inner += `<path d="${pathD}" fill="var(--snap-missing)" stroke="rgba(0,0,0,0.25)" stroke-width="1"/><line x1="${x + 3}" y1="3.5" x2="${x + 16.5}" y2="16.5" stroke="#ef4444" stroke-width="1.5"/><line x1="${x + 16.5}" y1="3.5" x2="${x + 3}" y2="16.5" stroke="#ef4444" stroke-width="1.5"/>`;
             } else {
-                const color = colorMap[char] || 'var(--snap-1)';
-                inner += `<rect x="${x + 0.5}" y="1" width="19" height="18" rx="2" ry="2" fill="${color}" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>`;
+                const color = `var(--snap-${char})`;
+                inner += `<path d="${pathD}" fill="${color}" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>`;
             }
         }
 

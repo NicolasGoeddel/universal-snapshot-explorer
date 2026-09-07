@@ -30,6 +30,9 @@ Instead of browsing snapshots one by one or mounting snapshot directories manual
 ### File Details & Version History
 ![File Details & Version History](assets/detail.png)
 
+### N-Way File Differ (Text Comparison)
+![N-Way File Differ](assets/text-differ.png)
+
 ---
 
 ## ✨ Key Features

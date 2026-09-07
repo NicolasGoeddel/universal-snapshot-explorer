@@ -107,7 +107,7 @@ class TreeTable {
         if (path) {
             this.rowMap.delete(path);
         }
-        if (row._parent && row._parent._children) {
+        if (row._parent?._children) {
             row._parent._children.delete(row);
         }
         if (row._children) {
@@ -173,7 +173,7 @@ class TreeTable {
      */
     getDescendants(row) {
         const descendants = new Set();
-        if (!row || !row._children || row._children.size === 0) return descendants;
+        if (!row?._children || row._children.size === 0) return descendants;
 
         const queue = Array.from(row._children);
         while (queue.length > 0) {
@@ -248,7 +248,7 @@ class TreeTable {
      * @param {HTMLTableRowElement} row - Target folder row.
      */
     collapseFolder(row) {
-        if (!row || row.dataset.isFolder !== 'true') return;
+        if (row?.dataset.isFolder !== 'true') return;
         row.dataset.expanded = 'false';
 
         const toggleBtn = row.querySelector('.folder-toggle');
@@ -271,7 +271,7 @@ class TreeTable {
      * @param {HTMLTableRowElement} row - Target folder row.
      */
     expandFolder(row) {
-        if (!row || row.dataset.isFolder !== 'true') return;
+        if (row?.dataset.isFolder !== 'true') return;
         row.dataset.expanded = 'true';
 
         const toggleBtn = row.querySelector('.folder-toggle');
@@ -297,7 +297,7 @@ class TreeTable {
      * @returns {boolean} New expanded state (true if expanded, false if collapsed).
      */
     toggleFolder(row) {
-        if (!row || row.dataset.isFolder !== 'true') return false;
+        if (row?.dataset.isFolder !== 'true') return false;
         const isExpanded = row.dataset.expanded === 'true';
         if (isExpanded) {
             this.collapseFolder(row);

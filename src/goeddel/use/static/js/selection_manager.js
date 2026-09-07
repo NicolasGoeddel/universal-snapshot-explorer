@@ -83,7 +83,7 @@ class SelectionManager {
      * @param {function(Set<string>, Object): void} action.execute - Callback executed with selected paths.
      */
     registerAction(action) {
-        if (!action || !action.id || typeof action.execute !== 'function') {
+        if (!action?.id || typeof action.execute !== 'function') {
             console.error('[SelectionManager] Invalid action registration:', action);
             return;
         }
@@ -204,7 +204,7 @@ class SelectionManager {
      * @param {boolean} select - Whether to select (true) or deselect (false).
      * @param {HTMLTableRowElement[]} [allRows=null] - Optional pre-queried list of rows for performance.
      */
-    setRowSelected(row, select, allRows = null) {
+    setRowSelected(row, select, _allRows = null) {
         if (!row) return;
         const path = row.dataset.path || row.dataset.filename;
         if (!path) return;
@@ -262,7 +262,7 @@ class SelectionManager {
                     visibleRows.length > 0 &&
                     visibleRows.every((r) => {
                         const cb = r.querySelector('input.row-checkbox');
-                        return cb && cb.checked && !cb.indeterminate;
+                        return cb?.checked && !cb.indeterminate;
                     });
 
                 const rows = this.treeTable.getAllRows();
@@ -440,7 +440,7 @@ class SelectionManager {
             // If any ancestor path is selected, auto-select this child row
             let isParentSelected = false;
             for (const selPath of this.selectedPaths) {
-                if (rowPath.startsWith(selPath + '/')) {
+                if (rowPath.startsWith(`${selPath}/`)) {
                     isParentSelected = true;
                     break;
                 }
@@ -512,7 +512,7 @@ class SelectionManager {
             // Check if this path is a descendant of any fully selected collapsed folder
             let isEncapsulated = false;
             for (const folderPath of fullySelectedCollapsedFolders) {
-                if (path.startsWith(folderPath + '/')) {
+                if (path.startsWith(`${folderPath}/`)) {
                     isEncapsulated = true;
                     break;
                 }
@@ -570,7 +570,7 @@ class SelectionManager {
         }
         if (hasUnchangedSelected && this.table.classList.contains('hide-unchanged')) {
             const toggle = document.getElementById('toggle-changed');
-            if (toggle && toggle.checked) toggle.click();
+            if (toggle?.checked) toggle.click();
         }
 
         // 3. Expand collapsed folders that contain partially selected files
@@ -585,7 +585,7 @@ class SelectionManager {
             if (fullySelectedCollapsedFolders.has(path)) return;
 
             // Check if any selected item is inside this folder
-            const prefix = path + '/';
+            const prefix = `${path}/`;
             let hasSelectedChild = false;
             for (const selPath of this.selectedPaths) {
                 if (selPath.startsWith(prefix)) {
@@ -626,7 +626,7 @@ class SelectionManager {
                         cb.indeterminate = false;
                     }
                 } else {
-                    const prefix = path ? path + '/' : '';
+                    const prefix = path ? `${path}/` : '';
 
                     // Find all descendant rows loaded in the DOM
                     const loadedDescendants = Array.from(this.treeTable.getDescendants(row));
@@ -709,7 +709,7 @@ class SelectionManager {
             visibleRows.length > 0 &&
             visibleRows.every((r) => {
                 const cb = r.querySelector('input.row-checkbox');
-                return cb && cb.checked && !cb.indeterminate;
+                return cb?.checked && !cb.indeterminate;
             });
         const anyVisibleCheckedOrIndeterminate = visibleRows.some((r) => {
             const cb = r.querySelector('input.row-checkbox');
@@ -782,7 +782,7 @@ class SelectionManager {
                     const pattern =
                         i18n['selection.missing_warning'] ||
                         '{count} Dateien in diesem Snapshot nicht vorhanden (werden übersprungen)';
-                    warning.textContent = '⚠️ ' + pattern.replace('{count}', String(missingCount));
+                    warning.textContent = `⚠️ ${pattern.replace('{count}', String(missingCount))}`;
                 } else {
                     warning.style.display = 'none';
                 }

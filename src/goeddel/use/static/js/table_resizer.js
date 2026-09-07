@@ -169,7 +169,7 @@
 
             if (this.elasticColIndex < 0) {
                 const flexIndices = [];
-                this.ths.forEach((th, idx) => {
+                this.ths.forEach((_th, idx) => {
                     if (!this.isFixedColumn[idx]) flexIndices.push(idx);
                 });
                 this.elasticColIndex = flexIndices.length > 0 ? flexIndices[0] : -1;

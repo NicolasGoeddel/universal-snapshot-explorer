@@ -116,7 +116,7 @@ class DifferHost {
 
         this.groupSizeInput?.addEventListener('change', () => {
             let val = parseInt(this.groupSizeInput.value, 10);
-            if (isNaN(val) || val < (this.activePlugin?.minSnapshots || 2)) {
+            if (Number.isNaN(val) || val < (this.activePlugin?.minSnapshots || 2)) {
                 val = this.activePlugin?.minSnapshots || 2;
                 this.groupSizeInput.value = val;
             }

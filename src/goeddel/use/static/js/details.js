@@ -145,7 +145,7 @@ async function loadMimeTypes() {
 
     try {
         let url = `/api/file-mimetypes/${encodeURIComponent(rootName)}`;
-        if (filePath && filePath.trim()) {
+        if (filePath?.trim()) {
             url += `/-/${encodePath(filePath)}`;
         }
         const res = await fetch(url);

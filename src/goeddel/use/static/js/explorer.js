@@ -6,7 +6,7 @@ function encodePath(p) {
 function buildRouteUrl(baseUrl, module, rootName, subpath = '', queryParams = {}) {
     const rootPart = encodePath(rootName);
     let url = baseUrl ? `${baseUrl}/${module}/${rootPart}` : `/${module}/${rootPart}`;
-    if (subpath && subpath.trim()) {
+    if (subpath?.trim()) {
         const cleanSub = encodePath(subpath.trim().replace(/^\/+|\/+$/g, ''));
         url += `/-/${cleanSub}`;
     }
@@ -53,7 +53,7 @@ class ExplorerView {
         this.loadSnapshotBars(this.tbody, this.table.dataset.subpath || '');
         this.selectRowFromHash();
         window.addEventListener('hashchange', () => this.selectRowFromHash());
-        window.addEventListener('popstate', (e) => {
+        window.addEventListener('popstate', (_e) => {
             const params = new URLSearchParams(window.location.search);
             const snap = params.get('snapshot') || 'Original';
             if (snap && snap !== this.snapshot) {
@@ -224,8 +224,7 @@ class ExplorerView {
     extractSnapIdFromHref(link) {
         if (!link) return '';
         if (link.dataset.snapId) return link.dataset.snapId;
-        const href =
-            link.getAttribute('href') || (link.href && link.href.baseVal ? link.href.baseVal : link.href) || '';
+        const href = link.getAttribute('href') || (link.href?.baseVal ? link.href.baseVal : link.href) || '';
         const match = href.match(/[?&]snapshot=([^&#]+)/);
         return match ? decodeURIComponent(match[1]) : '';
     }
@@ -242,10 +241,10 @@ class ExplorerView {
                 svg.classList.contains('is-sub-dataset') ||
                 (td && td.dataset.isSubDataset === 'true') ||
                 (row && row.dataset.isSubDataset === 'true') ||
-                (td && td._snapshotData && td._snapshotData.isSubDataset) ||
+                td?._snapshotData?.isSubDataset ||
                 (row && row.querySelector('.sub-dataset-link') !== null) ||
-                (row && row.querySelector('.symlink-target-badge')?.textContent?.includes('Dataset')) ||
-                (row && row.querySelector('.symlink-target-badge')?.textContent?.includes('Mount'));
+                row?.querySelector('.symlink-target-badge')?.textContent?.includes('Dataset') ||
+                row?.querySelector('.symlink-target-badge')?.textContent?.includes('Mount');
 
             if (isSubDataset) {
                 svg.classList.add('is-sub-dataset');
@@ -371,7 +370,7 @@ class ExplorerView {
                 const u = new URL(a.href, window.location.origin);
                 u.searchParams.set('snapshot', targetSnapshotId);
                 a.href = u.pathname + u.search + u.hash;
-            } catch (e) {}
+            } catch (_e) {}
         });
 
         // 4. Update browser URL & History
@@ -407,7 +406,7 @@ class ExplorerView {
                 if (!meta) return;
 
                 // Update missing / existence status
-                const isSubDataset = row.dataset.isSubDataset === 'true' || (meta && meta.is_sub_dataset);
+                const isSubDataset = row.dataset.isSubDataset === 'true' || meta?.is_sub_dataset;
                 const doesExist = isSubDataset ? true : !!meta.does_exist;
                 row.dataset.isMissing = doesExist ? 'false' : 'true';
                 row.classList.toggle('row-missing', !doesExist);
@@ -496,7 +495,7 @@ class ExplorerView {
                         const u = new URL(nameLink.href, window.location.origin);
                         u.searchParams.set('snapshot', targetSnapshotId);
                         nameLink.href = u.pathname + u.search + u.hash;
-                    } catch (e) {}
+                    } catch (_e) {}
                 }
 
                 const downloadLink = row.querySelector('.action-download') || row.querySelector('.file-download-link');
@@ -505,7 +504,7 @@ class ExplorerView {
                         const u = new URL(downloadLink.href, window.location.origin);
                         u.searchParams.set('snapshot', targetSnapshotId);
                         downloadLink.href = u.pathname + u.search + u.hash;
-                    } catch (e) {}
+                    } catch (_e) {}
                 }
 
                 const detailsLink = row.querySelector('.action-details');
@@ -514,7 +513,7 @@ class ExplorerView {
                         const u = new URL(detailsLink.href, window.location.origin);
                         u.searchParams.set('snapshot', targetSnapshotId);
                         detailsLink.href = u.pathname + u.search + u.hash;
-                    } catch (e) {}
+                    } catch (_e) {}
                 }
             });
 
@@ -544,7 +543,7 @@ class ExplorerView {
                                 if (!childMeta) return;
 
                                 const isChildSubDataset =
-                                    childRow.dataset.isSubDataset === 'true' || (childMeta && childMeta.is_sub_dataset);
+                                    childRow.dataset.isSubDataset === 'true' || childMeta?.is_sub_dataset;
                                 const childExists = isChildSubDataset ? true : !!childMeta.does_exist;
                                 childRow.dataset.isMissing = childExists ? 'false' : 'true';
                                 childRow.classList.toggle('row-missing', !childExists);
@@ -600,7 +599,7 @@ class ExplorerView {
                                     childCtimeCell.dataset.sort = childMeta.ctime_iso;
                                 }
                             });
-                        } catch (e) {}
+                        } catch (_e) {}
                     }),
                 );
             }
@@ -641,7 +640,7 @@ class ExplorerView {
                 return (
                     fn === targetName ||
                     name === targetName ||
-                    (path && (path.endsWith('/' + targetName) || path === targetName))
+                    (path && (path.endsWith(`/${targetName}`) || path === targetName))
                 );
             });
 
@@ -760,15 +759,15 @@ class ExplorerView {
                         </div>
                         ${time ? `<div class="timeline-tooltip-time">🕒 ${time}</div>` : ''}
                     `;
-            tooltip.style.left = e.clientX + 'px';
-            tooltip.style.top = e.clientY + 'px';
+            tooltip.style.left = `${e.clientX}px`;
+            tooltip.style.top = `${e.clientY}px`;
             tooltip.classList.add('visible');
         });
 
         timeline.addEventListener('mousemove', (e) => {
             if (tooltip.classList.contains('visible')) {
-                tooltip.style.left = e.clientX + 'px';
-                tooltip.style.top = e.clientY + 'px';
+                tooltip.style.left = `${e.clientX}px`;
+                tooltip.style.top = `${e.clientY}px`;
             }
         });
 
@@ -1276,7 +1275,7 @@ class ExplorerView {
                         if (filename) {
                             if (this.hashUpdateTimeout) clearTimeout(this.hashUpdateTimeout);
                             this.hashUpdateTimeout = setTimeout(() => {
-                                history.replaceState(null, '', '#' + encodeURIComponent(filename));
+                                history.replaceState(null, '', `#${encodeURIComponent(filename)}`);
                             }, 80);
                         }
                     }
@@ -1417,7 +1416,7 @@ class ExplorerView {
                 const parts = subpath.split('/');
                 const currentFolder = parts.pop();
                 const parentSub = parts.join('/');
-                const targetHash = currentFolder ? '#' + encodeURIComponent(currentFolder) : '';
+                const targetHash = currentFolder ? `#${encodeURIComponent(currentFolder)}` : '';
                 window.location.href = `/list/${encodeURIComponent(this.rootName)}/${encodePath(parentSub)}?snapshot=${encodeURIComponent(this.snapshot)}${targetHash}`;
             } else {
                 window.location.href = `/#${encodeURIComponent(this.rootName)}`;

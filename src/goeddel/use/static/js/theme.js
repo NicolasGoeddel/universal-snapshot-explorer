@@ -55,15 +55,15 @@ function updateStickyOffsets() {
     const topHeader = document.querySelector('.sticky-header-container, .root-header-sticky-container');
     if (topHeader) {
         const h = Math.round(topHeader.getBoundingClientRect().height);
-        document.documentElement.style.setProperty('--top-header-height', h + 'px');
-        document.documentElement.style.setProperty('--index-top-height', h + 'px');
+        document.documentElement.style.setProperty('--top-header-height', `${h}px`);
+        document.documentElement.style.setProperty('--index-top-height', `${h}px`);
     }
     const headerRow = document.querySelector(
         'table.filebrowser > thead > tr.header-row, table.filebrowser > thead > tr:first-child',
     );
     if (headerRow) {
         const h = Math.round(headerRow.getBoundingClientRect().height);
-        document.documentElement.style.setProperty('--header-row-height', h + 'px');
+        document.documentElement.style.setProperty('--header-row-height', `${h}px`);
     }
 }
 
@@ -205,15 +205,15 @@ function initTimelineTooltips() {
                 </div>
                 ${time ? `<div class="timeline-tooltip-time">🕒 ${time}</div>` : ''}
             `;
-            tooltip.style.left = e.clientX + 'px';
-            tooltip.style.top = e.clientY + 'px';
+            tooltip.style.left = `${e.clientX}px`;
+            tooltip.style.top = `${e.clientY}px`;
             tooltip.classList.add('visible');
         });
 
         timeline.addEventListener('mousemove', (e) => {
             if (tooltip.classList.contains('visible')) {
-                tooltip.style.left = e.clientX + 'px';
-                tooltip.style.top = e.clientY + 'px';
+                tooltip.style.left = `${e.clientX}px`;
+                tooltip.style.top = `${e.clientY}px`;
             }
         });
 

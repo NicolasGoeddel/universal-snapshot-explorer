@@ -82,6 +82,16 @@ class FilterManager {
         }
     }
 
+    getQuickhelpHTML(type) {
+        if (type === 'size')
+            return `<strong>Size</strong>: <code>10mb</code>, <code>&lt;1kb</code>, <code>5mb..10mb</code>`;
+        if (type === 'mode')
+            return `<strong>Mode</strong>: <code>rwx</code>, <code>g:x</code>, <code>700</code>, <code>64?</code>`;
+        if (type === 'date')
+            return `<strong>Date</strong>: <code>&gt;13:00</code>, <code>today</code><br><code>2026-09..2026-10</code>, <code>&lt;2026-10</code>`;
+        return `<strong>Text</strong>: <code>text</code>, <code>*.txt</code>`;
+    }
+
     /**
      * Bind input and keydown event listeners to the column filter inputs.
      */
@@ -113,6 +123,44 @@ class FilterManager {
                     input.focus();
                 });
             }
+
+            // Quickhelp UI
+            let helpPopup = null;
+            input.addEventListener('focus', () => {
+                const type = input.dataset.filterType || 'text';
+                if (!wrapper) return;
+
+                helpPopup = document.createElement('div');
+                helpPopup.className = 'filter-quickhelp-popup';
+                helpPopup.innerHTML = this.getQuickhelpHTML(type);
+
+                document.body.appendChild(helpPopup);
+
+                // Position popup above the input field
+                const rect = input.getBoundingClientRect();
+                helpPopup.style.left = `${rect.left}px`;
+                // Place it just above the input field, leaving 8px for the arrow
+                helpPopup.style.top = `${rect.top - helpPopup.offsetHeight - 8}px`;
+            });
+
+            // Update position on scroll/resize just in case, though it's transient
+            const updatePopupPosition = () => {
+                if (helpPopup && input) {
+                    const rect = input.getBoundingClientRect();
+                    helpPopup.style.left = `${rect.left}px`;
+                    helpPopup.style.top = `${rect.top - helpPopup.offsetHeight - 8}px`;
+                }
+            };
+
+            window.addEventListener('scroll', updatePopupPosition, true);
+            window.addEventListener('resize', updatePopupPosition);
+
+            input.addEventListener('blur', () => {
+                if (helpPopup?.parentNode) {
+                    helpPopup.parentNode.removeChild(helpPopup);
+                    helpPopup = null;
+                }
+            });
 
             input.addEventListener('keydown', (e) => {
                 const colIndex = parseInt(input.dataset.col || '1', 10);
@@ -280,54 +328,52 @@ class FilterManager {
         const filterInputs = Array.from(this.table.querySelectorAll('thead tr.column-filter input'));
         const allRows = this.treeTable.getAllRows();
 
-        // 1. Update per-input isolated match count badges and clear buttons
+        const activeFilters = [];
+
+        // Precompile all filters and update input validation state
         filterInputs.forEach((inp) => {
             const colIndex = parseInt(inp.dataset.col || '1', 10);
-            const query = inp.value.trim().toLowerCase();
+            const query = inp.value.trim();
+            const filterType = inp.dataset.filterType;
+
             const wrapper = inp.closest('.filter-input-wrapper');
-            const badge = wrapper?.querySelector('.filter-badge');
             const clearBtn = wrapper?.querySelector('.filter-clear-btn');
 
             if (query.length > 0) {
-                let colMatches = 0;
-                allRows.forEach((row) => {
-                    if (this.isRowInExpandedHierarchy(row)) {
-                        const cell = row.children[colIndex];
-                        if (cell) {
-                            let text = '';
-                            if (colIndex === 1) {
-                                text = (row.dataset.filename || cell.dataset.sort || cell.textContent)
-                                    .trim()
-                                    .toLowerCase();
-                            } else {
-                                text = (cell.dataset.sort !== undefined ? cell.dataset.sort : cell.textContent)
-                                    .trim()
-                                    .toLowerCase();
-                            }
-                            if (text.includes(query)) colMatches++;
-                        }
-                    }
-                });
-
-                if (badge) {
-                    badge.textContent = String(colMatches);
-                    badge.style.display = 'inline';
-                }
                 if (clearBtn) clearBtn.style.display = 'inline-flex';
                 wrapper?.classList.add('has-filter');
+
+                let evaluator = null;
+                if (filterType && window.FilterStrategies?.[filterType]) {
+                    const compiled = window.FilterStrategies[filterType].compile(query);
+                    if (compiled.isValid) {
+                        inp.classList.remove('filter-invalid');
+                        evaluator = compiled.evaluate;
+                    } else {
+                        inp.classList.add('filter-invalid');
+                    }
+                } else {
+                    const lowerQuery = query.toLowerCase();
+                    inp.classList.remove('filter-invalid');
+                    evaluator = (_dataSort, textContent) => textContent.includes(lowerQuery);
+                }
+
+                if (evaluator) {
+                    activeFilters.push({
+                        colIndex,
+                        evaluate: evaluator,
+                        badge: wrapper?.querySelector('.filter-badge'),
+                        matches: 0,
+                    });
+                }
             } else {
-                if (badge) badge.style.display = 'none';
-                if (clearBtn) clearBtn.style.display = 'none';
+                inp.classList.remove('filter-invalid');
                 wrapper?.classList.remove('has-filter');
+                if (clearBtn) clearBtn.style.display = 'none';
+                const badge = wrapper?.querySelector('.filter-badge');
+                if (badge) badge.style.display = 'none';
             }
         });
-
-        const activeFilters = filterInputs
-            .map((inp) => ({
-                colIndex: parseInt(inp.dataset.col || '1', 10),
-                query: inp.value.trim().toLowerCase(),
-            }))
-            .filter((f) => f.query.length > 0);
 
         if (activeFilters.length === 0) {
             allRows.forEach((row) => row.classList.remove('filter-hidden'));
@@ -345,13 +391,14 @@ class FilterManager {
         const matchMap = new Map();
 
         allRows.forEach((row) => {
-            let matches = true;
+            let rowMatchesAll = true;
             for (const f of activeFilters) {
                 const cell = row.children[f.colIndex];
                 if (!cell) {
-                    matches = false;
-                    break;
+                    rowMatchesAll = false;
+                    continue;
                 }
+
                 let text = '';
                 if (f.colIndex === 1) {
                     text = (row.dataset.filename || cell.dataset.sort || cell.textContent).trim().toLowerCase();
@@ -360,12 +407,27 @@ class FilterManager {
                         .trim()
                         .toLowerCase();
                 }
-                if (!text.includes(f.query)) {
-                    matches = false;
-                    break;
+
+                const dataSort = cell.dataset.sort;
+                const cellMatches = f.evaluate(dataSort, text);
+
+                if (cellMatches && this.isRowInExpandedHierarchy(row)) {
+                    f.matches++;
+                }
+
+                if (!cellMatches) {
+                    rowMatchesAll = false;
                 }
             }
-            matchMap.set(row, matches);
+            matchMap.set(row, rowMatchesAll);
+        });
+
+        // Update badges
+        activeFilters.forEach((f) => {
+            if (f.badge) {
+                f.badge.textContent = String(f.matches);
+                f.badge.style.display = 'inline';
+            }
         });
 
         // Propagate match upward only from rows that are otherwise visible (O(1) pointer traversal)

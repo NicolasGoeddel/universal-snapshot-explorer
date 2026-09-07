@@ -1,5 +1,13 @@
 # Frontend JavaScript Architecture Map
 
+## File: `goeddel/use/static/js/filter_strategies.js`
+```javascript
+class TextFilterStrategy { { ... }
+class SizeFilterStrategy { { ... }
+class ModeFilterStrategy { { ... }
+class DateFilterStrategy { { ... }
+```
+
 ## File: `goeddel/use/static/js/filter_manager.js`
 ```javascript
 class FilterManager { { ... }

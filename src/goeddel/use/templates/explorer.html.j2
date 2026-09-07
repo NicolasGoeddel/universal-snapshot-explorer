@@ -5,6 +5,7 @@
     {% include 'header.html.j2' %}
     <link rel="stylesheet" href="{{ static_url('css/criteria_manager.css') }}">
     <script src="{{ static_url('js/criteria_manager.js') }}" defer></script>
+    <script src="{{ static_url('js/filter_strategies.js') }}" defer></script>
     <script src="{{ static_url('js/explorer.js') }}" defer></script>
 </head>
 <body>
@@ -121,7 +122,7 @@
                 <td class="browser-filter-select"></td>
                 <td>
                     <div class="filter-input-wrapper">
-                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="1">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="1" data-filter-type="text">
                         <span class="filter-badge" style="display: none;"></span>
                         <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
                     </div>
@@ -129,42 +130,42 @@
                 <td></td>
                 <td>
                     <div class="filter-input-wrapper">
-                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="3">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="3" data-filter-type="size">
                         <span class="filter-badge" style="display: none;"></span>
                         <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
                     </div>
                 </td>
                 <td>
                     <div class="filter-input-wrapper">
-                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="4">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="4" data-filter-type="text">
                         <span class="filter-badge" style="display: none;"></span>
                         <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
                     </div>
                 </td>
                 <td>
                     <div class="filter-input-wrapper">
-                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="5">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="5" data-filter-type="text">
                         <span class="filter-badge" style="display: none;"></span>
                         <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
                     </div>
                 </td>
                 <td>
                     <div class="filter-input-wrapper">
-                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="6">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="6" data-filter-type="mode">
                         <span class="filter-badge" style="display: none;"></span>
                         <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
                     </div>
                 </td>
                 <td>
                     <div class="filter-input-wrapper">
-                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="7">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="7" data-filter-type="date">
                         <span class="filter-badge" style="display: none;"></span>
                         <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
                     </div>
                 </td>
                 <td>
                     <div class="filter-input-wrapper">
-                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="8">
+                        <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="8" data-filter-type="date">
                         <span class="filter-badge" style="display: none;"></span>
                         <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
                     </div>

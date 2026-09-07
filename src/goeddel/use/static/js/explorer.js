@@ -927,7 +927,7 @@ class ExplorerView {
                     this.updateZebra();
                     this.updateToggleCounts();
                     this.hideSnapshotLoadingOverlay();
-                    this.filterManager?.applyFilters();
+                    this.filterManager?.applyFilter();
                 }
             };
 

@@ -6,6 +6,34 @@ This project adheres to [Semantic Versioning (SemVer)](https://semver.org/).
 
 ---
 
+## [2.2.0] - 2026-09-07
+
+> **Minor Release: Advanced Filtering, N-Way Differ Engine, Configurable Criteria & UI Enhancements**
+
+### 🚀 Highlights & New Features
+
+* **Advanced Column Filtering:**
+  * Added column-specific filter strategies allowing complex queries like size ranges (`5mb..10mb`), mode masks (`700`, `g:x`), and relative dates (`today`).
+  * Introduced focus-triggered Quickhelp UI popups providing filter hints, and visual validation for syntax errors.
+* **Modular N-Way File Differ:**
+  * Architected a unified diffing engine designed to compare files across multiple snapshots simultaneously.
+  * Shipped with an initial TextDiffer plugin supporting side-by-side 2-way text comparisons.
+* **Configurable Metadata Criteria:**
+  * The criteria determining what constitutes a file "change" between snapshots (e.g., Size, Permissions, UID/GID, Mtime) is now fully configurable.
+* **Accessible Snapshot Timeline Bars:**
+  * Redesigned the SVG templates into flexible, accessible pill shapes.
+  * The new pill design guarantees that color changes indicating modifications remain distinguishable for all forms of color blindness.
+
+### 🛠️ Architecture, Quality & CI
+
+* **Frontend Architecture & Context Mapping:**
+  * Initialized a modular architecture documentation set for the frontend.
+  * Improved JavaScript code quality enforcement and introduced automated AI context mapping (`docs/MAP.md`).
+* **CI Pipeline Upgrades:**
+  * Updated GitHub Actions to run on the latest Node 24 runtimes.
+
+---
+
 ## [2.1.1] - 2026-09-04
 
 > **Patch Release: Upstream Security Fixes, Lockfile Dependency Upgrades & Automated Vulnerability Auditing**

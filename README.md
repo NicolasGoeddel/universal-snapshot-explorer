@@ -34,15 +34,17 @@ Instead of browsing snapshots one by one or mounting snapshot directories manual
 
 ## ✨ Key Features
 
-* **📊 Multi-Snapshot Timeline Bar:** Each file and folder features an interactive, color-coded timeline bar indicating modifications, creations, deletions, and static periods across all snapshots at a single glance.
+* **📊 Multi-Snapshot Timeline Bar:** Each file and folder features an interactive, color-coded timeline bar indicating modifications, creations, deletions, and static periods across all snapshots at a single glance. The timeline is built with accessible, colorblind-friendly SVG pill designs, and the criteria for what constitutes a "change" (e.g., Size, Permissions, UID/GID, Mtime) is fully configurable.
 * **🗂️ Pluggable Multi-Filesystem Architecture:** Native support for **OpenZFS** datasets (`.zfs/snapshot`) and **Btrfs** subvolumes (including **Snapper** metadata layouts).
 * **🌐 Boundary & Mount Discovery:** Automatically detects nested mount points and sub-datasets via `/proc/mounts`, rendering dedicated per-dataset snapshot timelines in table rows and breadcrumbs.
 * **🤖 ZFS CLI Integration & Auto-Discovery:** Seamlessly discovers all active datasets across your ZFS pools with `/dev/zfs` passthrough and retrieves exact snapshot creation timestamps directly from ZFS metadata.
 * **📦 Checkbox Multi-Selection & Streaming ZIP Download:** Select multiple files or folders across any snapshot and download them instantly as an on-the-fly streaming ZIP archive without creating temporary files on disk.
-* **🔍 Instant Audit Filters:**
+* **🔍 Instant Audit & Advanced Column Filters:**
+  * **Column Filters:** Powerful search strategies per column, including size ranges (`5mb..10mb`), octal mode masks (`700`, `g:x`), relative dates (`today`), and wildcards.
   * **"Changed only"** (`history` icon): Instantly filter out static files to spot what was modified, added, or deleted between snapshots.
   * **"Missing files"** (`ghost` icon): Toggle visibility of files that do not exist in the current snapshot.
   * **"Hidden files"** (`eye-off` icon): Toggle visibility of dotfiles (`.*`).
+* **⚖️ Modular N-Way File Differ:** A unified diffing engine designed to compare files across multiple snapshots simultaneously (currently equipped with a TextDiffer plugin for side-by-side 2-way text comparisons).
 * **⌨️ Full Keyboard Navigation:**
   * `↑` / `↓`: Navigate through rows.
   * `→` / `←`: Expand/collapse folders or navigate to parent directories.
@@ -238,16 +240,11 @@ PYTHONPATH=src uv run coverage report -m
 PYTHONPATH=src uv run coverage html
 ```
 
----
-
-## 🗺️ Roadmap & Backlog
-
-* [ ] **In-Browser Quick-Preview / Lightbox:** Instant media previews for images, audio, video, PDFs, and syntax-highlighted source code (`Space` key).
-* [ ] **Side-by-Side Text & Image Diff Viewer:** Interactive unified and split diffing between any two snapshot versions.
-* [ ] **Multi-Snapshot Tarball Export:** Multi-version archives (`.tar.gz`) utilizing POSIX hardlinks to deduplicate unchanged files.
-* [ ] **On-Demand Recursive Folder Size Calculation.**
+## 🗺️ Roadmap & Documentation
 
 See [TODO.md](./TODO.md) for the detailed roadmap and [RELEASES.md](./RELEASES.md) for the version changelog.
+
+For developers and contributors, the system architecture and internal design decisions are documented in [ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md).
 
 ---
 

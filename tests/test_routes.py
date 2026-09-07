@@ -197,6 +197,41 @@ class TestAppRoutes(unittest.TestCase):
         self.assertIn("criteria_manager.js", resp_explorer.text)
         self.assertIn("criteria_manager.css", resp_explorer.text)
 
+    def test_diff_view_route(self) -> None:
+        # Verify diff view page loads correctly
+        resp = self.client.get("/diff/mock-root/-/file1.txt")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("differ-toolbar", resp.text)
+        self.assertIn("diff-timeline-svg", resp.text)
+        self.assertIn("diff-stepper", resp.text)
+        self.assertIn("differ.css", resp.text)
+        self.assertIn("differ.js", resp.text)
+        self.assertIn("text_differ.js", resp.text)
+
+        # Verify entry point button in list view
+        resp_list = self.client.get("/list/mock-root")
+        self.assertEqual(resp_list.status_code, 200)
+        self.assertIn('href="/diff/mock-root/-/file1.txt', resp_list.text)
+
+        # Verify entry point button in detail view
+        resp_detail = self.client.get("/detail/mock-root/-/file1.txt")
+        self.assertEqual(resp_detail.status_code, 200)
+        self.assertIn('href="/diff/mock-root/-/file1.txt', resp_detail.text)
+
+    def test_diff_api_route(self) -> None:
+        # Test diff API between snapshot 1 ("v1") and live root ("v3")
+        resp = self.client.get("/api/diff/mock-root/-/file1.txt?snapshots=auto-2026-08-01-120000,Original")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertFalse(data["is_binary"])
+        self.assertTrue(data["left_exists"])
+        self.assertTrue(data["right_exists"])
+        self.assertEqual(data["stats"]["modifications"], 1)
+        self.assertEqual(len(data["lines"]), 1)
+        self.assertEqual(data["lines"][0]["type"], "modify")
+        self.assertEqual(data["lines"][0]["left_text"], "v1")
+        self.assertEqual(data["lines"][0]["right_text"], "v3")
+
 
 if __name__ == "__main__":
     unittest.main()

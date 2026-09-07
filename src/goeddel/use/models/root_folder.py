@@ -167,7 +167,7 @@ class RootFolder:
     @classmethod
     def get(cls, config: RootConfig) -> Self:
         if config in cls._root_folder_instances:
-            return cls._root_folder_instances[config]  # pyright: ignore[reportReturnType]
+            return cls._root_folder_instances[config]  # pyright: ignore[reportReturnType] # Cache dict dynamically returns the typed root folder
         instance = cls(config)
         cls._root_folder_instances[config] = instance
         return instance
@@ -282,14 +282,14 @@ class RootFolder:
     @functools.lru_cache(maxsize=8192)
     def _get_read_only_mime_type(real_path: str) -> str:
         try:
-            return str(RootFolder._mime.from_file(real_path))  # pyright: ignore[reportUnknownMemberType]
+            return str(RootFolder._mime.from_file(real_path))  # pyright: ignore[reportUnknownMemberType] # External magic library lacks type stubs
         except PermissionError, OSError:
             return "file"
 
     def get_mime_type(self, real_path: str, snapshot: Snapshot | None = None) -> str:
         if snapshot is None or isinstance(snapshot, OriginalSnapshot):
             try:
-                return str(self._mime.from_file(real_path))  # pyright: ignore[reportUnknownMemberType]
+                return str(self._mime.from_file(real_path))  # pyright: ignore[reportUnknownMemberType] # External magic library lacks type stubs
             except PermissionError, OSError:
                 return "file"
         return self._get_read_only_mime_type(real_path)

@@ -111,7 +111,7 @@
                 <th class="browser-header-mode sortable" data-sort-type="octal" data-col-key="mode" data-default-pct="7" data-min-width="55">Mode</th>
                 <th class="browser-header-mtime sortable" data-sort-type="date" data-col-key="mtime" data-default-pct="10.5" data-min-width="45">{{ t('table.modified') }}</th>
                 <th class="browser-header-ctime sortable" data-sort-type="date" data-col-key="ctime" data-default-pct="12" data-min-width="45">{{ t('table.changed') }}</th>
-                <th class="browser-header-actions" data-fixed-width="60" style="width: 60px; min-width: 60px; max-width: 60px;">
+                <th class="browser-header-actions" data-fixed-width="84" style="width: 84px; min-width: 84px; max-width: 84px;">
                     <div class="browser-cell-actions-wrapper">
                         <a href="{{ base_url }}/detail/{{ root_name | quote_plus }}/{{ directory_path | quote_path }}?snapshot={{ folder.snapshot.id | quote_plus }}" title="{{ t('action.show_folder_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
                     </div>

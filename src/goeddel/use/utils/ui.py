@@ -20,6 +20,54 @@ from ..models.types import (
 )
 
 
+def get_base_template_context(
+    request: Request,
+    root_folder: RootFolder,
+    root_name: RootName,
+    node: FSNode,
+    module: str,
+    path: str = "",
+    all_roots: list[RootName] | None = None,
+    snapshots: list[Snapshot] | None = None,
+) -> dict[str, object]:
+    """Prepares the common template context for explorer, detail, and differ views."""
+    lang = get_language(request)
+    t = get_translator(lang)
+    client_i18n = get_client_translations(lang)
+    base_url = get_base_url(request)
+
+    full_logical_path = path
+    if root_folder.logical_sub_path:
+        full_logical_path = f"{root_folder.logical_sub_path}/{path}".strip("/")
+
+    if snapshots is None:
+        snapshots = root_folder.snapshots()
+    if all_roots is None:
+        config = get_app_config(request)
+        all_roots = list(config.roots.keys())
+
+    breadcrumbs = get_breadcrumbs(
+        root_folder=root_folder,
+        root_name=root_name,
+        file=node,
+        snapshots=snapshots,
+        all_roots=all_roots,
+    )
+
+    return {
+        "request": request,
+        "root_name": root_name,
+        "directory_path": full_logical_path,
+        "sub_path": full_logical_path,
+        "base_url": base_url,
+        "module": module,
+        "breadcrumbs": breadcrumbs,
+        "t": t,
+        "lang": lang,
+        "client_i18n": client_i18n,
+    }
+
+
 def get_breadcrumbs(
     root_folder: RootFolder,
     root_name: RootName,

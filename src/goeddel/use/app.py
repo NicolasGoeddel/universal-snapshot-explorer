@@ -19,7 +19,7 @@ from .logger import logger, setup_logging
 from .models import (
     RootFolder,
 )
-from .routers import api, explorer
+from .routers import api, differ, explorer
 from .utils.ui import render_error_response
 
 
@@ -82,4 +82,5 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
 
 
 app.include_router(explorer.router)
+app.include_router(differ.router)
 app.include_router(api.router)

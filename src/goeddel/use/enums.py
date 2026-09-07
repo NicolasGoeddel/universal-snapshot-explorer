@@ -72,3 +72,12 @@ class Language(StrEnum):
 
     EN = "en"
     DE = "de"
+
+
+class DiffLineType(StrEnum):
+    """Classification of lines in diff comparison."""
+
+    EQUAL = "equal"
+    INSERT = "insert"
+    DELETE = "delete"
+    MODIFY = "modify"

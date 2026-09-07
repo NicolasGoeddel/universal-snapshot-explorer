@@ -6,7 +6,14 @@
 </head>
 <body>
     <div class="sticky-header-container">
-        <h2 style="display: flex; align-items: center; gap: 8px;">{{ lucide('database' if file.is_sub_dataset or file.is_mount else ('folder' if file.is_folder else 'file-text'), size=24) }} {{ file.name if file.name else root_name }}</h2>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <h2 style="display: flex; align-items: center; gap: 8px; margin: 0;">{{ lucide('database' if file.is_sub_dataset or file.is_mount else ('folder' if file.is_folder else 'file-text'), size=24) }} {{ file.name if file.name else root_name }}</h2>
+            {%- if not file.is_folder and not file.is_symlink -%}
+            <div>
+                <a class="open-explorer-btn" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 0.85rem;" href="{{ route_url('diff', root_name, file.path, file.snapshot.id) }}" title="{{ t('action.diff') }}">{{ lucide('file-diff', size=14) }} {{ t('action.diff') }}</a>
+            </div>
+            {%- endif -%}
+        </div>
         {% include 'breadcrumbs.html.j2' %}
     </div>
     <table id="details" class="filebrowser" data-root="{{ root_name }}" data-subpath="{{ file.path }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}">
@@ -56,6 +63,9 @@
                         {%- endif -%}
                     {%- endif -%}
                     <a class="open-explorer-btn" style="display: inline-flex; align-items: center; gap: 4px;" href="{{ route_url('list', root_name, entry.parent_path, entry.snapshot.id) }}#{{ entry.name | quote_plus }}" title="{{ t('action.open_explorer') }}">{{ lucide('external-link', size=12) }} Explorer</a>
+                    {%- if not file.is_folder and not file.is_symlink and entry.does_exist -%}
+                    <a class="open-explorer-btn" style="display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;" href="{{ route_url('diff', root_name, file.path, entry.snapshot.id) }}" title="{{ t('action.diff') }}">{{ lucide('file-diff', size=12) }} Diff</a>
+                    {%- endif -%}
                 </td>
 
                 {# Size Cell #}

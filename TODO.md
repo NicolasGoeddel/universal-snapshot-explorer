@@ -21,7 +21,7 @@
 - [x] **ZIP Batch Download:** Stream selected files or entire folders as a `.zip` archive on-the-fly (without temporary disk storage)
 - [x] **Multi-Selection:** Checkbox multi-selection for batch actions (similar to Nextcloud)
 - [x] **Modern 404 & Error Page:** Styled error view with smart navigation helpers (nearest existing parent directory), snapshot timeline bar with hover tooltips & i18n
-- [ ] **Btrfs Subvolume CLI Auto-Discovery (`btrfs subvolume list`):**
+- [x] **Btrfs Subvolume CLI Auto-Discovery (`btrfs subvolume list`):**
   - Parse output of `btrfs subvolume list` to auto-discover all live subvolumes on the system (e.g. `@`, `@home`, `@root`, `@srv`).
   - Distinguish live subvolumes from snapshot subvolumes by evaluating `top level` ID hierarchies and path patterns (e.g. filter out `.snapshots`, `.snapshots/*/snapshot`, `_btrbk_snapshots/*`).
   - Associate discovered snapshot subvolumes with their corresponding parent live subvolumes and register each live subvolume as an independent root in the Roots Overview dashboard (identical to ZFS dataset discovery).
@@ -79,12 +79,32 @@
 - [x] Visual change highlighting: Highlight attribute changes across snapshots (with tooltips & version badges)
 - [x] Sortable snapshot column (Newest first $\downarrow$ vs. Oldest first $\uparrow$) with chronological diff calculation
 - [x] **Categorical Attribute Value Color-Coding:** Color-code matching attribute values per column in DetailView so identical values across snapshots share subtle, harmonious background tints with high text contrast (columns without changes retain default background).
-- [ ] **Modular / Pluggable File Differ Engine (`/diff`):** Dedicated view for inspecting file evolution across snapshots with a rich multi-snapshot selector topbar and pluggable viewer canvas:
-  - *MIME-based Plugin Auto-Selection & Override:* Automatically load the right plugin based on file MIME type with manual override selector.
-  - *Text & Code Differ Plugin:* 2-Way (Side-by-Side & Unified) diffing as well as multi-version stepping ($V_1 \rightarrow V_2 \rightarrow V_3$) with syntax highlighting.
-  - *Image Differ Plugin:* Cross-fade opacity fader, split/wipe curtain slider, and amplified CSS/Canvas difference shaders (`mix-blend-mode: difference` + contrast boost).
-  - *Structured Data Differ Plugin:* Semantic key-value and collapsible tree diffing for JSON, YAML, TOML, and XML.
-  - *In-Browser Media Quick-Preview / Lightbox:* Modal preview player for audio, video, PDFs, and high-resolution images (`Space` key quick-preview).
+- [x] **Modular / Pluggable File Differ Engine (`/diff`):** Dedicated view for inspecting file evolution across snapshots with an interactive multi-snapshot timeline selector and pluggable viewer canvas:
+  - *Host Shell (`DifferView`) & Plugin Architecture:*
+    - `DifferView` acts as orchestrator: manages page layout, breadcrumbs, file metadata, interactive snapshot bar, and lifecycle of the active diff plugin.
+    - Plugins are decoupled components implementing a standard lifecycle (`mount`, `render(data)`, `unmount`) and declare their snapshot capabilities (e.g. `minSnapshots = 2`, `maxSnapshots = 2` or `Infinity`).
+    - Plugins register their own custom toolbar controls (e.g. Side-by-Side vs Unified, Whitespace toggle, Curtain vs Opacity) in a reserved toolbar slot provided by the host shell.
+    - Automatic MIME-based plugin selection with a plugin switcher dropdown to manually override (e.g. inspect SVG as XML code or as rendered image).
+  - *Interactive Snapshot Bar (Multi-Select & Drag-to-Sweep):*
+    - Snapshot timeline bar in the header doubles as an interactive selector: click to toggle individual snapshots into the comparison set.
+    - Drag/sweep with mouse down across the timeline bar to select consecutive snapshot ranges in one gesture.
+    - Visual indicators on the timeline bar: selected snapshots highlighted/badged, unselected snapshots dimmed, missing snapshots disabled.
+  - *Multi-Snapshot Feeding & Pairwise Transition Stepping:*
+    - When $>2$ snapshots are selected and a 2-way plugin is active (e.g. TextDiffer), the host/plugin provides a **Pair Transition Stepper / Scrubber** (e.g. `[◀ Prev] S1 ↔ S2 [Next ▶]` or slider) to rapidly cycle through consecutive diff pairs ($S_1 \leftrightarrow S_2 \rightarrow S_2 \leftrightarrow S_3 \rightarrow S_3 \leftrightarrow S_4$).
+    - Active pair highlighted directly on the header timeline bar with a connecting bracket or focus ring.
+  - *Scroll Position Preservation & Synchronized Scrolling:*
+    - Synchronized dual-pane scrolling in Side-by-Side mode (scrolling Left locked with Right).
+    - **Persistent Scroll Position:** Retain current `scrollTop` / visible line anchor when stepping through snapshot pairs so the user can inspect a specific function or line range (e.g. line 120) across all historical versions without having to re-scroll after every step.
+  - *Text & Code Differ Plugin (V1):*
+    - Side-by-Side (Split) and Unified (Inline) diff views.
+    - Empty phantom/spacer row padding so matching lines remain aligned on the exact same vertical row.
+    - Intra-line word- and character-level difference highlighting for modified lines.
+    - Syntax highlighting and line number gutter.
+- [ ] **Planned Specialized Plugins (V2+):**
+  - *Image Differ Plugin:* Cross-fade opacity fader, split/wipe curtain slider, and side-by-side gallery mode.
+  - *Structured Data Differ Plugin:* Semantic key-value and collapsible tree diffing for JSON, YAML, TOML, and XML (aware of key reordering and formatting changes).
+  - *Table / CSV Differ Plugin:* Tabular grid diff highlighting changed cells, added rows, and removed rows.
+  - *Hex / Binary Differ Plugin:* Byte offset, hex and ASCII representation with diff highlighting for binary assets and firmware.
 
 ---
 
@@ -114,7 +134,7 @@
   - Plugs seamlessly into `KeyboardNavigator` interceptor chain.
 - [x] **SelectionManager Extraction (`selection_manager.js`):**
   - Checkbox multi-selection, hierarchical Tri-State tree checkboxes, range select, action bar HUD, and on-the-fly ZIP generation form.
-- [ ] **SnapshotBars & Lazy Rendering Extraction (`snapshot_bars.js`):**
+- [x] **SnapshotBars & Lazy Rendering Extraction (`snapshot_bars.js`):**
   - SVG snapshot pill generation, IntersectionObserver batch lazy-loading, and timeline hover tooltips.
 - [x] **FilterManager Extraction (`filter_manager.js`):**
   - Filter input search, toggle switches (hidden, missing, changed-only), count badges, and row visibility evaluation.

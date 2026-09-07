@@ -30,7 +30,7 @@ def quote_path_filter(path: str) -> str:
 
 
 def render_lucide(name: str, **kwargs: object) -> str:
-    return lucide_jinja(name, **kwargs)  # pyright: ignore[reportArgumentType]
+    return lucide_jinja(name, **kwargs)  # pyright: ignore[reportArgumentType] # External library lucide_jinja lacks proper kwargs typing
 
 
 _STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -68,7 +68,7 @@ templates.env.filters["quote_plus"] = lambda x: quote_plus(str(x)) if x else ""
 
 
 def get_app_config(request: Request) -> AppConfig:
-    state_config: object = getattr(request.app.state, "loaded_config", None)  # pyright: ignore[reportAny]
+    state_config: object = getattr(request.app.state, "loaded_config", None)  # pyright: ignore[reportAny] # FastAPI state getattr returns Any
     if isinstance(state_config, AppConfig):
         return state_config
     return cast(AppConfig, state_config)

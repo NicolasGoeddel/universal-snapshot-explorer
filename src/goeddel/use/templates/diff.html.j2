@@ -1,0 +1,139 @@
+{% from 'snapshots_bar.svg.j2' import pill_path %}
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    {% include 'header.html.j2' %}
+    <link rel="stylesheet" href="{{ static_url('css/differ.css') }}">
+    <link rel="stylesheet" href="{{ static_url('css/pygments.css') }}">
+    <script src="{{ static_url('js/differ.js') }}" defer></script>
+    <script src="{{ static_url('js/plugins/text_differ.js') }}" defer></script>
+</head>
+<body class="differ-view">
+    <div class="sticky-header-container">
+        <div class="differ-title-row">
+            <h2 style="display: flex; align-items: center; gap: 8px;">
+                {{ lucide('file-diff', size=24) }}
+                <span class="differ-file-name">{{ file.name if file.name else root_name }}</span>
+            </h2>
+            <div class="differ-header-actions">
+                <a class="differ-action-btn" href="{{ route_url('detail', root_name, file.path, right_snapshot_id) }}" title="{{ t('action.open_details') }}">
+                    {{ lucide('info', size=14) }} {{ t('action.details') }}
+                </a>
+                <a class="differ-action-btn" href="{{ route_url('list', root_name, file.parent_path, right_snapshot_id) }}#{{ file.name | quote_plus }}" title="{{ t('action.open_explorer') }}">
+                    {{ lucide('external-link', size=14) }} Explorer
+                </a>
+            </div>
+        </div>
+
+        {% include 'breadcrumbs.html.j2' %}
+
+        <!-- Differ Toolbar -->
+        <div class="differ-toolbar" id="differ-toolbar"
+             data-root="{{ root_name }}"
+             data-path="{{ file.path }}"
+             data-initial-snapshots="{{ initial_snapshots }}">
+
+            <!-- Row 1: Snapshot Timeline Bar Selector (Full Width) -->
+            <div class="differ-timeline-container">
+                <div class="differ-timeline-header-group">
+                    <div class="differ-timeline-label">
+                        <span class="timeline-title">{{ t('diff.timeline_title') }}</span>
+                        <span class="timeline-hint">{{ t('diff.timeline_hint') }}</span>
+                    </div>
+                    <div class="differ-mode-toggle" id="differ-mode-toggle">
+                        <button type="button" class="differ-mode-btn active" id="btn-mode-changes" title="{{ t('diff.mode_changes_only') }}">
+                            {{ t('diff.mode_changes_only') }}
+                        </button>
+                        <button type="button" class="differ-mode-btn" id="btn-mode-all" title="{{ t('diff.mode_all_snapshots') }}">
+                            {{ t('diff.mode_all_snapshots') }}
+                        </button>
+                    </div>
+                </div>
+                <div class="differ-timeline-bar-wrapper" id="diff-timeline-wrapper">
+                    {%- set bar_items = snapshots_bar | default([]) | list -%}
+                    {%- set bar_count = bar_items | length -%}
+                    {%- set cell_w = 20 -%}
+                    {%- set seg_w = 20 -%}
+                    {%- set seg_h = 16 -%}
+                    {%- set corner_r = 5 -%}
+                    {%- set total_w = bar_count * cell_w -%}
+                    {%- set max_render_w = [bar_count * 28, 160] | max -%}
+                    <svg id="diff-timeline-svg" class="diff-timeline-svg" viewBox="-1 -6 {{ total_w + 2 }} 34" preserveAspectRatio="none" style="width: 100%; max-width: {{ max_render_w }}px; height: 32px;">
+                        <!-- Active Pair Bracket -->
+                        <g id="active-pair-bracket-group">
+                            <path id="active-pair-bracket" class="bracket-path" d="" />
+                        </g>
+
+                        {%- for item in bar_items %}
+                            {%- set snap = item.snapshot -%}
+                            {%- set x = loop.index0 * cell_w -%}
+                            {%- set prev_item = bar_items[loop.index0 - 1] if loop.index0 > 0 else none -%}
+                            {%- set next_item = bar_items[loop.index0 + 1] if loop.index0 < bar_count - 1 else none -%}
+                            {%- set round_left = (prev_item is none or prev_item.color != item.color or prev_item.missing != item.missing) -%}
+                            {%- set round_right = (next_item is none or next_item.color != item.color or next_item.missing != item.missing) -%}
+                            {%- set d = pill_path(x, 10, seg_w, seg_h, corner_r, round_left, round_right) -%}
+                            {%- set fill_color = "var(--snap-missing)" if (item.missing or item.color is none) else (item.color if (item.color is string and item.color.startswith("var(")) else "var(--snap-" ~ item.color ~ ")") -%}
+                            {%- set is_initially_selected = (snap and (snap.id == left_snapshot_id or snap.id == right_snapshot_id)) -%}
+                            <g class="timeline-segment {{ 'selected' if is_initially_selected else '' }}"
+                               data-snap-id="{{ snap.id if snap else '' }}"
+                               data-snap-name="{{ snap.name if snap else '' }}"
+                               data-snap-time="{{ snap.timestamp_formatted if (snap and snap.has_timestamp) else '' }}"
+                               data-is-missing="{{ 'true' if item.missing else 'false' }}"
+                               data-snap-index="{{ loop.index0 }}"
+                               data-color="{{ item.color }}">
+                                <path d="{{ d }}" fill="{{ fill_color }}" stroke="rgba(0,0,0,0.18)" stroke-width="1" class="segment-pill" />
+                                {%- if item.missing %}
+                                    <line x1="{{ x + 3 }}" y1="12" x2="{{ x + 17 }}" y2="24" stroke="#ef4444" stroke-width="1.5" pointer-events="none" />
+                                    <line x1="{{ x + 17 }}" y1="12" x2="{{ x + 3 }}" y2="24" stroke="#ef4444" stroke-width="1.5" pointer-events="none" />
+                                {%- endif %}
+                                <rect class="segment-focus-rect" x="{{ x }}" y="9" width="{{ seg_w }}" height="{{ seg_h + 2 }}" rx="0" />
+                            </g>
+                        {%- endfor %}
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Row 2: Controls Row (Stepper on left, Plugin controls on right) -->
+            <div class="differ-controls-row">
+                <!-- Stepper for Multi-Snapshot Navigation -->
+                <div class="differ-stepper-container" id="diff-stepper" style="display: none;">
+                    <button type="button" class="differ-btn stepper-btn" id="stepper-prev" title="{{ t('diff.prev_transition') }}">
+                        {{ lucide('chevron-left', size=16) }}
+                    </button>
+                    <div class="stepper-info">
+                        <span class="stepper-label" id="stepper-label">1 / 1</span>
+                    </div>
+                    <button type="button" class="differ-btn stepper-btn" id="stepper-next" title="{{ t('diff.next_transition') }}">
+                        {{ lucide('chevron-right', size=16) }}
+                    </button>
+
+                    <!-- Group Size Input for Multi-Snapshot Navigation -->
+                    <input type="number" id="differ-group-size" class="differ-group-size-input" min="2" style="display: none;" title="Group Size">
+                </div>
+
+                <!-- Right Side Controls: Plugin Controls Slot + Differ Plugin Switcher -->
+                <div class="differ-controls-right">
+                    <!-- Plugin Controls Slot (Stats, Mode toggles, Wrap, Collapse) -->
+                    <div class="differ-plugin-controls" id="differ-plugin-controls"></div>
+
+                    <!-- Differ Plugin Selector Dropdown -->
+                    <div class="differ-plugin-selector-wrap">
+                        <select class="differ-select" id="differ-plugin-selector" title="{{ t('diff.select_plugin') }}" aria-label="{{ t('diff.select_plugin') }}">
+                            <option value="text-differ">Text Differ</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Diff Viewport -->
+    <main class="differ-main-content" id="differ-main-content">
+        <div id="diff-loading" class="diff-loading-indicator" style="display: none;">
+            <span class="diff-spinner"></span>
+            <span>{{ t('diff.loading') }}</span>
+        </div>
+        <div id="diff-viewport" class="diff-viewport"></div>
+    </main>
+</body>
+</html>

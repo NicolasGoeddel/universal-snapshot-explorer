@@ -21,4 +21,4 @@ roots:
     snapshot_patterns:
       - "auto-%Y-%m-%d_%H-%M*"
 
-loglevel: debug
+loglevel: info

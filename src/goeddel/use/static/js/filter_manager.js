@@ -73,6 +73,13 @@ class FilterManager {
     init() {
         this.initFiltering();
         this.initToggles();
+
+        const hasFilters = Array.from(this.table.querySelectorAll('thead tr.column-filter input')).some(
+            (inp) => inp.value.length > 0,
+        );
+        if (hasFilters) {
+            setTimeout(() => this.applyFilter(), 50);
+        }
     }
 
     /**

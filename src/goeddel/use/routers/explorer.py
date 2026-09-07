@@ -14,7 +14,7 @@ from ..logger import logger
 from ..models.folder import Folder
 from ..utils.path_resolver import resolve_root_and_subpath
 from ..utils.roots_hierarchy import build_root_hierarchy
-from ..utils.ui import get_breadcrumbs, render_error_response
+from ..utils.ui import get_base_template_context, render_error_response
 from ..zip_streamer import stream_zip_archive
 
 router = APIRouter()
@@ -63,34 +63,25 @@ def get_list_content(request: Request, full_path: str = "", snapshot: str | None
         )
 
     all_roots = list(config.roots.keys())
+    base_context = get_base_template_context(
+        request=request,
+        root_folder=root_folder,
+        root_name=decoded_root_name,
+        node=folder,
+        module="list",
+        path=directory_path,
+        all_roots=all_roots,
+    )
 
-    def render_explorer() -> HTMLResponse:
-        lang = get_language(request)
-
-        full_logical_path = directory_path
-        if root_folder.logical_sub_path:
-            full_logical_path = f"{root_folder.logical_sub_path}/{directory_path}".strip("/")
-
-        return templates.TemplateResponse(
-            request=request,
-            name="explorer.html.j2",
-            context={
-                "request": request,
-                "folder": folder,
-                "root_name": decoded_root_name,
-                "directory_path": full_logical_path,
-                "sub_path": full_logical_path,
-                "base_url": get_base_url(request),
-                "module": "list",
-                "breadcrumbs": get_breadcrumbs(root_folder, decoded_root_name, folder, root_folder.snapshots(), all_roots),
-                "parent_path": full_logical_path,
-                "t": get_translator(lang),
-                "lang": lang,
-                "client_i18n": get_client_translations(lang),
-            },
-        )
-
-    response = render_explorer()
+    response = templates.TemplateResponse(
+        request=request,
+        name="explorer.html.j2",
+        context={
+            **base_context,
+            "folder": folder,
+            "parent_path": base_context["directory_path"],
+        },
+    )
     logger.info("Cache hits/misses for root '%s': %d/%d", decoded_root_name, root_folder.cache_hits, root_folder.cache_misses)
     return response
 
@@ -113,34 +104,25 @@ def get_detail_content(request: Request, full_path: str = "", snapshot: str | No
         )
 
     all_roots = list(config.roots.keys())
+    base_context = get_base_template_context(
+        request=request,
+        root_folder=root_folder,
+        root_name=decoded_root_name,
+        node=file,
+        module="detail",
+        path=file_path,
+        all_roots=all_roots,
+    )
 
-    def render_details() -> HTMLResponse:
-        lang = get_language(request)
-
-        full_logical_path = file_path
-        if root_folder.logical_sub_path:
-            full_logical_path = f"{root_folder.logical_sub_path}/{file_path}".strip("/")
-
-        return templates.TemplateResponse(
-            request=request,
-            name="details.html.j2",
-            context={
-                "request": request,
-                "file": file,
-                "versions": versions,
-                "root_name": decoded_root_name,
-                "directory_path": full_logical_path,
-                "sub_path": full_logical_path,
-                "base_url": get_base_url(request),
-                "module": "detail",
-                "breadcrumbs": get_breadcrumbs(root_folder, decoded_root_name, file, root_folder.snapshots(), all_roots),
-                "t": get_translator(lang),
-                "lang": lang,
-                "client_i18n": get_client_translations(lang),
-            },
-        )
-
-    return render_details()
+    return templates.TemplateResponse(
+        request=request,
+        name="details.html.j2",
+        context={
+            **base_context,
+            "file": file,
+            "versions": versions,
+        },
+    )
 
 
 @router.get("/download/{full_path:path}")

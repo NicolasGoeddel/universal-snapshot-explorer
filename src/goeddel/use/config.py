@@ -39,7 +39,7 @@ class RootConfig(BaseModel):
         if not isinstance(data, dict):
             return data
 
-        dict_data: dict[str, object] = dict(data)  # pyright: ignore[reportUnknownArgumentType]
+        dict_data: dict[str, object] = dict(data)  # pyright: ignore[reportUnknownArgumentType] # dict constructor typing issues with dynamically parsed yaml
         raw_fs = dict_data.get("filesystem_type", FilesystemType.ZFS)
         try:
             fs_type = FilesystemType(str(raw_fs))
@@ -115,7 +115,7 @@ def load_config(
         raise FileNotFoundError(f"Configuration file '{file_path}' could not be found.")
 
     with open(file_path, "r", encoding="utf-8") as f:
-        loaded = yaml.safe_load(f)  # pyright: ignore[reportAny]
+        loaded = yaml.safe_load(f)  # pyright: ignore[reportAny] # PyYAML safe_load returns Any
         data: dict[str, object] = cast(dict[str, object], loaded) if isinstance(loaded, dict) else {}
 
     app_cfg = AppConfig.model_validate(data)

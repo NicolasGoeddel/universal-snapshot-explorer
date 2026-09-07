@@ -895,15 +895,15 @@ span.breadcrumb.current:hover {
 .browser-cell-actions {
     white-space: nowrap !important;
     text-align: left;
-    width: 58px;
-    min-width: 58px;
+    width: 84px;
+    min-width: 84px;
     padding-left: 6px !important;
     padding-right: 6px !important;
 }
 
 .browser-cell-actions-wrapper {
-    display: inline-grid;
-    grid-template-columns: 18px 18px;
+    display: inline-flex;
+    flex-direction: row;
     align-items: center;
     gap: 6px;
     white-space: nowrap;

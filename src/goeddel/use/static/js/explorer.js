@@ -1053,7 +1053,10 @@ class ExplorerView {
                     errorRow.className = 'folder-error-row';
                     errorRow.dataset.parent = path;
                     errorRow.dataset.level = String(level + 1);
-                    errorRow.innerHTML = `<td colspan="7" class="browser-cell-error" style="padding-left: calc(24px + 20px * ${level + 1});">🔒 <em>Zugriff verweigert (Permission denied): Keine Leseberechtigung für diesen Ordner</em></td>`;
+                    const permissionDeniedMsg =
+                        window.clientI18n?.['error.permission_denied_folder'] ||
+                        'Permission denied: No read access for this folder';
+                    errorRow.innerHTML = `<td colspan="7" class="browser-cell-error" style="padding-left: calc(24px + 20px * ${level + 1});">🔒 <em>${permissionDeniedMsg}</em></td>`;
                     row.after(errorRow);
                     row.dataset.expanded = 'true';
                     btn.classList.add('opened');

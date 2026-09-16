@@ -4,8 +4,10 @@
 <head>
     {% include 'header.html.j2' %}
     <link rel="stylesheet" href="{{ static_url('css/criteria_manager.css') }}">
+    <link rel="stylesheet" href="{{ static_url('css/column_visibility.css') }}">
     <script src="{{ static_url('js/criteria_manager.js') }}" defer></script>
     <script src="{{ static_url('js/filter_strategies.js') }}" defer></script>
+    <script src="{{ static_url('js/column_visibility.js') }}" defer></script>
     <script src="{{ static_url('js/explorer.js') }}" defer></script>
 </head>
 <body>
@@ -70,6 +72,14 @@
                         <span>{{ t('filter.criteria_attr_owner') }}</span>
                     </label>
                 </div>
+            </div>
+            <div class="dropdown col-visibility-dropdown">
+                <button type="button" class="col-visibility-toolbar-btn" id="btn-column-visibility" title="{{ t('columns.toolbar_button') }}">
+                    {{ lucide('columns-3', size=15, class_='text-muted') }}
+                    <span>{{ t('columns.toolbar_button') }}</span>
+                    {{ lucide('chevron-down', size=13, class_='text-muted') }}
+                </button>
+                <div class="dropdown-content col-visibility-menu" id="col-visibility-panel"></div>
             </div>
             <div style="flex-grow: 1;"></div>
             <div class="toolbar-stats" id="toolbar-stats" style="font-size: 8.5pt; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;">

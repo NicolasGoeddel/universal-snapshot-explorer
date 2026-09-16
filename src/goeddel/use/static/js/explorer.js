@@ -40,6 +40,7 @@ class ExplorerView {
         });
         this.bindTreeEvents(this.tbody);
         this.initSorting();
+        this.initColumnVisibility();
         this.initFiltering();
         this.initMultiSelection();
         this.initTypeahead();
@@ -1163,6 +1164,15 @@ class ExplorerView {
 
     get currentSort() {
         return this.sorter?.getSortState() || null;
+    }
+
+    initColumnVisibility() {
+        if (typeof ColumnVisibilityManager === 'undefined') return;
+        this.columnVisibility = new ColumnVisibilityManager(this.table, {
+            sorter: this.sorter,
+            resizer: this.columnResizer,
+            toolbarButton: 'btn-column-visibility',
+        });
     }
 
     sortByColumnIndex(cellIndex, forcedDirection = null) {

@@ -12,8 +12,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "theme.system": "System",
         "theme.light": "Light",
         "theme.dark": "Dark",
-        "lang.en": "English",
-        "lang.de": "German",
         "badge.created": "Created",
         "badge.deleted": "Deleted",
         "badge.missing": "Missing",
@@ -173,8 +171,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "theme.system": "System",
         "theme.light": "Hell",
         "theme.dark": "Dunkel",
-        "lang.en": "Englisch",
-        "lang.de": "Deutsch",
         "badge.created": "Erstellt",
         "badge.deleted": "Gelöscht",
         "badge.missing": "Fehlt",
@@ -332,6 +328,14 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 }
 
 DEFAULT_LANG = "en"
+
+# Language names shown in the language picker, each spelled in its own language
+# (autonyms) rather than translated, so a viewer can always recognize their own
+# language regardless of which one is currently active.
+LANGUAGES: dict[str, str] = {
+    "en": "English",
+    "de": "Deutsch",
+}
 
 
 def get_language(request: Request) -> str:

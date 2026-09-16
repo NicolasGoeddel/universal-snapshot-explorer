@@ -13,11 +13,12 @@
             <!-- Language Dropdown -->
             <div class="dropdown">
                 <div class="breadcrumb" style="cursor: pointer;">
-                    {{ lucide('globe', size=14) }} <span style="margin-left: 4px;">{{ t('lang.' ~ lang) }}</span>
+                    {{ lucide('globe', size=14) }} <span style="margin-left: 4px;">{{ languages.get(lang, lang) }}</span>
                 </div>
                 <div class="dropdown-content">
-                    <a href="/set-language/de">{{ t('lang.de') }}</a>
-                    <a href="/set-language/en">{{ t('lang.en') }}</a>
+                    {% for code, name in languages.items() %}
+                    <a href="/set-language/{{ code }}">{{ name }}</a>
+                    {% endfor %}
                 </div>
             </div>
 

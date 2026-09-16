@@ -10,6 +10,7 @@ from jinja2 import select_autoescape
 from lucide.jinja import lucide as lucide_jinja
 
 from .config import AppConfig
+from .i18n import LANGUAGES
 
 # Set up templates
 templates_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
@@ -61,6 +62,7 @@ cast(dict[str, object], templates.env.globals).update(
         "static_url": static_url,
         "route_url": make_route_url,
         "lucide": render_lucide,
+        "languages": LANGUAGES,
     }
 )
 templates.env.filters["quote_path"] = quote_path_filter

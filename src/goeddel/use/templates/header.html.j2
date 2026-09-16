@@ -13,7 +13,7 @@
             }
         } catch (e) {}
         try {
-            window.clientI18n = JSON.parse('{{ client_i18n | safe | default("{}") }}');
+            window.clientI18n = {{ client_i18n | safe | default("{}") }};
         } catch (e) {
             window.clientI18n = {};
         }

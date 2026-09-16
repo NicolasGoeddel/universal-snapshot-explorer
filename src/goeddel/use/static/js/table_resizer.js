@@ -197,9 +197,7 @@
             }
 
             const defaultTooltip =
-                document.documentElement.lang === 'de'
-                    ? 'Ziehen zum Anpassen der Spaltenbreite, Doppelklick zum Zurücksetzen'
-                    : 'Drag to resize, double-click to reset';
+                window.clientI18n?.['table.resizer_tooltip'] || 'Drag to resize, double-click to reset';
             const tooltip =
                 this.table.dataset.resizerTooltip || this.table.getAttribute('data-resizer-tooltip') || defaultTooltip;
 

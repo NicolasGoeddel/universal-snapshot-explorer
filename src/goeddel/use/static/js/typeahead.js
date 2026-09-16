@@ -106,9 +106,9 @@ class TypeaheadHUD {
             const matchText = matchPattern.replace('{current}', String(current)).replace('{total}', String(count));
             statusHtml = `
                 <span class="typeahead-hud-status">${this.escapeHtml(matchText)}</span>
-                <span class="typeahead-hud-badge">${this.escapeHtml(i18n['typeahead.next_prev'] || '↑/↓ Wechseln')}</span>
-                <span class="typeahead-hud-badge">${this.escapeHtml(i18n['typeahead.open'] || 'Enter: Öffnen')}</span>
-                <span class="typeahead-hud-badge">${this.escapeHtml(i18n['typeahead.exit'] || 'Esc: Beenden')}</span>
+                <span class="typeahead-hud-badge">${this.escapeHtml(i18n['typeahead.next_prev'] || '↑/↓ Switch')}</span>
+                <span class="typeahead-hud-badge">${this.escapeHtml(i18n['typeahead.open'] || 'Enter: Open')}</span>
+                <span class="typeahead-hud-badge">${this.escapeHtml(i18n['typeahead.exit'] || 'Esc: Exit')}</span>
             `;
         } else {
             statusHtml = `

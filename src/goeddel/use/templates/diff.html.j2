@@ -16,7 +16,7 @@
                 <span class="differ-file-name">{{ file.name if file.name else root_name }}</span>
             </h2>
             <div class="differ-header-actions">
-                <a class="differ-action-btn" href="{{ route_url('detail', root_name, file.path, right_snapshot_id) }}" title="{{ t('action.open_details') }}">
+                <a class="differ-action-btn" href="{{ route_url('detail', root_name, file.path, right_snapshot_id) }}" title="{{ t('action.show_details') }}">
                     {{ lucide('info', size=14) }} {{ t('action.details') }}
                 </a>
                 <a class="differ-action-btn" href="{{ route_url('list', root_name, file.parent_path, right_snapshot_id) }}#{{ file.name | quote_plus }}" title="{{ t('action.open_explorer') }}">

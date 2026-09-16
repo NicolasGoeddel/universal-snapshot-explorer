@@ -8,11 +8,10 @@ from fastapi import Request
 # Dictionaries for translations
 TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {
+        "page.title": "File Explorer",
         "theme.system": "System",
         "theme.light": "Light",
         "theme.dark": "Dark",
-        "lang.en": "English",
-        "lang.de": "German",
         "badge.created": "Created",
         "badge.deleted": "Deleted",
         "badge.missing": "Missing",
@@ -99,6 +98,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "filter.changed_only": "Changed only",
         "filter.changed_only_title": "Show only files and folders that changed across snapshots",
         "filter.stats_hidden": "hidden",
+        "filter.hidden_files_hidden_status": "{count} hidden files hidden",
+        "filter.hidden_files_shown_status": "{count} hidden files shown",
+        "filter.missing_files_hidden_status": "{count} missing files hidden",
+        "filter.missing_files_shown_status": "{count} missing files shown",
+        "filter.changed_files_hidden_status": "{unchanged} static files hidden ({changed} visible)",
+        "filter.changed_files_shown_status": "{changed} changed of {total}",
         "filter.clear": "Clear filter",
         "filter.criteria": "Criteria",
         "filter.criteria_title": "Configure which metadata changes trigger snapshot bar color changes",
@@ -162,11 +167,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "selection.structure_flat": "Flat (all files in archive root)",
     },
     "de": {
+        "page.title": "Datei-Explorer",
         "theme.system": "System",
         "theme.light": "Hell",
         "theme.dark": "Dunkel",
-        "lang.en": "Englisch",
-        "lang.de": "Deutsch",
         "badge.created": "Erstellt",
         "badge.deleted": "Gelöscht",
         "badge.missing": "Fehlt",
@@ -253,6 +257,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "filter.changed_only": "Nur geänderte",
         "filter.changed_only_title": "Nur Dateien und Ordner anzeigen, die sich über Snapshots hinweg geändert haben",
         "filter.stats_hidden": "ausgeblendet",
+        "filter.hidden_files_hidden_status": "{count} versteckte Dateien ausgeblendet",
+        "filter.hidden_files_shown_status": "{count} versteckte Dateien eingeblendet",
+        "filter.missing_files_hidden_status": "{count} fehlende Dateien ausgeblendet",
+        "filter.missing_files_shown_status": "{count} fehlende Dateien eingeblendet",
+        "filter.changed_files_hidden_status": "{unchanged} statische Dateien ausgeblendet ({changed} sichtbar)",
+        "filter.changed_files_shown_status": "{changed} geändert von {total}",
         "filter.clear": "Filter löschen",
         "filter.criteria": "Kriterien",
         "filter.criteria_title": "Festlegen, welche Dateiänderungen die Snapshot-Farben beeinflussen",
@@ -315,15 +325,216 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "selection.structure_absolute": "Vollständiger Pfad (ab Root)",
         "selection.structure_flat": "Flach (alle Dateien im ZIP-Root)",
     },
+    "fr": {
+        "page.title": "Explorateur de fichiers",
+        "theme.system": "Système",
+        "theme.light": "Clair",
+        "theme.dark": "Sombre",
+        "badge.created": "Créé",
+        "badge.deleted": "Supprimé",
+        "badge.missing": "Manquant",
+        "badge.unmounted": "Démonté",
+        "badge.live": "En direct",
+        "table.name": "Nom",
+        "table.size": "Taille",
+        "table.type": "Type",
+        "table.modified": "Modifié",
+        "table.changed": "État modifié",
+        "table.timestamp": "Horodatage",
+        "table.user": "Utilisateur",
+        "table.group": "Groupe",
+        "table.snapshot": "Snapshot",
+        "table.snapshots": "Snapshots",
+        "table.actions": "Actions",
+        "table.resizer_tooltip": "Faites glisser pour redimensionner, double-cliquez pour réinitialiser",
+        "loading.snapshots": "Chargement des snapshots...",
+        "unit.file": "fichier",
+        "unit.files": "fichiers",
+        "action.download": "Télécharger",
+        "action.refresh": "Actualiser",
+        "action.details": "Détails",
+        "action.show_details": "Afficher les détails",
+        "action.show_folder_details": "Afficher les détails du dossier",
+        "action.open_target": "Aller à la cible",
+        "action.changed_from": "Modifié depuis",
+        "action.open_explorer": "Ouvrir l'explorateur",
+        "action.diff": "Comparer (Diff)",
+        "diff.title": "Comparaison de fichiers",
+        "diff.side_by_side": "Côte à côte",
+        "diff.unified": "Unifié",
+        "diff.collapse_context": "Réduire les parties inchangées",
+        "diff.show_full": "Afficher le fichier complet",
+        "diff.whitespace": "Espaces",
+        "diff.step_pair": "Transition {current} sur {total}",
+        "diff.no_changes": "Les fichiers sont identiques dans ces snapshots.",
+        "diff.identical_notice": "Les fichiers sont identiques dans ces snapshots",
+        "diff.binary_warning": "Fichier binaire : comparaison textuelle directe indisponible.",
+        "diff.file_missing_left": "Le fichier n'existe pas dans le snapshot de gauche.",
+        "diff.file_missing_right": "Le fichier n'existe pas dans le snapshot de droite.",
+        "diff.select_snapshots_hint": "Sélectionnez au moins 2 snapshots à comparer.",
+        "diff.expand_lines": "Développer {count} lignes",
+        "diff.expand_all": "Tout développer",
+        "diff.unchanged_block": "{count} lignes inchangées",
+        "diff.timeline_title": "Snapshots",
+        "diff.timeline_hint": "Cliquez pour sélectionner · Ctrl+Clic pour sélection multiple · Glissez pour balayer une plage",
+        "diff.prev_transition": "Comparaison précédente",
+        "diff.next_transition": "Comparaison suivante",
+        "diff.select_pair": "Sélectionner une paire de snapshots",
+        "diff.loading": "Calcul de la différence...",
+        "diff.mode_changes_only": "Changements uniquement",
+        "diff.mode_all_snapshots": "Tous les snapshots",
+        "diff.word_wrap": "Retour à la ligne",
+        "diff.prev_change": "Différence précédente (Alt+↑)",
+        "diff.next_change": "Différence suivante (Alt+↓)",
+        "diff.recollapse": "Replier les lignes inchangées",
+        "diff.left_snapshot": "Snapshot de gauche (plus récent)",
+        "diff.right_snapshot": "Snapshot de droite (plus ancien)",
+        "diff.select_plugin": "Sélectionner le plugin de comparaison",
+        "error.folder_not_found": "Dossier introuvable.",
+        "error.file_not_found": "Fichier introuvable.",
+        "error.broken_symlink": "Lien symbolique rompu (la cible n'existe pas)",
+        "error.permission_denied": "Accès refusé",
+        "error.permission_denied_folder": "Accès refusé : aucun accès en lecture à ce dossier",
+        "error.404_title": "404 - Introuvable",
+        "error.404_folder_msg": "Le dossier « {path} » est introuvable dans le snapshot « {snapshot} ».",
+        "error.404_file_msg": "Le fichier « {path} » est introuvable dans le snapshot « {snapshot} ».",
+        "error.404_root_msg": "Le système de fichiers racine « {root} » est introuvable.",
+        "error.404_generic_msg": "La page ou la ressource demandée est introuvable.",
+        "error.500_title": "Erreur interne du serveur",
+        "error.nearest_parent": "Ouvrir le dossier parent existant le plus proche",
+        "error.available_in_snapshots": "Cet élément est disponible dans d'autres snapshots :",
+        "error.snapshot_timeline": "Chronologie des snapshots (cliquez pour changer) :",
+        "error.go_to_root_folder": "Aller au dossier racine",
+        "error.go_to_roots_overview": "Retour à l'aperçu des racines",
+        "error.requested_path": "Chemin demandé",
+        "error.active_snapshot": "Snapshot actif",
+        "filter.search_placeholder": "Rechercher...",
+        "filter.hidden_files": "Fichiers cachés",
+        "filter.hidden_files_title": "Afficher ou masquer les fichiers et dossiers cachés (fichiers pointés)",
+        "filter.missing_files": "Fichiers manquants",
+        "filter.missing_files_title": "Afficher ou masquer les fichiers et dossiers absents de ce snapshot",
+        "filter.changed_only": "Modifiés uniquement",
+        "filter.changed_only_title": "Afficher uniquement les fichiers et dossiers modifiés entre les snapshots",
+        "filter.stats_hidden": "masqués",
+        "filter.hidden_files_hidden_status": "{count} fichiers cachés masqués",
+        "filter.hidden_files_shown_status": "{count} fichiers cachés affichés",
+        "filter.missing_files_hidden_status": "{count} fichiers manquants masqués",
+        "filter.missing_files_shown_status": "{count} fichiers manquants affichés",
+        "filter.changed_files_hidden_status": "{unchanged} fichiers statiques masqués ({changed} visibles)",
+        "filter.changed_files_shown_status": "{changed} modifiés sur {total}",
+        "filter.clear": "Effacer le filtre",
+        "filter.criteria": "Critères",
+        "filter.criteria_title": "Configurer les changements de métadonnées qui déclenchent les changements de couleur de la barre de snapshots",
+        "filter.criteria_header": "Critères de la barre de snapshots",
+        "filter.criteria_attr_size": "Taille",
+        "filter.criteria_attr_mtime": "Modifié (mtime)",
+        "filter.criteria_attr_ctime": "État modifié (ctime)",
+        "filter.criteria_attr_mode": "Permissions (mode)",
+        "filter.criteria_attr_owner": "Utilisateur / Groupe",
+        "filter.criteria_all": "Tous",
+        "filter.criteria_reset": "Réinitialiser",
+        "breadcrumb.root": "Racine",
+        "snapshot.latest": "Le plus récent",
+        "snapshot.current": "Actuel",
+        "snapshot.none": "Aucun",
+        "index.title": "Universal Snapshot Explorer - Racines",
+        "index.prompt": "Veuillez sélectionner un système de fichiers configuré :",
+        "index.no_roots": "Aucune racine configurée. Veuillez vérifier le fichier de configuration.",
+        "index.header.name": "Nom",
+        "index.header.root_path": "Chemin racine",
+        "index.header.mount_point": "Point de montage",
+        "index.header.sub_path": "Sous-chemin",
+        "index.group.custom": "Racines configurées",
+        "index.group.btrfs": "Sous-volumes Btrfs",
+        "shortcuts.title": "Raccourcis clavier",
+        "shortcuts.nav_rows": "Naviguer entre les lignes",
+        "shortcuts.jump_page": "Sauter de page / début / fin",
+        "shortcuts.expand_folder": "Développer le dossier",
+        "shortcuts.collapse_folder": "Réduire le dossier / aller au parent",
+        "shortcuts.enter_action": "Ouvrir le dossier ou télécharger le fichier",
+        "shortcuts.open_details": "Afficher les détails du fichier",
+        "shortcuts.go_parent": "Aller au dossier parent",
+        "shortcuts.switch_snapshot": "Changer de snapshot (Ctrl+←/→)",
+        "shortcuts.sort_column": "Trier la colonne (Ctrl+↑/↓ ou Alt+1..8)",
+        "shortcuts.focus_filter": "Recherche rapide (filtre)",
+        "shortcuts.typeahead": "Saut rapide (tapez un nom pour rechercher)",
+        "shortcuts.edit_path": "Modifier le chemin",
+        "shortcuts.toggle_select": "Basculer la case de sélection",
+        "shortcuts.select_all": "Sélectionner toutes les lignes visibles",
+        "shortcuts.refresh": "Vider le cache et actualiser",
+        "shortcuts.close_or_cancel": "Fermer la fenêtre / annuler le filtre / effacer la sélection",
+        "shortcuts.help": "Afficher les raccourcis clavier",
+        "typeahead.match_count": "Résultat {current} sur {total}",
+        "typeahead.no_matches": "Aucun résultat",
+        "typeahead.next_prev": "↑/↓ Changer",
+        "typeahead.open": "Entrée : Ouvrir",
+        "typeahead.exit": "Échap : Quitter",
+        "breadcrumb.edit_path_tooltip": "Cliquez ou appuyez sur Ctrl+L pour modifier le chemin",
+        "breadcrumb.path_placeholder": "Saisissez un sous-chemin et appuyez sur Entrée...",
+        "selection.selected_count": "{count} sélectionné(s)",
+        "selection.filter_breakdown": "({visible} visibles, {hidden} masqués)",
+        "selection.download_zip": "Télécharger le ZIP",
+        "selection.action": "Action",
+        "selection.clear": "Effacer la sélection",
+        "selection.missing_warning": "{count} fichiers n'existent pas dans ce snapshot (seront ignorés)",
+        "selection.reveal_hidden": "Cliquez pour afficher les fichiers cachés",
+        "selection.select_all_visible": "Sélectionner tout ce qui est visible",
+        "selection.structure": "Structure des dossiers",
+        "selection.structure_relative": "Relatif au dossier actuel (par défaut)",
+        "selection.structure_absolute": "Chemin complet depuis la racine",
+        "selection.structure_flat": "Plat (tous les fichiers à la racine de l'archive)",
+    },
 }
 
 DEFAULT_LANG = "en"
 
+# Language names shown in the language picker, each spelled in its own language
+# (autonyms) rather than translated, so a viewer can always recognize their own
+# language regardless of which one is currently active.
+LANGUAGES: dict[str, str] = {
+    "en": "English",
+    "de": "Deutsch",
+    "fr": "Français",
+}
+
+# Browsers send a handful of preferences at most; this bounds parsing cost regardless
+# of what a client (or the ASGI server's own header-size limit) actually allows through.
+_MAX_ACCEPT_LANGUAGE_ENTRIES = 50
+
+
+def _parse_accept_language(accept_language: str) -> list[str]:
+    """Parses an Accept-Language header into language tags ordered by preference (q-value, then position)."""
+    weighted: list[tuple[str, float, int]] = []
+    parts = accept_language.split(",", _MAX_ACCEPT_LANGUAGE_ENTRIES)[:_MAX_ACCEPT_LANGUAGE_ENTRIES]
+    for index, part in enumerate(parts):
+        part = part.strip()
+        if not part or part == "*":
+            continue
+
+        tag, _, q_part = part.partition(";")
+        tag = tag.strip()[:64]
+        if not tag:
+            continue
+
+        quality = 1.0
+        q_part = q_part.strip()
+        if q_part.startswith("q="):
+            try:
+                quality = float(q_part[2:])
+            except ValueError:
+                quality = 1.0
+            else:
+                if not (0.0 <= quality <= 1.0):
+                    quality = 1.0
+
+        weighted.append((tag, quality, index))
+
+    weighted.sort(key=lambda entry: (-entry[1], entry[2]))
+    return [tag for tag, _, _ in weighted]
+
 
 def get_language(request: Request) -> str:
-    """Extracts the language from the request, either via cookie, query param, or Accept-Language."""
-    # Simple extraction for now, defaulting to EN or DE
-    # If using FastAPI Request object
+    """Extracts the language from the request, via query param, cookie, or Accept-Language preference order."""
     lang = request.query_params.get("lang")
     if lang in TRANSLATIONS:
         return lang
@@ -333,8 +544,10 @@ def get_language(request: Request) -> str:
         return lang
 
     accept_language = request.headers.get("accept-language", "")
-    if "de" in accept_language.lower():
-        return "de"
+    for tag in _parse_accept_language(accept_language):
+        primary_subtag = tag.split("-")[0].lower()
+        if primary_subtag in TRANSLATIONS:
+            return primary_subtag
 
     return DEFAULT_LANG
 

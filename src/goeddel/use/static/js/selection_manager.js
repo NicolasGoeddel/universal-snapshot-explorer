@@ -740,17 +740,17 @@ class SelectionManager {
         if (totalCount > 0 && actionBar) {
             actionBar.style.display = 'block';
             if (counter) {
-                const pattern = i18n['selection.selected_count'] || '{count} ausgewählt';
+                const pattern = i18n['selection.selected_count'] || '{count} selected';
                 counter.textContent = pattern.replace('{count}', String(totalCount));
             }
             if (breakdown) {
                 if (hiddenCount > 0) {
                     breakdown.style.display = 'inline';
                     const revealTitle =
-                        i18n['selection.reveal_hidden'] || 'Klicken, um ausgeblendete Dateien anzuzeigen';
-                    const hiddenLabel = i18n['filter.stats_hidden'] || 'ausgeblendet';
+                        i18n['selection.reveal_hidden'] || 'Click to reveal hidden files';
+                    const hiddenLabel = i18n['filter.stats_hidden'] || 'hidden';
                     const revealBtnHtml = `<button type="button" class="action-bar-reveal-btn" id="btn-reveal-hidden" title="${revealTitle}">${hiddenCount} ${hiddenLabel}</button>`;
-                    const pattern = i18n['selection.filter_breakdown'] || '({visible} sichtbar, {hidden} ausgeblendet)';
+                    const pattern = i18n['selection.filter_breakdown'] || '({visible} visible, {hidden} hidden)';
 
                     let breakdownHtml = pattern.replace('{visible}', String(visibleCount));
                     if (breakdownHtml.includes(`{hidden} ${hiddenLabel}`)) {
@@ -781,7 +781,7 @@ class SelectionManager {
                     warning.style.display = 'inline-flex';
                     const pattern =
                         i18n['selection.missing_warning'] ||
-                        '{count} Dateien in diesem Snapshot nicht vorhanden (werden übersprungen)';
+                        '{count} files do not exist in this snapshot (will be skipped)';
                     warning.textContent = `⚠️ ${pattern.replace('{count}', String(missingCount))}`;
                 } else {
                     warning.style.display = 'none';

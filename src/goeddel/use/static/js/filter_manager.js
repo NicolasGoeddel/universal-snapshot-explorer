@@ -550,7 +550,7 @@ class FilterManager {
         if (stats) {
             const hiddenTotal = totalRows - visibleRows;
             if (hiddenTotal > 0) {
-                const hiddenLabel = window.clientI18n?.['filter.stats_hidden'] || 'ausgeblendet';
+                const hiddenLabel = i18n['filter.stats_hidden'] || 'hidden';
                 stats.innerHTML = `<span>${visibleRows} / ${totalRows}</span> <span style="opacity: 0.7;">(${hiddenTotal} ${hiddenLabel})</span>`;
             } else {
                 stats.textContent = `${totalRows}`;

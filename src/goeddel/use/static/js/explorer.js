@@ -80,27 +80,27 @@ class ExplorerView {
         this.selectionManager.registerAction({
             id: 'zip',
             labelKey: 'selection.download_zip',
-            label: 'ZIP herunterladen',
+            label: 'Download ZIP',
             icon: 'archive',
             isDefault: true,
             optionsLabelKey: 'selection.structure',
-            optionsLabel: 'Ordnerstruktur',
+            optionsLabel: 'Folder structure',
             options: [
                 {
                     id: 'relative',
                     labelKey: 'selection.structure_relative',
-                    label: 'Relativ zum aktuellen Ordner (Standard)',
+                    label: 'Relative to current folder (Default)',
                     default: true,
                 },
                 {
                     id: 'absolute',
                     labelKey: 'selection.structure_absolute',
-                    label: 'Vollständiger Pfad (ab Root)',
+                    label: 'Full path from root',
                 },
                 {
                     id: 'flat',
                     labelKey: 'selection.structure_flat',
-                    label: 'Flach (alle Dateien im ZIP-Root)',
+                    label: 'Flat (all files in archive root)',
                 },
             ],
             execute: (selectedPaths, ctx) => {

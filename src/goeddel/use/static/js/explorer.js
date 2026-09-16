@@ -1375,6 +1375,15 @@ class ExplorerView {
             }
         });
 
+        // Ctrl+Enter: Open focused folder in a new tab
+        this.keyboard.register('Ctrl+Enter', (row) => {
+            if (!row) return;
+            const isFolder = row.dataset.isFolder === 'true';
+            const nameLink = row.querySelector('.browser-cell-name a');
+            if (isFolder && nameLink) 
+                window.open(nameLink.href, '_blank', 'noopener');
+        });
+
         // ArrowRight: Expand folder or step into first child
         this.keyboard.register('ArrowRight', (row) => {
             if (!row) return;

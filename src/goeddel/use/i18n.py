@@ -396,9 +396,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "error.permission_denied": "Accès refusé",
         "error.permission_denied_folder": "Accès refusé : aucun accès en lecture à ce dossier",
         "error.404_title": "404 - Introuvable",
-        "error.404_folder_msg": 'Le dossier « {path} » est introuvable dans le snapshot « {snapshot} ».',
-        "error.404_file_msg": 'Le fichier « {path} » est introuvable dans le snapshot « {snapshot} ».',
-        "error.404_root_msg": 'Le système de fichiers racine « {root} » est introuvable.',
+        "error.404_folder_msg": "Le dossier « {path} » est introuvable dans le snapshot « {snapshot} ».",
+        "error.404_file_msg": "Le fichier « {path} » est introuvable dans le snapshot « {snapshot} ».",
+        "error.404_root_msg": "Le système de fichiers racine « {root} » est introuvable.",
         "error.404_generic_msg": "La page ou la ressource demandée est introuvable.",
         "error.500_title": "Erreur interne du serveur",
         "error.nearest_parent": "Ouvrir le dossier parent existant le plus proche",
@@ -500,6 +500,8 @@ LANGUAGES: dict[str, str] = {
 # Browsers send a handful of preferences at most; this bounds parsing cost regardless
 # of what a client (or the ASGI server's own header-size limit) actually allows through.
 _MAX_ACCEPT_LANGUAGE_ENTRIES = 50
+
+
 def _parse_accept_language(accept_language: str) -> list[str]:
     """Parses an Accept-Language header into language tags ordered by preference (q-value, then position)."""
     weighted: list[tuple[str, float, int]] = []

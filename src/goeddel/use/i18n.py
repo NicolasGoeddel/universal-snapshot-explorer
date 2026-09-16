@@ -8,6 +8,7 @@ from fastapi import Request
 # Dictionaries for translations
 TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {
+        "page.title": "File Explorer",
         "theme.system": "System",
         "theme.light": "Light",
         "theme.dark": "Dark",
@@ -168,6 +169,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "selection.structure_flat": "Flat (all files in archive root)",
     },
     "de": {
+        "page.title": "Datei-Explorer",
         "theme.system": "System",
         "theme.light": "Hell",
         "theme.dark": "Dunkel",

@@ -7,6 +7,7 @@ from collections.abc import Generator
 from typing import TYPE_CHECKING
 
 from .enums import CompressionMode, StructureMode
+from .security import can_access, can_read_real_path, can_traverse_real_path, get_current_username
 
 if TYPE_CHECKING:
     from .models.root_folder import RootFolder
@@ -69,6 +70,86 @@ def deduplicate_paths(paths: list[str]) -> list[str]:
     return sorted(selected_set)
 
 
+def resolve_zip_selection(
+    root_folder: RootFolder,
+    snapshot: str | Snapshot | None,
+    paths: list[str],
+) -> tuple[list[tuple[str, str]], list[str], list[str]]:
+    """
+    Walks the requested selection exactly as `stream_zip_archive` below will,
+    without reading any file content.
+
+    Returns `(included, empty_dirs, skipped)`:
+      - `included`: `(node_path, real_path)` for every file that will actually
+        be written into the archive.
+      - `empty_dirs`: node paths that need an explicit empty-folder record in
+        the archive (genuinely empty, or every entry inside was ACL-skipped).
+      - `skipped`: node paths (files or whole subtrees, whichever is the
+        highest point at which access was denied) excluded by the current
+        user's ACL restrictions. A denied subdirectory is reported once,
+        not descended into.
+    """
+    target_snapshot = root_folder.get_snapshot(snapshot)
+    clean_paths = deduplicate_paths(paths)
+    username = get_current_username()
+
+    included: list[tuple[str, str]] = []
+    empty_dirs: list[str] = []
+    skipped: list[str] = []
+
+    for p in clean_paths:
+        node = root_folder.get_file(path=p, snapshot=target_snapshot)
+        if not node.does_exist:
+            continue
+        if not can_access(root_folder, p, target_snapshot, username):
+            skipped.append(p)
+            continue
+
+        real_path = node.symlink_final_real_path or root_folder.real_path(node.path, target_snapshot)
+        if not os.path.exists(real_path):
+            continue
+
+        try:
+            st = os.stat(real_path, follow_symlinks=True)
+        except OSError, PermissionError:
+            continue
+
+        if stat.S_ISDIR(st.st_mode):
+            for dirpath, dirnames, filenames in os.walk(real_path, followlinks=False):
+                rel_from_dir = os.path.relpath(dirpath, real_path).replace("\\", "/")
+                current_node_path = p if rel_from_dir == "." else f"{p.rstrip('/')}/{rel_from_dir}"
+
+                # Prune subdirectories the current user can't even traverse, 
+                # BEFORE os.walk descends into them, each entry
+                # is checked independently to avoid unnecessary processing.
+                kept_dirnames: list[str] = []
+                for d in sorted(dirnames):
+                    if can_traverse_real_path(os.path.join(dirpath, d), username):
+                        kept_dirnames.append(d)
+                    else:
+                        skipped.append(f"{current_node_path.rstrip('/')}/{d}")
+                dirnames[:] = kept_dirnames
+
+                # Prune files the current user can't read,
+                # and record the ones that can be included.
+                kept_filenames: list[str] = []
+                for fname in sorted(filenames):
+                    file_real_path = os.path.join(dirpath, fname)
+                    file_node_path = f"{current_node_path.rstrip('/')}/{fname}"
+                    if can_read_real_path(file_real_path, username):
+                        included.append((file_node_path, file_real_path))
+                        kept_filenames.append(fname)
+                    else:
+                        skipped.append(file_node_path)
+
+                if not kept_filenames and not kept_dirnames:
+                    empty_dirs.append(current_node_path)
+        else:
+            included.append((p, real_path))
+
+    return included, empty_dirs, skipped
+
+
 def stream_zip_archive(
     root_folder: RootFolder,
     snapshot: str | Snapshot | None,
@@ -81,8 +162,6 @@ def stream_zip_archive(
     Generates a streaming ZIP archive from selected paths within a root folder snapshot.
     Yields chunks of bytes directly to the caller.
     """
-    target_snapshot = root_folder.get_snapshot(snapshot)
-    clean_paths = deduplicate_paths(paths)
     clean_base = base_folder_path.strip("/").replace("\\", "/")
 
     streamer = ChunkedZipStreamer()
@@ -115,83 +194,36 @@ def stream_zip_archive(
                 return sub if sub else os.path.basename(clean_base)
             return clean_rel
 
+    included, empty_dirs, _skipped = resolve_zip_selection(root_folder, snapshot, paths)
+
     try:
-        for p in clean_paths:
-            node = root_folder.get_file(path=p, snapshot=target_snapshot)
-            if not node.does_exist:
-                continue
-
-            real_path = node.symlink_final_real_path or root_folder.real_path(node.path, target_snapshot)
-
-            if not os.path.exists(real_path):
-                continue
-
+        # Write files into the archive, yielding chunks as we go
+        for node_path, real_path in included:
+            file_arcname = make_arcname(node_path)
             try:
-                st = os.stat(real_path, follow_symlinks=True)
+                with open(real_path, "rb") as src, zf.open(file_arcname, "w") as dest:
+                    while True:
+                        buf = src.read(64 * 1024)
+                        if not buf:
+                            break
+                        _ = dest.write(buf)
+                        chunk = streamer.pop_chunks()
+                        if chunk:
+                            yield chunk
+                chunk = streamer.pop_chunks()
+                if chunk:
+                    yield chunk
             except OSError, PermissionError:
                 continue
 
-            if stat.S_ISDIR(st.st_mode):
-                # Recursively walk directory
-                for dirpath, dirnames, filenames in os.walk(real_path, followlinks=False):
-                    # Sort for deterministic archive layout
-                    dirnames.sort()
-                    filenames.sort()
-
-                    rel_from_dir = os.path.relpath(dirpath, real_path).replace("\\", "/")
-                    if rel_from_dir == ".":
-                        current_node_path = p
-                    else:
-                        current_node_path = f"{p.rstrip('/')}/{rel_from_dir}"
-
-                    # Write empty folder record if directory has no files and no subdirectories
-                    if not filenames and not dirnames:
-                        folder_arcname = make_arcname(current_node_path).rstrip("/") + "/"
-                        if folder_arcname and folder_arcname != "/":
-                            zf.writestr(folder_arcname, b"")
-                            chunk = streamer.pop_chunks()
-                            if chunk:
-                                yield chunk
-
-                    for fname in filenames:
-                        file_real_path = os.path.join(dirpath, fname)
-                        file_node_path = f"{current_node_path.rstrip('/')}/{fname}"
-                        file_arcname = make_arcname(file_node_path)
-
-                        try:
-                            with open(file_real_path, "rb") as src, zf.open(file_arcname, "w") as dest:
-                                while True:
-                                    buf = src.read(64 * 1024)
-                                    if not buf:
-                                        break
-                                    _ = dest.write(buf)
-                                    chunk = streamer.pop_chunks()
-                                    if chunk:
-                                        yield chunk
-                            # Flush any leftover metadata bytes for this file entry
-                            chunk = streamer.pop_chunks()
-                            if chunk:
-                                yield chunk
-                        except OSError, PermissionError:
-                            continue
-            else:
-                # Single regular file
-                file_arcname = make_arcname(p)
-                try:
-                    with open(real_path, "rb") as src, zf.open(file_arcname, "w") as dest:
-                        while True:
-                            buf = src.read(64 * 1024)
-                            if not buf:
-                                break
-                            _ = dest.write(buf)
-                            chunk = streamer.pop_chunks()
-                            if chunk:
-                                yield chunk
-                    chunk = streamer.pop_chunks()
-                    if chunk:
-                        yield chunk
-                except OSError, PermissionError:
-                    continue
+        # Write empty folders's records inside the archive
+        for dir_path in empty_dirs:
+            folder_arcname = make_arcname(dir_path).rstrip("/") + "/"
+            if folder_arcname and folder_arcname != "/":
+                zf.writestr(folder_arcname, b"")
+                chunk = streamer.pop_chunks()
+                if chunk:
+                    yield chunk
 
     finally:
         zf.close()

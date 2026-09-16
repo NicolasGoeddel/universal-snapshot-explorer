@@ -17,6 +17,7 @@ This guide covers all configuration options in **Universal Snapshot Explorer (US
    - [Global Btrfs Auto-Discovery (`btrfs:`)](#global-btrfs-auto-discovery-btrfs)
 4. [Dynamic UID / GID Resolution](#4-dynamic-uid--gid-resolution)
 5. [Timestamp Parsing Patterns (`snapshot_patterns`)](#5-timestamp-parsing-patterns-snapshot_patterns)
+6. [Authenticated Access & POSIX ACL Enforcement (`security:`)](#6-authenticated-access--posix-acl-enforcement-security)
 
 ---
 
@@ -255,3 +256,35 @@ Supported directives include standard `strftime` formats as well as named placeh
 | **btrbk Standard**   | `home.20260829T140000+0200` | `*.%Y%m%dT%H%M%S*` |
 | **btrbk Date-Only**  | `home.20260829` | `*.%Y%m%d` |
 | **Snapper Timestamp**| `backup-2026-08-29` | `backup-%Y-%m-%d` |
+
+---
+
+## 6. Authenticated Access & POSIX ACL Enforcement (`security:`)
+
+USE has no login page of its own. When `security.enabled` is `true`, it instead trusts a header set by a fronting reverse proxy that has already authenticated the request (e.g. oauth2-proxy's `X-Forwarded-User`, or `Remote-User` from any OIDC-aware proxy).
+It then uses that value as a Unix username to enforce the **real POSIX ACLs already present on the underlying filesystem** for every browse, download, diff, and ZIP-export request.
+
+This is deliberately not a separate permission system: it re-derives the exact same read/traverse decision the filesystem itself would make for that user, using `getfacl` and the container's own NSS configuration to resolve group membership.
+
+> [!TIP]
+> Since the container's NSS stack is used, you can wire it to an LDAP server and get all the benefits of ACLs + LDAP for complex permissions with centralized user management.
+
+Restricted entries are displayed as locked, details are hidden, they cannot be downloaded or diffed.
+
+ZIP exports display a warning if they contain files in sub-folders that will be skipped.
+
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | `bool` | `false` | Enables trusted-header authentication and ACL enforcement. Opt-in: existing unauthenticated deployments are unaffected. |
+| `trusted_user_header` | `string` | `"Remote-User"` | The HTTP header name a fronting reverse proxy sets to the authenticated Unix username. USE never terminates authentication itself. |
+
+#### Example Configuration:
+```yaml
+security:
+  enabled: true
+  trusted_user_header: X-Forwarded-User
+```
+
+#### Requirements:
+* The `acl` package (providing `getfacl`) must be installed in the image/host USE runs on. If it's missing, ACL checks fail open (behave as if `security.enabled` were `false`) rather than blocking browsing entirely.
+* The reverse proxy in front of USE **must** strip any incoming client-supplied value of `trusted_user_header` before setting its own, otherwise a client could simply set the header itself and impersonate any user.

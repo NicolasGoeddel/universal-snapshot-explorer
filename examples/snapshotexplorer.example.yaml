@@ -21,3 +21,9 @@ roots:
     snapshot_patterns:
       - "auto-%Y-%m-%d_%H-%M*"
 loglevel: info
+
+# Optional: authenticated access with real POSIX ACL enforcement, uses the container NSS stack for resolving user and group.
+# Disabled by default, see docs/configuration-guide.md.
+# security:
+#   enabled: true
+#   trusted_user_header: Remote-User

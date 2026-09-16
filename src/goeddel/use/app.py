@@ -5,22 +5,44 @@ import os
 # Universal Snapshot Explorer (USE) - Open Source Software
 # Copyright (C) 2025-2026 Nicolas Göddel
 # Licensed under the AGPLv3: https://www.gnu.org/licenses/agpl-3.0.txt
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from urllib.parse import unquote_plus
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .config import load_config
+from .config import AppConfig, load_config
 from .logger import logger, setup_logging
 from .models import (
     RootFolder,
 )
 from .routers import api, differ, explorer
+from .security import can_access, current_username
+from .utils.path_resolver import resolve_root_and_subpath
 from .utils.ui import render_error_response
+
+# Every route below takes a trailing `{full_path:path}` carrying a root name plus an
+# in-root subpath (see utils/path_resolver.py). These are the only surfaces that ever
+# expose filesystem content, so they're the only ones the security middleware needs to
+# intercept. Kept as one list here rather than duplicating a check in each router, per
+# this project's own stated "centralize security checks at policy enforcement points"
+# architectural principle (docs/ARCHITECTURE.md).
+_PROTECTED_PREFIXES: tuple[str, ...] = (
+    "list",
+    "detail",
+    "download-zip",
+    "download",
+    "ajax",
+    "diff",
+    "api/diff",
+    "api/snapshot-bars",
+    "api/file-mimetypes",
+    "api/snapshot-state",
+    "api/zip-preview",
+)
 
 
 @asynccontextmanager
@@ -39,6 +61,38 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(lifespan=lifespan)
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    """
+    Single policy-enforcement point for every filesystem-exposing route (see
+    security.py and SecurityConfig for the full reasoning). Disabled by default:
+    with `security.enabled = False`, this only sets an empty current_username
+    context.
+    """
+    config: object = getattr(request.app.state, "loaded_config", None)  # pyright: ignore[reportAny] # FastAPI state getattr returns Any
+    if not isinstance(config, AppConfig) or not config.security.enabled:
+        return await call_next(request)
+
+    username = request.headers.get(config.security.trusted_user_header)
+    token = current_username.set(username)
+    try:
+        if username is not None:
+            url_path = request.url.path.strip("/")
+            matched_prefix = next(
+                (p for p in _PROTECTED_PREFIXES if url_path == p or url_path.startswith(f"{p}/")),
+                None,
+            )
+            if matched_prefix is not None:
+                full_path = url_path[len(matched_prefix) :].strip("/")
+                _, subpath, root_folder = resolve_root_and_subpath(full_path, config)
+                snapshot = root_folder.get_snapshot(request.query_params.get("snapshot"))
+                if not can_access(root_folder, subpath, snapshot, username):
+                    return await custom_http_exception_handler(request, HTTPException(status_code=403, detail="Access denied"))
+        return await call_next(request)
+    finally:
+        current_username.reset(token)
 
 
 @app.exception_handler(ValueError)

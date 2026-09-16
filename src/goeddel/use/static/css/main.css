@@ -1398,6 +1398,17 @@ kbd {
     outline: none;
     box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--primary-accent);
 }
+
+.custom-checkbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+    background-color: var(--bg-base);
+}
+
+.custom-checkbox:disabled:hover {
+    border-color: var(--border-color);
+    box-shadow: none;
+}
 /* Selection styles extracted to static/css/selection.css */
 
 /* ==========================================================================

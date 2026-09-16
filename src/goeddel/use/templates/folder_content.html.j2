@@ -13,7 +13,7 @@
             data-is-accessible="{{ 'true' if entry.is_accessible else 'false' }}"
             data-is-sub-dataset="{{ 'true' if entry.is_sub_dataset else 'false' }}">
             <td class="browser-cell-select" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">
-                <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ entry.name }}">
+                <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ entry.name }}"{% if not entry.is_accessible %} disabled title="{{ t('error.permission_denied') }}"{% endif %}>
             </td>
             <td class="browser-cell-name{{ ' node-locked' if not entry.is_accessible else '' }}" style="padding-left: calc(6px + 20px * {{ level | default(0) }});" data-sort="{{ entry.name }}">
                 {%- if entry.sub_dataset_root_name is not none -%}

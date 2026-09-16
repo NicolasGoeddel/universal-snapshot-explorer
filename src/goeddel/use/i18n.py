@@ -335,13 +335,42 @@ DEFAULT_LANG = "en"
 LANGUAGES: dict[str, str] = {
     "en": "English",
     "de": "Deutsch",
-}
+# Browsers send a handful of preferences at most; this bounds parsing cost regardless
+# of what a client (or the ASGI server's own header-size limit) actually allows through.
+_MAX_ACCEPT_LANGUAGE_ENTRIES = 50
+def _parse_accept_language(accept_language: str) -> list[str]:
+    """Parses an Accept-Language header into language tags ordered by preference (q-value, then position)."""
+    weighted: list[tuple[str, float, int]] = []
+    parts = accept_language.split(",", _MAX_ACCEPT_LANGUAGE_ENTRIES)[:_MAX_ACCEPT_LANGUAGE_ENTRIES]
+    for index, part in enumerate(parts):
+        part = part.strip()
+        if not part or part == "*":
+            continue
+
+        tag, _, q_part = part.partition(";")
+        tag = tag.strip()[:64]
+        if not tag:
+            continue
+
+        quality = 1.0
+        q_part = q_part.strip()
+        if q_part.startswith("q="):
+            try:
+                quality = float(q_part[2:])
+            except ValueError:
+                quality = 1.0
+            else:
+                if not (0.0 <= quality <= 1.0):
+                    quality = 1.0
+
+        weighted.append((tag, quality, index))
+
+    weighted.sort(key=lambda entry: (-entry[1], entry[2]))
+    return [tag for tag, _, _ in weighted]
 
 
 def get_language(request: Request) -> str:
-    """Extracts the language from the request, either via cookie, query param, or Accept-Language."""
-    # Simple extraction for now, defaulting to EN or DE
-    # If using FastAPI Request object
+    """Extracts the language from the request, via query param, cookie, or Accept-Language preference order."""
     lang = request.query_params.get("lang")
     if lang in TRANSLATIONS:
         return lang
@@ -351,8 +380,10 @@ def get_language(request: Request) -> str:
         return lang
 
     accept_language = request.headers.get("accept-language", "")
-    if "de" in accept_language.lower():
-        return "de"
+    for tag in _parse_accept_language(accept_language):
+        primary_subtag = tag.split("-")[0].lower()
+        if primary_subtag in TRANSLATIONS:
+            return primary_subtag
 
     return DEFAULT_LANG
 

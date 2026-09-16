@@ -12,7 +12,10 @@
 </head>
 <body>
     <div class="sticky-header-container">
-        <h2 style="display: flex; align-items: center; gap: 8px;">{{ lucide('folder-tree', size=24) }} {{ t('index.title') }}</h2>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <h2 style="display: flex; align-items: center; gap: 8px; margin: 0;">{{ lucide('folder-tree', size=24) }} {{ t('index.title') }}</h2>
+            {% include 'global_controls.html.j2' %}
+        </div>
         {% include 'breadcrumbs.html.j2' %}
         <div class="explorer-toolbar">
             <label class="toggle-control" title="{{ t('filter.hidden_files_title') }}">

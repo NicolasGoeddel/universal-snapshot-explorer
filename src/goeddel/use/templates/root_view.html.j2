@@ -13,6 +13,7 @@
                 <h2 style="display: flex; align-items: center; gap: 10px; margin: 0;">
                     {{ lucide('hard-drive', size=26) }} {{ t('index.title') }}
                 </h2>
+                {% include 'global_controls.html.j2' %}
                 {% include 'nav_controls.html.j2' %}
             </div>
             <p style="color: var(--text-muted); margin: 0 0 6px 0; font-size: 9.5pt;">{{ t('index.prompt') }}</p>

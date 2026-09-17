@@ -27,3 +27,8 @@ loglevel: info
 # security:
 #   enabled: true
 #   trusted_user_header: Remote-User
+#   # Optional: for a standalone instance with no fronting auth proxy, impersonate
+#   # the union of these users' permissions instead of denying anonymous requests.
+#   impersonate_users:
+#     - alice
+#     - bob

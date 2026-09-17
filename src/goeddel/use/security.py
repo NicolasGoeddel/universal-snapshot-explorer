@@ -4,6 +4,7 @@ import errno
 import os
 import struct
 import threading
+from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, cast
@@ -50,6 +51,16 @@ except ImportError:
     _grp = None
     _pwd = None
 
+# The value carried by `current_username` (and accepted by every `can_*`
+# function below) is either a single real, trusted-header-authenticated
+# username, or (see `SecurityConfig.impersonate_users`) a frozenset of
+# usernames to impersonate *as a union*: a resource is accessible if ANY
+# member of the set could access it as themselves. For a frozenset, each
+# `can_*` function ORs the whole single-user decision across its members,
+# never mixing individual ACL entries from different members together, which
+# would let two partially-privileged users combine into access neither
+# actually has (see `_run_for_each_identity`).
+
 # Populated by the security middleware (app.py) for the lifetime of a single request.
 # A ContextVar, not a parameter threaded through every call, because the folder/file
 # node construction that needs it (models/folder.py's directory listing) happens many
@@ -58,17 +69,20 @@ except ImportError:
 # This is safe under FastAPI/Starlette: each request runs in its own asyncio Task, and
 # sync route handlers are dispatched via `run_in_threadpool`, which copies the current
 # context into the worker thread -- concurrent requests never see each other's username.
-current_username: ContextVar[UserName | None] = ContextVar("current_username", default=None)
+current_username: ContextVar[UserName | frozenset[UserName] | None] = ContextVar("current_username", default=None)
 
 # Set alongside `current_username` by the security middleware, once per request,
 # so `_check_permission` doesn't re-resolve the same user's group membership via
 # NSS (`grp.getgrall()` parses the entire group database) for every single file
 # in a listing -- a large directory previously triggered that lookup thousands
-# of times over. `None` (not an empty frozenset) means "not resolved yet for
-# this context", so callers outside the middleware (tests, direct `_check_permission`
-# use) still fall back to resolving it themselves rather than getting an empty
-# group set by mistake.
-current_user_groups: ContextVar[frozenset[GroupName] | None] = ContextVar("current_user_groups", default=None)
+# of times over. Keyed by username (not a single frozenset) so both the plain
+# single-user case and the multi-user impersonation union share one shape: the
+# middleware populates one entry per identity actually in play for the request.
+# `None` (not an empty dict) means "not resolved yet for this context", so
+# callers outside the middleware (tests, direct `_check_permission` use) still
+# fall back to resolving it themselves rather than getting an empty group set
+# by mistake.
+current_user_groups: ContextVar[dict[UserName, frozenset[GroupName]] | None] = ContextVar("current_user_groups", default=None)
 
 # Also set per request by the middleware: records, for the current user, which
 # directories have been *proven* traversable (and which proven not), keyed by
@@ -90,10 +104,14 @@ current_user_groups: ContextVar[frozenset[GroupName] | None] = ContextVar("curre
 # request it was made for, or a user whose access was just revoked would keep
 # being let through. `None` means "no ledger in this context" (tests, direct
 # calls), in which case every chain is walked and verified from the root down.
-current_traverse_ledger: ContextVar[dict[tuple[str, str], bool] | None] = ContextVar("current_traverse_ledger", default=None)
+# Keyed by (username, namespace, path) rather than just (namespace, path):
+# under an impersonation union, `_run_for_each_identity` walks the chain once
+# per candidate username, and each candidate's verdicts must stay in their own
+# lane: one user's traversable ancestor is not evidence about another's.
+current_traverse_ledger: ContextVar[dict[tuple[UserName, str, str], bool] | None] = ContextVar("current_traverse_ledger", default=None)
 
 
-def get_current_username() -> UserName | None:
+def get_current_username() -> UserName | frozenset[UserName] | None:
     return current_username.get()
 
 
@@ -361,7 +379,8 @@ def _check_permission(real_path: str, username: UserName, want: str) -> bool:
 
     # If the cache hasn't been populated for this request, heal it (shouldn't
     # happen since it's filled by the middleware, but here just in case).
-    groups = current_user_groups.get()
+    groups_by_user = current_user_groups.get()
+    groups = groups_by_user.get(username) if groups_by_user is not None else None
     if groups is None:
         groups = get_user_groups(username)
     matching = [e for name, e in named_group.items() if name in groups]
@@ -387,7 +406,24 @@ def _check_permission(real_path: str, username: UserName, want: str) -> bool:
     return other_entry is not None and want in other_entry.perm
 
 
-def can_read_real_path(real_path: str, username: UserName | None) -> bool:
+def _run_for_each_identity(identity: UserName | frozenset[UserName], decide: Callable[[UserName], bool]) -> bool:
+    """
+    Runs `decide`: a complete single-user access decision (e.g. a whole
+    `_check_permission` call, or a whole `_can_traverse_chain` walk), once
+    per username in an impersonation union, granting access if ANY of them
+    would get it as themselves.
+
+    Deliberately does not fuse individual ACL entries or per-step results
+    across usernames: `decide` must always run start-to-finish for one single
+    real user, or two partially-privileged users could combine into access
+    neither actually has on their own.
+    """
+    if isinstance(identity, str):
+        return decide(identity)
+    return any(decide(u) for u in identity)
+
+
+def can_read_real_path(real_path: str, username: UserName | frozenset[UserName] | None) -> bool:
     """
     Checks read permission on an already-resolved real filesystem path, with no
     root_folder/logical-path involved. For callers that walk real paths directly
@@ -397,14 +433,14 @@ def can_read_real_path(real_path: str, username: UserName | None) -> bool:
     """
     if username is None:
         return True
-    return _check_permission(real_path, username, "r")
+    return _run_for_each_identity(username, lambda u: _check_permission(real_path, u, "r"))
 
 
-def can_traverse_real_path(real_path: str, username: UserName | None) -> bool:
+def can_traverse_real_path(real_path: str, username: UserName | frozenset[UserName] | None) -> bool:
     """Same as `can_read_real_path`, but checks traverse ("x") rather than read."""
     if username is None:
         return True
-    return _check_permission(real_path, username, "x")
+    return _run_for_each_identity(username, lambda u: _check_permission(real_path, u, "x"))
 
 
 def _ancestor_chain(dir_path: FilePath) -> list[str]:
@@ -458,18 +494,18 @@ def _can_traverse_chain(
         # untraversable directory is reachable, so there is nothing left to ask.
         if ledger is not None:
             for path in chain[from_index:] if not verdict else chain[from_index : from_index + 1]:
-                ledger[(namespace, path)] = verdict
+                ledger[(username, namespace, path)] = verdict
         return verdict
 
     start = 0
     if ledger is not None:
-        known = ledger.get((namespace, chain[-1]))
+        known = ledger.get((username, namespace, chain[-1]))
         if known is not None:
             return known  # this exact directory was already settled this request
         # Otherwise resume below the deepest ancestor already settled: whatever
         # is above it was necessarily verified to settle it in the first place.
         for index in range(len(chain) - 1, -1, -1):
-            known = ledger.get((namespace, chain[index]))
+            known = ledger.get((username, namespace, chain[index]))
             if known is None:
                 continue
             if not known:
@@ -493,7 +529,7 @@ def can_view_metadata(
     root_folder: _RootFolderLike,
     child_path: FilePath,
     snapshot: Snapshot,
-    username: UserName | None,
+    username: UserName | frozenset[UserName] | None,
 ) -> bool:
     """
     Checks whether `child_path`'s metadata (size, mtime, mode, ...) may be shown
@@ -501,20 +537,28 @@ def can_view_metadata(
     """
     if username is None:
         return True
-    return _can_traverse_chain(root_folder, os.path.dirname(child_path.strip("/")), snapshot, username)
+    parent = os.path.dirname(child_path.strip("/"))
+    return _run_for_each_identity(username, lambda u: _can_traverse_chain(root_folder, parent, snapshot, u))
 
 
 def can_access_child(
     root_folder: _RootFolderLike,
     child_path: FilePath,
     snapshot: Snapshot,
-    username: UserName | None,
+    username: UserName | frozenset[UserName] | None,
 ) -> bool:
     """
     Lighter sibling of `can_access()` used by `FSNode.is_accessible`: checks read
     permission on a single already-listed entry, plus traverse on its immediate
     parent (see `can_view_metadata`): content can't be opened if the path to
     it can't even be resolved, regardless of the file's own read bit.
+
+    Under an impersonation union (see `_run_for_each_identity`), the traverse
+    and read checks are re-run together per candidate username rather than
+    combining `can_view_metadata`'s verdict with a separately-unioned read
+    check. Otherwise one user who can merely traverse the parent plus
+    another who can merely read the file, neither of whom can do both, would
+    wrongly combine into access neither actually has.
     """
     if username is None:
         return True
@@ -524,14 +568,18 @@ def can_access_child(
         real_path = root_folder.real_path(child_path, snapshot)
     except Exception as exc:
         raise FileNotFoundError(child_path) from exc
-    return _check_permission(real_path, username, "r")
+    parent = os.path.dirname(child_path.strip("/"))
+    return _run_for_each_identity(
+        username,
+        lambda u: _can_traverse_chain(root_folder, parent, snapshot, u) and _check_permission(real_path, u, "r"),
+    )
 
 
 def can_access(
     root_folder: _RootFolderLike,
     path: FilePath,
     snapshot: Snapshot,
-    username: UserName | None,
+    username: UserName | frozenset[UserName] | None,
 ) -> bool:
     """
     Full access check for `path` within `root_folder` at `snapshot`: requires
@@ -539,6 +587,10 @@ def can_access(
     `_can_traverse_chain`, the same primitive the per-entry checks use), plus
     read ("r") permission on the final target itself. `username` of None means
     ACL enforcement is disabled for this request, eg. when security is disabled.
+
+    Under an impersonation union, traverse-then-read is evaluated as one
+    decision per candidate username (via `_run_for_each_identity`) rather than
+    unioning each half separately, for the same reason as `can_access_child`.
 
     Ancestor real paths are resolved via `root_folder.real_path()` rather than
     manual path-boundary math, so this works identically across the ZFS/Btrfs/
@@ -551,11 +603,16 @@ def can_access(
     # (real `readdir()`), so when the target IS the share root there is nothing
     # above it to traverse and the "r" check below is the whole story.
     stripped = path.strip("/")
-    if stripped and not _can_traverse_chain(root_folder, os.path.dirname(stripped), snapshot, username):
+
+    def can_traverse_ancestors(u: UserName) -> bool:
+        return not stripped or _can_traverse_chain(root_folder, os.path.dirname(stripped), snapshot, u)
+
+    if not _run_for_each_identity(username, can_traverse_ancestors):
         return False
 
     try:
         target_real = root_folder.real_path(path, snapshot)
     except Exception as exc:
         raise FileNotFoundError(path) from exc
-    return _check_permission(target_real, username, "r")
+
+    return _run_for_each_identity(username, lambda u: can_traverse_ancestors(u) and _check_permission(target_real, u, "r"))

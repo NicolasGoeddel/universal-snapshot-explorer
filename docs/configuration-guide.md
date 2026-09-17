@@ -277,12 +277,20 @@ ZIP exports display a warning if they contain files in sub-folders that will be 
 | :--- | :--- | :--- | :--- |
 | `enabled` | `bool` | `false` | Enables trusted-header authentication and ACL enforcement. Opt-in: existing unauthenticated deployments are unaffected. |
 | `trusted_user_header` | `string` | `"Remote-User"` | The HTTP header name a fronting reverse proxy sets to the authenticated Unix username. USE never terminates authentication itself. |
+| `impersonate_users` | `list[string]` | `[]` | Fallback identities for requests with no `trusted_user_header` value. See below. |
+
+A request that carries no `trusted_user_header` value is, by default, denied outright when `security.enabled` is `true`: there's no identity to check ACLs against. Setting `impersonate_users` changes that: such a request is treated as the **union** of every listed user's permissions: so a path is accessible if *any* of them could reach it as themselves. This is meant for a standalone instance with no fronting auth proxy at all, that should still enforce real ACLs rather than exposing everything.
 
 #### Example Configuration:
 ```yaml
 security:
   enabled: true
   trusted_user_header: X-Forwarded-User
+  # Optional: unauthenticated requests are treated as this union of users
+  # instead of being denied.
+  impersonate_users:
+    - alice
+    - bob
 ```
 
 #### Requirements:

@@ -114,12 +114,24 @@ class SecurityConfig(BaseModel):
 
     Defaults to disabled, matching this project's pre-existing unauthenticated
     behavior -- this is strictly opt-in.
+
+    `impersonate_users` supports running as a standalone instance with no
+    fronting auth proxy at all, while still enforcing real POSIX ACLs rather
+    than opening everything up: when `enabled` is True but a request carries
+    no `trusted_user_header` value, it's normally denied outright (there is no
+    identity to check ACLs against). If this list is non-empty instead, the
+    request is treated as a *union* of every listed user's identity: a path
+    is accessible if ANY of them could read/traverse it as themselves.
+    This is deliberately more permissive than any single one of those users,
+    so only list users whose combined access is acceptable to expose without
+    per-request authentication.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     enabled: bool = False
     trusted_user_header: str = "Remote-User"
+    impersonate_users: tuple[str, ...] = ()
 
 
 class AppConfig(BaseModel):

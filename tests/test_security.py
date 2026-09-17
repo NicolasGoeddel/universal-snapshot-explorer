@@ -165,7 +165,7 @@ class TestCheckPermission(unittest.TestCase):
         # must use that instead of calling the (expensive, full-database-scanning)
         # `get_user_groups` again for every single file being checked.
         entries = self._entries(named_group=("finance", "rwx"), mask="rwx")
-        token = security.current_user_groups.set(frozenset({"finance"}))
+        token = security.current_user_groups.set({"bob": frozenset({"finance"})})
         try:
             with patch.object(security, "get_user_groups") as mock_get_user_groups:
                 with patch.object(security._acl_client, "get_acl_entries", return_value=entries):
@@ -514,6 +514,85 @@ class TestZipSelectionSkipReporting(unittest.TestCase):
         self.assertEqual(body["skipped_count"], len(expected_skipped))
 
 
+class TestImpersonationUnion(unittest.TestCase):
+    """
+    `SecurityConfig.impersonate_users` lets an unauthenticated request be
+    treated as the union of several real users' permissions: `current_username`
+    (and every `can_*` function) then carries a `frozenset[str]` instead of a
+    single username. Access must be granted if ANY one member could reach the
+    resource *as themselves*, but never by combining, e.g., one member's
+    traverse permission with a different member's read permission on the same
+    check (see `_run_for_each_identity`).
+    """
+
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        os.makedirs(os.path.join(self.temp_dir.name, "restricted_dir"))
+        with open(os.path.join(self.temp_dir.name, "restricted_dir", "secret.txt"), "w") as f:
+            _ = f.write("classified")
+
+        self.config = AppConfig(roots={"root": RootConfig(root_path=self.temp_dir.name, sub_path="")})
+        RootFolder.set_root_configs(self.config.roots)
+        self.root_folder = RootFolder.get(self.config.roots["root"])
+        self.snapshot = self.root_folder.get_snapshot(None)
+
+    def test_read_real_path_grants_if_any_member_can_read(self) -> None:
+        def fake_check(real_path: str, username: str, want: str) -> bool:
+            return username == "alice" and want == "r"
+
+        with patch.object(security, "_check_permission", side_effect=fake_check):
+            self.assertTrue(security.can_read_real_path("some/path", frozenset({"alice", "bob"})))
+            self.assertFalse(security.can_read_real_path("some/path", frozenset({"bob", "carol"})))
+
+    def test_does_not_combine_different_members_traverse_and_read(self) -> None:
+        # alice can traverse the parent but not read the file; bob is the
+        # reverse. Neither can actually reach the file on their own, so the
+        # union must deny it too, even though "some member can traverse" and
+        # "some member can read" are both individually true.
+        parent_real = self.root_folder.real_path("restricted_dir", self.snapshot)
+        child_real = self.root_folder.real_path("restricted_dir/secret.txt", self.snapshot)
+
+        def fake_check(real_path: str, username: str, want: str) -> bool:
+            if username == "alice":
+                return want == "x" and real_path == parent_real
+            if username == "bob":
+                return want == "r" and real_path == child_real
+            return False
+
+        with patch.object(security, "_check_permission", side_effect=fake_check):
+            self.assertFalse(
+                security.can_access_child(self.root_folder, "restricted_dir/secret.txt", self.snapshot, frozenset({"alice", "bob"}))
+            )
+            self.assertFalse(security.can_access(self.root_folder, "restricted_dir/secret.txt", self.snapshot, frozenset({"alice", "bob"})))
+
+    def test_grants_when_a_single_member_satisfies_the_whole_chain(self) -> None:
+        with patch.object(security, "_check_permission", side_effect=lambda real_path, username, want: username == "carol"):
+            self.assertTrue(
+                security.can_access_child(self.root_folder, "restricted_dir/secret.txt", self.snapshot, frozenset({"alice", "carol"}))
+            )
+            self.assertTrue(security.can_access(self.root_folder, "restricted_dir/secret.txt", self.snapshot, frozenset({"alice", "carol"})))
+
+    def test_groups_are_resolved_per_member_from_the_prefetched_map(self) -> None:
+        entries = [
+            security.AclEntry(tag="user_obj", qualifier=None, perm="---"),
+            security.AclEntry(tag="group_obj", qualifier=None, perm="---"),
+            security.AclEntry(tag="group", qualifier="finance", perm="r--"),
+            security.AclEntry(tag="other", qualifier=None, perm="---"),
+        ]
+        token = security.current_user_groups.set({"alice": frozenset(), "bob": frozenset({"finance"})})
+        try:
+            with patch.object(security, "_grp", object()), patch.object(security, "_pwd", object()):
+                with patch.object(security, "_get_uid", return_value=-1):
+                    with patch.object(security, "_acl_client") as mock_acl:
+                        mock_acl.get_acl_entries.return_value = entries
+                        with patch.object(security, "get_user_groups") as mock_get_user_groups:
+                            self.assertTrue(security.can_read_real_path("some/path", frozenset({"alice", "bob"})))
+                            mock_get_user_groups.assert_not_called()
+        finally:
+            security.current_user_groups.reset(token)
+
+
 class TestSecurityMiddleware(unittest.TestCase):
     """
     Confirms the middleware is a strict no-op when disabled (the default), and
@@ -568,6 +647,70 @@ class TestSecurityMiddleware(unittest.TestCase):
         with patch("goeddel.use.app.can_access", return_value=True):
             response = client.get("/list/root", headers={"Remote-User": "allowed-user"})
         self.assertEqual(response.status_code, 200)
+
+    def test_no_header_denied_when_no_impersonation_configured(self) -> None:
+        from fastapi.testclient import TestClient
+
+        config = AppConfig(
+            roots={"root": RootConfig(root_path=self.temp_dir.name, sub_path="")},
+            security=SecurityConfig(enabled=True, trusted_user_header="Remote-User"),
+        )
+        app.state.loaded_config = config
+        RootFolder.set_root_configs(config.roots)
+        client = TestClient(app)
+
+        with patch("goeddel.use.app.can_access", return_value=True):
+            response = client.get("/list/root")  # no Remote-User header at all
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_header_falls_back_to_impersonation_union(self) -> None:
+        from fastapi.testclient import TestClient
+
+        config = AppConfig(
+            roots={"root": RootConfig(root_path=self.temp_dir.name, sub_path="")},
+            security=SecurityConfig(enabled=True, trusted_user_header="Remote-User", impersonate_users=("alice", "bob")),
+        )
+        app.state.loaded_config = config
+        RootFolder.set_root_configs(config.roots)
+        client = TestClient(app)
+
+        seen_identity: object = None
+
+        def fake_can_access(root_folder: object, path: object, snapshot: object, username: object) -> bool:
+            nonlocal seen_identity
+            seen_identity = username
+            return True
+
+        with (
+            patch.object(security, "get_user_groups", return_value=frozenset()),
+            patch("goeddel.use.app.can_access", side_effect=fake_can_access),
+        ):
+            response = client.get("/list/root")  # still no Remote-User header
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(seen_identity, frozenset({"alice", "bob"}))
+
+    def test_header_present_takes_priority_over_impersonation_list(self) -> None:
+        from fastapi.testclient import TestClient
+
+        config = AppConfig(
+            roots={"root": RootConfig(root_path=self.temp_dir.name, sub_path="")},
+            security=SecurityConfig(enabled=True, trusted_user_header="Remote-User", impersonate_users=("alice", "bob")),
+        )
+        app.state.loaded_config = config
+        RootFolder.set_root_configs(config.roots)
+        client = TestClient(app)
+
+        seen_identity: object = None
+
+        def fake_can_access(root_folder: object, path: object, snapshot: object, username: object) -> bool:
+            nonlocal seen_identity
+            seen_identity = username
+            return True
+
+        with patch("goeddel.use.app.can_access", side_effect=fake_can_access):
+            response = client.get("/list/root", headers={"Remote-User": "carol"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(seen_identity, "carol")
 
 
 class TestDetailRouteAccessibility(unittest.TestCase):

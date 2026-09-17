@@ -78,16 +78,26 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
     if not isinstance(config, AppConfig) or not config.security.enabled:
         return await call_next(request)
 
-    username = request.headers.get(config.security.trusted_user_header)
-    user_token = current_username.set(username)
+    header_username = request.headers.get(config.security.trusted_user_header)
+    if header_username is not None: # Authenticated user
+        identity: str | frozenset[str] | None = header_username
+        resolved_users: tuple[str, ...] = (header_username,)
+    elif config.security.impersonate_users: # Anonymous with impersonation enabled
+        identity = frozenset(config.security.impersonate_users)
+        resolved_users = config.security.impersonate_users
+    else: # Anynomous with impersonation disabled
+        identity = None
+        resolved_users = ()
+
+    user_token = current_username.set(identity)
     # Resolved once per request rather than once per file: `get_user_groups`
     # scans the entire NSS group database (`grp.getgrall()`).
-    groups_token = current_user_groups.set(get_user_groups(username) if username is not None else None)
+    groups_token = current_user_groups.set({u: get_user_groups(u) for u in resolved_users} if resolved_users else None)
     # Directories proven traversable for this user, carried across the whole
     # request: the middleware's own `can_access` below already walks the chain
     # down to the requested folder, which is exactly the chain every entry in
     # that folder then asks about.
-    ledger_token = current_traverse_ledger.set({} if username is not None else None)
+    ledger_token = current_traverse_ledger.set({} if identity is not None else None)
     try:
         url_path = request.url.path.strip("/")
         matched_prefix = next(
@@ -95,13 +105,13 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
             None,
         )
         if matched_prefix is not None: # If on a protected route
-            if username is None:
+            if identity is None:
                 return await custom_http_exception_handler(request, HTTPException(status_code=403, detail="Access denied"))
             full_path = url_path[len(matched_prefix) :].strip("/")
             _, subpath, root_folder = resolve_root_and_subpath(full_path, config)
             snapshot = root_folder.get_snapshot(request.query_params.get("snapshot"))
             try:
-                accessible = can_access(root_folder, subpath, snapshot, username)
+                accessible = can_access(root_folder, subpath, snapshot, identity)
             except FileNotFoundError:
                 return await custom_http_exception_handler(request, HTTPException(status_code=404, detail="Not found"))
             if not accessible:

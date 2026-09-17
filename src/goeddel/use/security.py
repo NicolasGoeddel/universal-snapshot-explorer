@@ -404,21 +404,25 @@ def _check_permission(real_path: str, username: UserName, want: str) -> bool:
     return other_entry is not None and want in other_entry.perm
 
 
+def _normalize_identities(identity: UserName | frozenset[UserName]) -> tuple[UserName, ...]:
+    """Normalizes a single username or an impersonation union into a tuple to loop over."""
+    return (identity,) if isinstance(identity, str) else tuple(identity)
+
+
 def _run_for_each_identity(identity: UserName | frozenset[UserName], decide: Callable[[UserName], bool]) -> bool:
     """
     Runs `decide`: a complete single-user access decision (e.g. a whole
-    `_check_permission` call, or a whole `_can_traverse_chain` walk), once
-    per username in an impersonation union, granting access if ANY of them
-    would get it as themselves.
+    `_check_permission` call), once per username in an impersonation union,
+    granting access if ANY of them would get it as themselves.
 
-    Deliberately does not fuse individual ACL entries or per-step results
-    across usernames: `decide` must always run start-to-finish for one single
-    real user, or two partially-privileged users could combine into access
-    neither actually has on their own.
+    Only fit for a `decide` that makes exactly one such decision. A caller
+    that needs to combine two decisions per identity (e.g. traverse-then-read)
+    should loop over `_normalize_identities` directly instead: calling this twice
+    with two different `decide`s would walk the whole `_can_traverse_chain`
+    ledger a second time for every candidate, since each call is independent
+    and neither can short-circuit the other's per-identity work.
     """
-    if isinstance(identity, str):
-        return decide(identity)
-    return any(decide(u) for u in identity)
+    return any(decide(u) for u in _normalize_identities(identity))
 
 
 def can_read_real_path(real_path: str, username: UserName | frozenset[UserName] | None) -> bool:
@@ -551,26 +555,30 @@ def can_access_child(
     parent (see `can_view_metadata`): content can't be opened if the path to
     it can't even be resolved, regardless of the file's own read bit.
 
-    Under an impersonation union (see `_run_for_each_identity`), the traverse
-    and read checks are re-run together per candidate username rather than
-    combining `can_view_metadata`'s verdict with a separately-unioned read
-    check. Otherwise one user who can merely traverse the parent plus
-    another who can merely read the file, neither of whom can do both, would
-    wrongly combine into access neither actually has.
+    Under an impersonation union, traverse and read are evaluated together as
+    one decision per candidate username in a single pass (which is why this
+    walks the parent chain itself instead of delegating to
+    `can_view_metadata`, and doesn't use `_run_for_each_identity`, which only
+    fits a single per-identity decision). Otherwise one user who can merely
+    traverse the parent plus another who can merely read the file, neither of
+    whom can do both, would wrongly combine into access neither actually has.
     """
     if username is None:
         return True
-    if not can_view_metadata(root_folder, child_path, snapshot, username):
-        return False
-    try:
-        real_path = root_folder.real_path(child_path, snapshot)
-    except Exception as exc:
-        raise FileNotFoundError(child_path) from exc
+
     parent = os.path.dirname(child_path.strip("/"))
-    return _run_for_each_identity(
-        username,
-        lambda u: _can_traverse_chain(root_folder, parent, snapshot, u) and _check_permission(real_path, u, "r"),
-    )
+    real_path: str | None = None
+    for u in _normalize_identities(username):
+        if not _can_traverse_chain(root_folder, parent, snapshot, u):
+            continue
+        if real_path is None:
+            try:
+                real_path = root_folder.real_path(child_path, snapshot)
+            except Exception as exc:
+                raise FileNotFoundError(child_path) from exc
+        if _check_permission(real_path, u, "r"):
+            return True
+    return False
 
 
 def can_access(
@@ -586,9 +594,9 @@ def can_access(
     read ("r") permission on the final target itself. `username` of None means
     ACL enforcement is disabled for this request, eg. when security is disabled.
 
-    Under an impersonation union, traverse-then-read is evaluated as one
-    decision per candidate username (via `_run_for_each_identity`) rather than
-    unioning each half separately, for the same reason as `can_access_child`.
+    Under an impersonation union, traverse and read are evaluated together as
+    one decision per candidate username in a single pass, for the same reason
+    as `can_access_child`.
 
     Ancestor real paths are resolved via `root_folder.real_path()` rather than
     manual path-boundary math, so this works identically across the ZFS/Btrfs/
@@ -601,16 +609,15 @@ def can_access(
     # (real `readdir()`), so when the target IS the share root there is nothing
     # above it to traverse and the "r" check below is the whole story.
     stripped = path.strip("/")
-
-    def can_traverse_ancestors(u: UserName) -> bool:
-        return not stripped or _can_traverse_chain(root_folder, os.path.dirname(stripped), snapshot, u)
-
-    if not _run_for_each_identity(username, can_traverse_ancestors):
-        return False
-
-    try:
-        target_real = root_folder.real_path(path, snapshot)
-    except Exception as exc:
-        raise FileNotFoundError(path) from exc
-
-    return _run_for_each_identity(username, lambda u: can_traverse_ancestors(u) and _check_permission(target_real, u, "r"))
+    target_real: str | None = None
+    for u in _normalize_identities(username):
+        if stripped and not _can_traverse_chain(root_folder, os.path.dirname(stripped), snapshot, u):
+            continue
+        if target_real is None:
+            try:
+                target_real = root_folder.real_path(path, snapshot)
+            except Exception as exc:
+                raise FileNotFoundError(path) from exc
+        if _check_permission(target_real, u, "r"):
+            return True
+    return False

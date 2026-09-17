@@ -385,6 +385,27 @@ def can_traverse_real_path(real_path: str, username: UserName | None) -> bool:
     return _check_permission(real_path, username, "x")
 
 
+def can_view_metadata(
+    root_folder: _RootFolderLike,
+    child_path: FilePath,
+    snapshot: Snapshot,
+    username: UserName | None,
+) -> bool:
+    """
+    Checks whether `child_path`'s metadata (size, mtime, mode, ...) may be shown
+    to `username` at all, regardless of whether its content is readable.
+    """
+    if username is None:
+        return True
+    parent_path = os.path.dirname(child_path.strip("/"))
+    try:
+        parent_real = root_folder.real_path(parent_path, snapshot)
+    except Exception:
+        logger.warning("Could not resolve real path for parent of '%s' -- denying access (fail closed).", child_path)
+        return False
+    return _check_permission(parent_real, username, "x")
+
+
 def can_access_child(
     root_folder: _RootFolderLike,
     child_path: FilePath,
@@ -393,14 +414,14 @@ def can_access_child(
 ) -> bool:
     """
     Lighter sibling of `can_access()` used by `FSNode.is_accessible`: checks read
-    permission on a single already-listed entry, without re-walking the ancestor
-    chain. Safe because every route that renders a folder listing is
-    itself one of the security middleware's protected prefixes, so the parent's
-    own traversal permission was already confirmed before any child of it is
-    ever displayed.
+    permission on a single already-listed entry, plus traverse on its immediate
+    parent (see `can_view_metadata`): content can't be opened if the path to
+    it can't even be resolved, regardless of the file's own read bit.
     """
     if username is None:
         return True
+    if not can_view_metadata(root_folder, child_path, snapshot, username):
+        return False
     try:
         real_path = root_folder.real_path(child_path, snapshot)
     except Exception:
@@ -429,15 +450,23 @@ def can_access(
         return True
 
     parts = [p for p in path.strip("/").split("/") if p]
+    # Directories that must be traversed to *reach* the target, the share root
+    # first. A directory is never its own ancestor: listing one needs only "r"
+    # on it (real `readdir()`), so when the target IS the share root there is
+    # nothing above it to traverse and the "r" check below is the whole story.
+    ancestors = [""] if parts else []
     accumulated = ""
     for part in parts[:-1]:
         accumulated = os.path.join(accumulated, part) if accumulated else part
+        ancestors.append(accumulated)
+
+    for ancestor in ancestors:
         try:
-            ancestor_real = root_folder.real_path(accumulated, snapshot)
+            ancestor_real = root_folder.real_path(ancestor, snapshot)
         except Exception:
-            # Can't resolve this ancestor -- deny rather than risk masking a
+            # Can't resolve this ancestor: deny rather than risk masking a
             # denied path as a 404, since security is enabled for this request.
-            logger.warning("Could not resolve real path for ancestor '%s' -- denying access (fail closed).", accumulated)
+            logger.warning("Could not resolve real path for ancestor '%s' -- denying access (fail closed).", ancestor or "<share root>")
             return False
         if not _check_permission(ancestor_real, username, "x"):
             return False

@@ -209,18 +209,35 @@ class TestCanAccessAncestorChain(unittest.TestCase):
         self.snapshot = self.root_folder.get_snapshot(None)
 
     def test_denied_ancestor_blocks_access_to_child(self) -> None:
-        def fake_check(real_path: str, username: str, want: str) -> bool:
-            # Deny traverse specifically on the "a" ancestor -- everything else allowed.
-            if want == "x" and os.path.basename(real_path) == "a":
-                return False
-            return True
+        # The share root is walked as just the first ancestor alongside "a" and
+        # "a/b": denying traverse on any one of them, root included, must
+        # block access the same way.
+        root_real = self.root_folder.real_path("", self.snapshot)
+        denied_ancestors = {root_real, self.root_folder.real_path("a", self.snapshot)}
 
-        with patch.object(security, "_check_permission", side_effect=fake_check):
-            self.assertFalse(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
+        for denied in denied_ancestors:
+            with self.subTest(denied=denied):
+
+                def fake_check(real_path: str, username: str, want: str, denied: str = denied) -> bool:
+                    if want == "x" and real_path == denied:
+                        return False
+                    return True
+
+                with patch.object(security, "_check_permission", side_effect=fake_check):
+                    self.assertFalse(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
 
     def test_accessible_ancestor_chain_allows_read_target(self) -> None:
         with patch.object(security, "_check_permission", return_value=True):
             self.assertTrue(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
+
+    def test_listing_a_directory_does_not_require_traverse_on_itself(self) -> None:
+        # A directory is never its own ancestor: real `readdir()` needs only "r"
+        # on it, so listing a readable-but-not-executable directory must work.
+        def fake_check(real_path: str, username: str, want: str) -> bool:
+            return want != "x"  # nothing is traversable, everything is readable
+
+        with patch.object(security, "_check_permission", side_effect=fake_check):
+            self.assertTrue(security.can_access(self.root_folder, "", self.snapshot, "eve"))
 
     def test_disabled_security_always_allows(self) -> None:
         self.assertTrue(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, None))
@@ -238,6 +255,56 @@ class TestCanAccessAncestorChain(unittest.TestCase):
         with patch.object(security, "_check_permission", return_value=True):
             with patch.object(self.root_folder, "real_path", side_effect=fake_real_path):
                 self.assertFalse(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
+
+
+class TestCanAccessChildParentTraverse(unittest.TestCase):
+    """
+    `can_access_child` (backing `FSNode.is_accessible` for folder listings) must
+    also verify traverse ("x") on the child's immediate parent, not just read
+    ("r") on the child itself. Real `readdir()` only needs "r" on a directory to
+    enumerate names, so `can_access()`'s check on a folder being listed only
+    verifies "r" on it. But `stat()`-ing anything inside that directory (what
+    showing a child's metadata amounts to) needs "x" on it regardless of the
+    child's own bits. Without this, a readable-but-not-executable directory
+    would leak its children's metadata through a listing, which a real `ls` on
+    such a directory cannot do.
+    """
+
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        os.makedirs(os.path.join(self.temp_dir.name, "restricted_dir"))
+        with open(os.path.join(self.temp_dir.name, "restricted_dir", "secret.txt"), "w") as f:
+            _ = f.write("classified")
+        with open(os.path.join(self.temp_dir.name, "top_level.txt"), "w") as f:
+            _ = f.write("visible")
+
+        self.config = AppConfig(roots={"root": RootConfig(root_path=self.temp_dir.name, sub_path="")})
+        RootFolder.set_root_configs(self.config.roots)
+        self.root_folder = RootFolder.get(self.config.roots["root"])
+        self.snapshot = self.root_folder.get_snapshot(None)
+
+    def test_denies_child_when_parent_lacks_traverse_even_if_child_is_readable(self) -> None:
+        cases = {
+            "restricted_dir/secret.txt": self.root_folder.real_path("restricted_dir", self.snapshot),
+            "top_level.txt": self.root_folder.real_path("", self.snapshot),
+        }
+        for child_path, denied_parent_real in cases.items():
+            with self.subTest(child_path=child_path):
+
+                def fake_check(real_path: str, username: str, want: str, denied_parent_real: str = denied_parent_real) -> bool:
+                    if want == "x" and real_path == denied_parent_real:
+                        return False
+                    return True  # the child itself is readable
+
+                with patch.object(security, "_check_permission", side_effect=fake_check):
+                    self.assertFalse(security.can_access_child(self.root_folder, child_path, self.snapshot, "someone"))
+
+    def test_allows_child_when_parent_has_traverse_and_child_is_readable(self) -> None:
+        for child_path in ("restricted_dir/secret.txt", "top_level.txt"):
+            with self.subTest(child_path=child_path):
+                with patch.object(security, "_check_permission", return_value=True):
+                    self.assertTrue(security.can_access_child(self.root_folder, child_path, self.snapshot, "someone"))
 
 
 class TestFolderListingAccessibility(unittest.TestCase):
@@ -415,6 +482,57 @@ class TestSecurityMiddleware(unittest.TestCase):
         with patch("goeddel.use.app.can_access", return_value=True):
             response = client.get("/list/root", headers={"Remote-User": "allowed-user"})
         self.assertEqual(response.status_code, 200)
+
+
+class TestDetailRouteAccessibility(unittest.TestCase):
+    """
+    The `/detail` timeline spans every snapshot a file has ever existed in, but
+    only the requested (path, snapshot) pair is checked by the security
+    middleware. Per-version ACLs aren't individually re-checked (a known
+    limitation): a guessable/known URL must not be able to reveal that a
+    restricted file exists, or its metadata, via that gap: the route itself
+    must hard-403 based on `FSNode.is_accessible` for the node the URL names.
+    """
+
+    @override
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        with open(os.path.join(self.temp_dir.name, "secret.txt"), "w") as f:
+            _ = f.write("classified")
+
+        self.config = AppConfig(
+            roots={"root": RootConfig(root_path=self.temp_dir.name, sub_path="")},
+            security=SecurityConfig(enabled=True, trusted_user_header="Remote-User"),
+        )
+        app.state.loaded_config = self.config
+        RootFolder.set_root_configs(self.config.roots)
+
+    def test_denies_detail_view_when_node_is_not_accessible(self) -> None:
+        from fastapi.testclient import TestClient
+
+        client = TestClient(app)
+        # The middleware's own check passes (eg. ancestor traversal is fine),
+        # but the specific node the route resolves is not readable by this user.
+        with patch("goeddel.use.app.can_access", return_value=True), patch.object(security, "can_access_child", return_value=False):
+            response = client.get("/detail/root/secret.txt", headers={"Remote-User": "denied-user"})
+        self.assertEqual(response.status_code, 403)
+
+    def test_allows_detail_view_when_node_is_accessible(self) -> None:
+        from fastapi.testclient import TestClient
+
+        client = TestClient(app)
+        with patch("goeddel.use.app.can_access", return_value=True), patch.object(security, "can_access_child", return_value=True):
+            response = client.get("/detail/root/secret.txt", headers={"Remote-User": "allowed-user"})
+        self.assertEqual(response.status_code, 200)
+
+    def test_missing_file_still_404s_rather_than_403s(self) -> None:
+        from fastapi.testclient import TestClient
+
+        client = TestClient(app)
+        with patch("goeddel.use.app.can_access", return_value=True), patch.object(security, "can_access_child", return_value=False):
+            response = client.get("/detail/root/does-not-exist.txt", headers={"Remote-User": "anyone"})
+        self.assertEqual(response.status_code, 404)
 
 
 if __name__ == "__main__":

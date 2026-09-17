@@ -548,11 +548,19 @@ class ExplorerView {
                     lockIndicator.style.display = 'none';
                 }
 
+                // Traverse denied on the parent directory: the backend already
+                // redacted every stat-derived field, so render them as such
+                // rather than running them through the normal formatting (a
+                // folder's size === -1 would otherwise print as an em dash).
+                const statVisible = meta.is_stat_visible !== false;
+
                 // Update Size
                 const sizeCell = row.querySelector('.browser-cell-size');
                 if (sizeCell) {
                     let displaySize = meta.size_human;
-                    if (
+                    if (!statVisible) {
+                        displaySize = '?';
+                    } else if (
                         meta.is_folder &&
                         !meta.has_independent_snapshots &&
                         meta.size !== undefined &&
@@ -668,10 +676,14 @@ class ExplorerView {
                                     childNameCell.classList.toggle('node-locked', !childMeta.is_accessible);
                                 }
 
+                                const childStatVisible = childMeta.is_stat_visible !== false;
+
                                 const childSizeCell = childRow.querySelector('.browser-cell-size');
                                 if (childSizeCell) {
                                     let displaySize = childMeta.size_human;
-                                    if (
+                                    if (!childStatVisible) {
+                                        displaySize = '?';
+                                    } else if (
                                         childMeta.is_folder &&
                                         !childMeta.has_independent_snapshots &&
                                         childMeta.size !== undefined &&

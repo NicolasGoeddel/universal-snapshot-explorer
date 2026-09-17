@@ -260,6 +260,24 @@ class FSNode:
         return can_access_child(self._root_folder, self.path, self.snapshot, get_current_username())
 
     @property
+    def is_stat_visible(self) -> bool:
+        """
+        Returns True if this node's metadata (size, mtime, mode, owner, ...) may
+        be shown at all, independent of `is_accessible` (which additionally
+        requires the content itself to be readable). Real `stat()` only needs
+        traverse permission on the parent directory, not read on the target, so
+        a file can be stat-visible without being accessible (content denied,
+        metadata shown), but never the other way around: `is_accessible` implies
+        stat-visible.
+        """
+        if not self.does_exist:
+            return True
+
+        from ...security import can_view_metadata, get_current_username
+
+        return can_view_metadata(self._root_folder, self.path, self.snapshot, get_current_username())
+
+    @property
     def size(self) -> int | None:
         return None
 

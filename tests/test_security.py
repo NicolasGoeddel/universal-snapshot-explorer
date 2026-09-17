@@ -576,15 +576,20 @@ class TestImpersonationUnion(unittest.TestCase):
             security.AclEntry(tag="group", qualifier="finance", perm="r--"),
             security.AclEntry(tag="other", qualifier=None, perm="---"),
         ]
+        real_path = os.path.join(self.temp_dir.name, "restricted_dir", "secret.txt")
         token = security.current_user_groups.set({"alice": frozenset(), "bob": frozenset({"finance"})})
         try:
-            with patch.object(security, "_grp", object()), patch.object(security, "_pwd", object()):
-                with patch.object(security, "_get_uid", return_value=-1):
-                    with patch.object(security, "_acl_client") as mock_acl:
-                        mock_acl.get_acl_entries.return_value = entries
-                        with patch.object(security, "get_user_groups") as mock_get_user_groups:
-                            self.assertTrue(security.can_read_real_path("some/path", frozenset({"alice", "bob"})))
-                            mock_get_user_groups.assert_not_called()
+            with (
+                patch.object(security, "_grp", object()),
+                patch.object(security, "_pwd", object()),
+                patch.object(security, "_get_uid", return_value=-1),
+                patch.object(security, "_get_group_name", return_value="other-group"),
+                patch.object(security, "_acl_client") as mock_acl,
+                patch.object(security, "get_user_groups") as mock_get_user_groups,
+            ):
+                mock_acl.get_acl_entries.return_value = entries
+                self.assertTrue(security.can_read_real_path(real_path, frozenset({"alice", "bob"})))
+                mock_get_user_groups.assert_not_called()
         finally:
             security.current_user_groups.reset(token)
 

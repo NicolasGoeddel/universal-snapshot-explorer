@@ -20,7 +20,7 @@ from .models import (
     RootFolder,
 )
 from .routers import api, differ, explorer
-from .security import can_access, current_username, describe_enforcement_gaps
+from .security import can_access, current_user_groups, current_username, describe_enforcement_gaps, get_user_groups
 from .utils.path_resolver import resolve_root_and_subpath
 from .utils.ui import render_error_response
 
@@ -79,7 +79,10 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
         return await call_next(request)
 
     username = request.headers.get(config.security.trusted_user_header)
-    token = current_username.set(username)
+    user_token = current_username.set(username)
+    # Resolved once per request rather than once per file: `get_user_groups`
+    # scans the entire NSS group database (`grp.getgrall()`).
+    groups_token = current_user_groups.set(get_user_groups(username) if username is not None else None)
     try:
         if username is not None:
             url_path = request.url.path.strip("/")
@@ -95,7 +98,8 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
                     return await custom_http_exception_handler(request, HTTPException(status_code=403, detail="Access denied"))
         return await call_next(request)
     finally:
-        current_username.reset(token)
+        current_user_groups.reset(groups_token)
+        current_username.reset(user_token)
 
 
 @app.exception_handler(ValueError)

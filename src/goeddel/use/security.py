@@ -60,6 +60,16 @@ except ImportError:
 # context into the worker thread -- concurrent requests never see each other's username.
 current_username: ContextVar[UserName | None] = ContextVar("current_username", default=None)
 
+# Set alongside `current_username` by the security middleware, once per request,
+# so `_check_permission` doesn't re-resolve the same user's group membership via
+# NSS (`grp.getgrall()` parses the entire group database) for every single file
+# in a listing -- a large directory previously triggered that lookup thousands
+# of times over. `None` (not an empty frozenset) means "not resolved yet for
+# this context", so callers outside the middleware (tests, direct `_check_permission`
+# use) still fall back to resolving it themselves rather than getting an empty
+# group set by mistake.
+current_user_groups: ContextVar[frozenset[GroupName] | None] = ContextVar("current_user_groups", default=None)
+
 
 def get_current_username() -> UserName | None:
     return current_username.get()
@@ -86,7 +96,7 @@ def describe_enforcement_gaps() -> list[str]:
     """
     Returns human-readable reasons POSIX ACL enforcement cannot actually run in
     this process, or an empty list if it can. Meant to be checked once at startup
-    when `security.enabled` is True: without this, an operator running a 
+    when `security.enabled` is True: without this, an operator running a
     misconfigured deployment (eg. on a filesystem without xattr support) would
     only discover that every access check is failing closed (denied) the first
     time a user hits it. This surfaces the root cause immediately instead.
@@ -327,7 +337,11 @@ def _check_permission(real_path: str, username: UserName, want: str) -> bool:
         owner_entry = base.get("user_obj")
         return owner_entry is not None and want in owner_entry.perm
 
-    groups = get_user_groups(username)
+    # If the cache hasn't been populated for this request, heal it (shouldn't
+    # happen since it's filled by the middleware, but here just in case).
+    groups = current_user_groups.get()
+    if groups is None:
+        groups = get_user_groups(username)
     matching = [e for name, e in named_group.items() if name in groups]
 
     file_group = _get_group_name(st.st_gid)

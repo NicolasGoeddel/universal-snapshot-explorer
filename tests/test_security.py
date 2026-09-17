@@ -155,6 +155,25 @@ class TestCheckPermission(unittest.TestCase):
         with patch.object(security._acl_client, "get_acl_entries", return_value=entries):
             self.assertTrue(security._check_permission(self.tmp.name, "dave", "r"))
 
+    @patch.object(security, "_grp", object())
+    @patch.object(security, "_pwd", object())
+    @patch.object(security, "_get_uid", return_value=-1)
+    @patch.object(security, "_get_group_name", return_value="other-group")
+    def test_prefetched_groups_context_var_skips_nss_lookup(self, *_mocks: object) -> None:
+        # When the security middleware has already resolved the requesting
+        # user's groups for this request (`current_user_groups`), `_check_permission`
+        # must use that instead of calling the (expensive, full-database-scanning)
+        # `get_user_groups` again for every single file being checked.
+        entries = self._entries(named_group=("finance", "rwx"), mask="rwx")
+        token = security.current_user_groups.set(frozenset({"finance"}))
+        try:
+            with patch.object(security, "get_user_groups") as mock_get_user_groups:
+                with patch.object(security._acl_client, "get_acl_entries", return_value=entries):
+                    self.assertTrue(security._check_permission(self.tmp.name, "bob", "r"))
+                mock_get_user_groups.assert_not_called()
+        finally:
+            security.current_user_groups.reset(token)
+
     def test_unreadable_acl_fails_closed(self) -> None:
         with patch.object(security._acl_client, "get_acl_entries", return_value=None):
             self.assertFalse(security._check_permission(self.tmp.name, "anyone", "r"))

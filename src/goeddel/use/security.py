@@ -407,6 +407,88 @@ def can_traverse_real_path(real_path: str, username: UserName | None) -> bool:
     return _check_permission(real_path, username, "x")
 
 
+def _ancestor_chain(dir_path: FilePath) -> list[str]:
+    """Every directory from the share root ("") down to and including `dir_path`."""
+    chain = [""]
+    accumulated = ""
+    for part in dir_path.strip("/").split("/"):
+        if not part:
+            continue
+        accumulated = f"{accumulated}/{part}" if accumulated else part
+        chain.append(accumulated)
+    return chain
+
+
+def _can_traverse_chain(
+    root_folder: _RootFolderLike,
+    dir_path: FilePath,
+    snapshot: Snapshot,
+    username: UserName,
+) -> bool:
+    """
+    True if `username` may traverse every directory from the share root down to
+    and including `dir_path`: the precondition for reaching anything inside it.
+
+    Raises `FileNotFoundError` instead of returning False when a directory in
+    the chain doesn't resolve to a real location. Safe because this loop stops
+    at the first ancestor the user can't traverse, so anything that fails to 
+    resolve below that point already has a parent the user can see. Inside a 
+    locked region we never reach the resolution attempt at all: the "x" check 
+    on the locked ancestor denies first.
+
+    Walks the chain top-down, consulting and extending `current_traverse_ledger`
+    (see there for why the prefix structure, not just memoization, is what makes
+    this cheap). Every directory it settles on the way is recorded, so the work
+    is done once per directory per request no matter how many paths run through
+    it.
+    """
+    try:
+        # Namespaces the ledger: the same logical path in another snapshot (or
+        # another root) is a different directory with its own ACLs.
+        namespace = root_folder.real_path("", snapshot)
+    except Exception:
+        logger.warning("Could not resolve real path for the share root -- denying access (fail closed).")
+        return False
+
+    ledger = current_traverse_ledger.get()
+    chain = _ancestor_chain(dir_path)
+
+    def settle(from_index: int, verdict: bool) -> bool:
+        # A denial settles everything below it too: nothing under an
+        # untraversable directory is reachable, so there is nothing left to ask.
+        if ledger is not None:
+            for path in chain[from_index:] if not verdict else chain[from_index : from_index + 1]:
+                ledger[(namespace, path)] = verdict
+        return verdict
+
+    start = 0
+    if ledger is not None:
+        known = ledger.get((namespace, chain[-1]))
+        if known is not None:
+            return known  # this exact directory was already settled this request
+        # Otherwise resume below the deepest ancestor already settled: whatever
+        # is above it was necessarily verified to settle it in the first place.
+        for index in range(len(chain) - 1, -1, -1):
+            known = ledger.get((namespace, chain[index]))
+            if known is None:
+                continue
+            if not known:
+                return settle(index, False)
+            start = index + 1
+            break
+
+    for index, ancestor in enumerate(chain[start:], start=start):
+        try:
+            ancestor_real = root_folder.real_path(ancestor, snapshot)
+        except Exception as exc:
+            raise FileNotFoundError(ancestor) from exc
+        if not _check_permission(ancestor_real, username, "x"):
+            return settle(index, False)
+        _ = settle(index, True)
+
+    return True
+
+
 def can_view_metadata(
     root_folder: _RootFolderLike,
     child_path: FilePath,
@@ -419,13 +501,7 @@ def can_view_metadata(
     """
     if username is None:
         return True
-    parent_path = os.path.dirname(child_path.strip("/"))
-    try:
-        parent_real = root_folder.real_path(parent_path, snapshot)
-    except Exception:
-        logger.warning("Could not resolve real path for parent of '%s' -- denying access (fail closed).", child_path)
-        return False
-    return _check_permission(parent_real, username, "x")
+    return _can_traverse_chain(root_folder, os.path.dirname(child_path.strip("/")), snapshot, username)
 
 
 def can_access_child(
@@ -446,9 +522,8 @@ def can_access_child(
         return False
     try:
         real_path = root_folder.real_path(child_path, snapshot)
-    except Exception:
-        logger.warning("Could not resolve real path for '%s' -- denying access (fail closed).", child_path)
-        return False
+    except Exception as exc:
+        raise FileNotFoundError(child_path) from exc
     return _check_permission(real_path, username, "r")
 
 
@@ -460,9 +535,10 @@ def can_access(
 ) -> bool:
     """
     Full access check for `path` within `root_folder` at `snapshot`: requires
-    traverse ("x") permission on every ancestor directory, plus read ("r")
-    permission on the final target itself. `username` of None means ACL
-    enforcement is disabled for this request, eg. when security is disabled.
+    traverse ("x") permission on every ancestor directory (via
+    `_can_traverse_chain`, the same primitive the per-entry checks use), plus
+    read ("r") permission on the final target itself. `username` of None means
+    ACL enforcement is disabled for this request, eg. when security is disabled.
 
     Ancestor real paths are resolved via `root_folder.real_path()` rather than
     manual path-boundary math, so this works identically across the ZFS/Btrfs/
@@ -471,28 +547,12 @@ def can_access(
     if username is None:
         return True
 
-    parts = [p for p in path.strip("/").split("/") if p]
-    # Directories that must be traversed to *reach* the target, the share root
-    # first. A directory is never its own ancestor: listing one needs only "r"
-    # on it (real `readdir()`), so when the target IS the share root there is
-    # nothing above it to traverse and the "r" check below is the whole story.
-    ancestors = [""] if parts else []
-    accumulated = ""
-    for part in parts[:-1]:
-        accumulated = os.path.join(accumulated, part) if accumulated else part
-        ancestors.append(accumulated)
-
-    # A path that doesn't resolve is reported as missing, not denied -- safe
-    # because this loop stops at the first ancestor the user can't traverse, so
-    # anything raising below has a parent they can already see. Inside a locked
-    # region we never get here: the "x" check denies first.
-    for ancestor in ancestors:
-        try:
-            ancestor_real = root_folder.real_path(ancestor, snapshot)
-        except Exception as exc:
-            raise FileNotFoundError(ancestor) from exc
-        if not _check_permission(ancestor_real, username, "x"):
-            return False
+    # A directory is never its own ancestor: listing one needs only "r" on it
+    # (real `readdir()`), so when the target IS the share root there is nothing
+    # above it to traverse and the "r" check below is the whole story.
+    stripped = path.strip("/")
+    if stripped and not _can_traverse_chain(root_folder, os.path.dirname(stripped), snapshot, username):
+        return False
 
     try:
         target_real = root_folder.real_path(path, snapshot)

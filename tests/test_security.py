@@ -242,17 +242,103 @@ class TestCanAccessAncestorChain(unittest.TestCase):
     def test_disabled_security_always_allows(self) -> None:
         self.assertTrue(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, None))
 
-    def test_unresolvable_ancestor_fails_closed(self) -> None:
-        with patch.object(self.root_folder, "real_path", side_effect=ValueError("boom")):
-            self.assertFalse(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
+    def test_settled_ancestors_are_not_rechecked(self) -> None:
+        # Proving "a/b" traversable necessarily proved "" and "a" on the way
+        # down, so every later path running through it resumes from there,
+        # which is what makes a listing cost one chain walk instead of N.
+        token = security.current_traverse_ledger.set({})
+        try:
+            with patch.object(security, "_check_permission", return_value=True) as mock_check:
+                self.assertTrue(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
+                traversals = [c for c in mock_check.call_args_list if c.args[2] == "x"]
+                self.assertEqual(len(traversals), 3)  # "", "a" and "a/b"
 
-    def test_unresolvable_target_fails_closed(self) -> None:
+                mock_check.reset_mock()
+                for name in ("one.txt", "two.txt", "three.txt"):
+                    self.assertTrue(security.can_access_child(self.root_folder, f"a/b/{name}", self.snapshot, "eve"))
+                # The shared chain is settled: only each child's own read check.
+                self.assertEqual([c.args[2] for c in mock_check.call_args_list], ["r", "r", "r"])
+        finally:
+            security.current_traverse_ledger.reset(token)
+
+    def test_denied_ancestor_settles_its_whole_subtree(self) -> None:
+        # Nothing under an untraversable directory is reachable, so a denial
+        # answers every deeper question without walking into the subtree.
+        denied_real = self.root_folder.real_path("a", self.snapshot)
+
+        def fake_check(real_path: str, username: str, want: str) -> bool:
+            return not (want == "x" and real_path == denied_real)
+
+        token = security.current_traverse_ledger.set({})
+        try:
+            with patch.object(security, "_check_permission", side_effect=fake_check) as mock_check:
+                self.assertFalse(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
+                mock_check.reset_mock()
+
+                # Deeper paths under the denied directory need no checks at all.
+                self.assertFalse(security.can_access_child(self.root_folder, "a/b/other.txt", self.snapshot, "eve"))
+                self.assertFalse(security.can_view_metadata(self.root_folder, "a/b/c/deeper.txt", self.snapshot, "eve"))
+                mock_check.assert_not_called()
+        finally:
+            security.current_traverse_ledger.reset(token)
+
+    def test_chain_is_walked_in_full_without_a_ledger(self) -> None:
+        # No ledger (tests, direct calls) means no shortcuts: every chain is
+        # verified from the root down, so a verdict never outlives its request.
+        self.assertIsNone(security.current_traverse_ledger.get())
+        with patch.object(security, "_check_permission", return_value=True) as mock_check:
+            for _ in range(3):
+                self.assertTrue(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
+        self.assertEqual(len([c for c in mock_check.call_args_list if c.args[2] == "x"]), 9)  # 3 chain levels x 3 calls
+
+    def test_ledger_is_namespaced_per_snapshot(self) -> None:
+        # The same logical directory in another snapshot is a different
+        # directory on disk, with its own ACLs, a verdict must not carry over.
+        other_snapshot = object()
+        seen: list[str] = []
+
+        def fake_check(real_path: str, username: str, want: str) -> bool:
+            seen.append(real_path)
+            return True
+
+        token = security.current_traverse_ledger.set({})
+        try:
+            with patch.object(security, "_check_permission", side_effect=fake_check):
+                with patch.object(self.root_folder, "real_path", side_effect=lambda path, snapshot: f"/snap-{id(snapshot)}/{path}"):
+                    self.assertTrue(security.can_view_metadata(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
+                    first = list(seen)
+                    seen.clear()
+                    self.assertTrue(security.can_view_metadata(self.root_folder, "a/b/secret.txt", other_snapshot, "eve"))  # pyright: ignore[reportArgumentType]
+        finally:
+            security.current_traverse_ledger.reset(token)
+
+        self.assertTrue(first)
+        self.assertTrue(seen)  # re-walked rather than reusing the other snapshot's verdict
+        self.assertNotEqual(first, seen)
+
+    def test_unresolvable_path_reports_missing_when_parent_is_visible(self) -> None:
         def fake_real_path(path: str, snapshot: object) -> str:
             if path == "a/b/secret.txt":
                 raise ValueError("boom")
             return path  # ancestors resolve fine; only the final target fails
 
         with patch.object(security, "_check_permission", return_value=True):
+            with patch.object(self.root_folder, "real_path", side_effect=fake_real_path):
+                with self.assertRaises(FileNotFoundError):
+                    security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve")
+
+    def test_unresolvable_path_inside_a_locked_region_is_denied_not_reported_missing(self) -> None:
+        # The locked ancestor denies first, so an unresolvable path below it
+        # can't be used to probe what's in there.
+        def fake_real_path(path: str, snapshot: object) -> str:
+            if path == "a/b/secret.txt":
+                raise ValueError("boom")
+            return path
+
+        def fake_check(real_path: str, username: str, want: str) -> bool:
+            return real_path != "a"  # "a" is locked
+
+        with patch.object(security, "_check_permission", side_effect=fake_check):
             with patch.object(self.root_folder, "real_path", side_effect=fake_real_path):
                 self.assertFalse(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
 

@@ -20,7 +20,7 @@ from .models import (
     RootFolder,
 )
 from .routers import api, differ, explorer
-from .security import can_access, current_user_groups, current_username, describe_enforcement_gaps, get_user_groups
+from .security import can_access, current_traverse_ledger, current_user_groups, current_username, describe_enforcement_gaps, get_user_groups
 from .utils.path_resolver import resolve_root_and_subpath
 from .utils.ui import render_error_response
 
@@ -83,6 +83,11 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
     # Resolved once per request rather than once per file: `get_user_groups`
     # scans the entire NSS group database (`grp.getgrall()`).
     groups_token = current_user_groups.set(get_user_groups(username) if username is not None else None)
+    # Directories proven traversable for this user, carried across the whole
+    # request: the middleware's own `can_access` below already walks the chain
+    # down to the requested folder, which is exactly the chain every entry in
+    # that folder then asks about.
+    ledger_token = current_traverse_ledger.set({} if username is not None else None)
     try:
         if username is not None:
             url_path = request.url.path.strip("/")
@@ -94,10 +99,15 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
                 full_path = url_path[len(matched_prefix) :].strip("/")
                 _, subpath, root_folder = resolve_root_and_subpath(full_path, config)
                 snapshot = root_folder.get_snapshot(request.query_params.get("snapshot"))
-                if not can_access(root_folder, subpath, snapshot, username):
+                try:
+                    accessible = can_access(root_folder, subpath, snapshot, username)
+                except FileNotFoundError:
+                    return await custom_http_exception_handler(request, HTTPException(status_code=404, detail="Not found"))
+                if not accessible:
                     return await custom_http_exception_handler(request, HTTPException(status_code=403, detail="Access denied"))
         return await call_next(request)
     finally:
+        current_traverse_ledger.reset(ledger_token)
         current_user_groups.reset(groups_token)
         current_username.reset(user_token)
 

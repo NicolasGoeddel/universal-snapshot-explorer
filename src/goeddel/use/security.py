@@ -70,6 +70,28 @@ current_username: ContextVar[UserName | None] = ContextVar("current_username", d
 # group set by mistake.
 current_user_groups: ContextVar[frozenset[GroupName] | None] = ContextVar("current_user_groups", default=None)
 
+# Also set per request by the middleware: records, for the current user, which
+# directories have been *proven* traversable (and which proven not), keyed by
+# `(share root's real path for the snapshot, logical directory path)`.
+#
+# This is a prefix ledger rather than a general-purpose cache, because traverse
+# permission is prefix-closed and that structure is what makes it cheap:
+#   * proving "a/b/c" is traversable necessarily proved "a" and "a/b" on the way
+#     down, so a later query for any of those -- or for anything below "a/b/c"
+#     -- resumes from the deepest directory already settled instead of
+#     re-walking the chain;
+#   * proving "a/b" is NOT traversable settles the entire subtree beneath it in
+#     one stroke, since nothing under an untraversable directory is reachable.
+# A folder listing is the degenerate case both rules were written for: every one
+# of its children asks about the same parent chain, so the first child pays for
+# the walk and the rest are a single dict hit.
+#
+# Request-scoped on purpose: a permission decision must never outlive the
+# request it was made for, or a user whose access was just revoked would keep
+# being let through. `None` means "no ledger in this context" (tests, direct
+# calls), in which case every chain is walked and verified from the root down.
+current_traverse_ledger: ContextVar[dict[tuple[str, str], bool] | None] = ContextVar("current_traverse_ledger", default=None)
+
 
 def get_current_username() -> UserName | None:
     return current_username.get()
@@ -460,20 +482,20 @@ def can_access(
         accumulated = os.path.join(accumulated, part) if accumulated else part
         ancestors.append(accumulated)
 
+    # A path that doesn't resolve is reported as missing, not denied -- safe
+    # because this loop stops at the first ancestor the user can't traverse, so
+    # anything raising below has a parent they can already see. Inside a locked
+    # region we never get here: the "x" check denies first.
     for ancestor in ancestors:
         try:
             ancestor_real = root_folder.real_path(ancestor, snapshot)
-        except Exception:
-            # Can't resolve this ancestor: deny rather than risk masking a
-            # denied path as a 404, since security is enabled for this request.
-            logger.warning("Could not resolve real path for ancestor '%s' -- denying access (fail closed).", ancestor or "<share root>")
-            return False
+        except Exception as exc:
+            raise FileNotFoundError(ancestor) from exc
         if not _check_permission(ancestor_real, username, "x"):
             return False
 
     try:
         target_real = root_folder.real_path(path, snapshot)
-    except Exception:
-        logger.warning("Could not resolve real path for '%s' -- denying access (fail closed).", path)
-        return False
+    except Exception as exc:
+        raise FileNotFoundError(path) from exc
     return _check_permission(target_real, username, "r")

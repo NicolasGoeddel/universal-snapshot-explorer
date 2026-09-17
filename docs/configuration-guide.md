@@ -294,5 +294,4 @@ security:
 ```
 
 #### Requirements:
-* The `acl` package (providing `getfacl`) must be installed in the image/host USE runs on. If it's missing, ACL checks fail open (behave as if `security.enabled` were `false`) rather than blocking browsing entirely.
 * The reverse proxy in front of USE **must** strip any incoming client-supplied value of `trusted_user_header` before setting its own, otherwise a client could simply set the header itself and impersonate any user.

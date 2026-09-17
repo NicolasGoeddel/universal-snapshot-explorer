@@ -89,22 +89,23 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
     # that folder then asks about.
     ledger_token = current_traverse_ledger.set({} if username is not None else None)
     try:
-        if username is not None:
-            url_path = request.url.path.strip("/")
-            matched_prefix = next(
-                (p for p in _PROTECTED_PREFIXES if url_path == p or url_path.startswith(f"{p}/")),
-                None,
-            )
-            if matched_prefix is not None:
-                full_path = url_path[len(matched_prefix) :].strip("/")
-                _, subpath, root_folder = resolve_root_and_subpath(full_path, config)
-                snapshot = root_folder.get_snapshot(request.query_params.get("snapshot"))
-                try:
-                    accessible = can_access(root_folder, subpath, snapshot, username)
-                except FileNotFoundError:
-                    return await custom_http_exception_handler(request, HTTPException(status_code=404, detail="Not found"))
-                if not accessible:
-                    return await custom_http_exception_handler(request, HTTPException(status_code=403, detail="Access denied"))
+        url_path = request.url.path.strip("/")
+        matched_prefix = next(
+            (p for p in _PROTECTED_PREFIXES if url_path == p or url_path.startswith(f"{p}/")),
+            None,
+        )
+        if matched_prefix is not None: # If on a protected route
+            if username is None:
+                return await custom_http_exception_handler(request, HTTPException(status_code=403, detail="Access denied"))
+            full_path = url_path[len(matched_prefix) :].strip("/")
+            _, subpath, root_folder = resolve_root_and_subpath(full_path, config)
+            snapshot = root_folder.get_snapshot(request.query_params.get("snapshot"))
+            try:
+                accessible = can_access(root_folder, subpath, snapshot, username)
+            except FileNotFoundError:
+                return await custom_http_exception_handler(request, HTTPException(status_code=404, detail="Not found"))
+            if not accessible:
+                return await custom_http_exception_handler(request, HTTPException(status_code=403, detail="Access denied"))
         return await call_next(request)
     finally:
         current_traverse_ledger.reset(ledger_token)

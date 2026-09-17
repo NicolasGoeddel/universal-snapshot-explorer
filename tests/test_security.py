@@ -561,16 +561,12 @@ class TestImpersonationUnion(unittest.TestCase):
             return False
 
         with patch.object(security, "_check_permission", side_effect=fake_check):
-            self.assertFalse(
-                security.can_access_child(self.root_folder, "restricted_dir/secret.txt", self.snapshot, frozenset({"alice", "bob"}))
-            )
+            self.assertFalse(security.can_access_child(self.root_folder, "restricted_dir/secret.txt", self.snapshot, frozenset({"alice", "bob"})))
             self.assertFalse(security.can_access(self.root_folder, "restricted_dir/secret.txt", self.snapshot, frozenset({"alice", "bob"})))
 
     def test_grants_when_a_single_member_satisfies_the_whole_chain(self) -> None:
         with patch.object(security, "_check_permission", side_effect=lambda real_path, username, want: username == "carol"):
-            self.assertTrue(
-                security.can_access_child(self.root_folder, "restricted_dir/secret.txt", self.snapshot, frozenset({"alice", "carol"}))
-            )
+            self.assertTrue(security.can_access_child(self.root_folder, "restricted_dir/secret.txt", self.snapshot, frozenset({"alice", "carol"})))
             self.assertTrue(security.can_access(self.root_folder, "restricted_dir/secret.txt", self.snapshot, frozenset({"alice", "carol"})))
 
     def test_groups_are_resolved_per_member_from_the_prefetched_map(self) -> None:

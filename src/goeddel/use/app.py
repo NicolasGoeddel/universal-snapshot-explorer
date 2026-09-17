@@ -79,13 +79,13 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
         return await call_next(request)
 
     header_username = request.headers.get(config.security.trusted_user_header)
-    if header_username is not None: # Authenticated user
+    if header_username is not None:  # Authenticated user
         identity: str | frozenset[str] | None = header_username
         resolved_users: tuple[str, ...] = (header_username,)
-    elif config.security.impersonate_users: # Anonymous with impersonation enabled
+    elif config.security.impersonate_users:  # Anonymous with impersonation enabled
         identity = frozenset(config.security.impersonate_users)
         resolved_users = config.security.impersonate_users
-    else: # Anynomous with impersonation disabled
+    else:  # Anynomous with impersonation disabled
         identity = None
         resolved_users = ()
 
@@ -104,7 +104,7 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
             (p for p in _PROTECTED_PREFIXES if url_path == p or url_path.startswith(f"{p}/")),
             None,
         )
-        if matched_prefix is not None: # If on a protected route
+        if matched_prefix is not None:  # If on a protected route
             if identity is None:
                 return await custom_http_exception_handler(request, HTTPException(status_code=403, detail="Access denied"))
             full_path = url_path[len(matched_prefix) :].strip("/")

@@ -239,9 +239,9 @@ class FSNode:
     @property
     def is_accessible(self) -> bool:
         """
-         Returns True if the current process has read permission for this node,
-         AND (when security.enabled), the currently authenticated user's
-         POSIX ACL access allows it too.
+        Returns True if the current process has read permission for this node,
+        AND (when security.enabled), the currently authenticated user's
+        POSIX ACL access allows it too.
         """
         if not self.does_exist:
             return True

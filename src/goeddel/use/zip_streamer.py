@@ -119,7 +119,7 @@ def resolve_zip_selection(
                 rel_from_dir = os.path.relpath(dirpath, real_path).replace("\\", "/")
                 current_node_path = p if rel_from_dir == "." else f"{p.rstrip('/')}/{rel_from_dir}"
 
-                # Prune subdirectories the current user can't even traverse, 
+                # Prune subdirectories the current user can't even traverse,
                 # BEFORE os.walk descends into them, each entry
                 # is checked independently to avoid unnecessary processing.
                 kept_dirnames: list[str] = []

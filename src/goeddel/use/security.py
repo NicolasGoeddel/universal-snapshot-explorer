@@ -250,9 +250,7 @@ _ENTRY_STRUCT = struct.Struct("<HHI")
 # base ACL entries from `st_mode`, same as `getfacl -p` used to report for a
 # file without a real ACL.
 _NO_EXTENDED_ACL_ERRNOS = frozenset(
-    e
-    for e in (errno.ENODATA, getattr(errno, "ENOATTR", None), errno.ENOTSUP, getattr(errno, "EOPNOTSUPP", None), errno.ENOSYS)
-    if e is not None
+    e for e in (errno.ENODATA, getattr(errno, "ENOATTR", None), errno.ENOTSUP, getattr(errno, "EOPNOTSUPP", None), errno.ENOSYS) if e is not None
 )
 
 
@@ -467,9 +465,9 @@ def _can_traverse_chain(
 
     Raises `FileNotFoundError` instead of returning False when a directory in
     the chain doesn't resolve to a real location. Safe because this loop stops
-    at the first ancestor the user can't traverse, so anything that fails to 
-    resolve below that point already has a parent the user can see. Inside a 
-    locked region we never reach the resolution attempt at all: the "x" check 
+    at the first ancestor the user can't traverse, so anything that fails to
+    resolve below that point already has a parent the user can see. Inside a
+    locked region we never reach the resolution attempt at all: the "x" check
     on the locked ancestor denies first.
 
     Walks the chain top-down, consulting and extending `current_traverse_ledger`

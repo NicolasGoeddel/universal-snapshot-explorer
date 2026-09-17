@@ -11,7 +11,6 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
         sed -i 's/main/main contrib/g' /etc/apt/sources.list; \
     fi && \
     apt-get update && apt-get install -y --no-install-recommends \
-        acl \
         btrfs-progs \
         libmagic1 \
         zfsutils-linux \

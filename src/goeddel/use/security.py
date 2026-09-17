@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import errno
 import os
-import shutil
-import subprocess
+import struct
+import threading
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from .logger import logger
 
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
 # at module load time would break even just IMPORTING this module (and therefore the
 # whole app) on any non-POSIX host, including a contributor's local Windows dev
 # machine running the test suite outside Docker. Guarded so the module always loads;
-# `get_user_groups`/ownership checks degrade to fail-open (see their own docstrings)
+# `get_user_groups`/ownership checks degrade to fail-closed (see `_check_permission`)
 # on a platform where they're unavailable, same posture as ACL tooling being missing.
 # Bound to None (not a separate boolean flag) so every call site's `is None` check
 # lets the type checker narrow `_pwd`/`_grp` themselves, rather than needing it to
@@ -64,9 +65,43 @@ def get_current_username() -> UserName | None:
     return current_username.get()
 
 
+# Guards against flooding the log with the same warning on every single request
+# once one of the platform-level enforcement gaps below is hit -- these are
+# environment-wide conditions (missing NSS modules, no xattr support), not
+# per-file transient errors, so one warning per process is enough to alert an
+# operator without drowning out everything else.
+_warned: set[str] = set()
+_warned_lock = threading.Lock()
+
+
+def _warn_once(key: str, message: str, *args: object) -> None:
+    with _warned_lock:
+        if key in _warned:
+            return
+        _warned.add(key)
+    logger.warning(message, *args)
+
+
+def describe_enforcement_gaps() -> list[str]:
+    """
+    Returns human-readable reasons POSIX ACL enforcement cannot actually run in
+    this process, or an empty list if it can. Meant to be checked once at startup
+    when `security.enabled` is True: without this, an operator running a 
+    misconfigured deployment (eg. on a filesystem without xattr support) would
+    only discover that every access check is failing closed (denied) the first
+    time a user hits it. This surfaces the root cause immediately instead.
+    """
+    gaps: list[str] = []
+    if _pwd is None or _grp is None:
+        gaps.append("the `pwd`/`grp` modules are unavailable on this platform, so user/group lookups cannot be performed")
+    if not _acl_client.is_available():
+        gaps.append("extended attributes are unavailable on this platform (`os.getxattr` is missing), so ACLs cannot be read")
+    return gaps
+
+
 @dataclass(frozen=True)
 class AclEntry:
-    """A single parsed line from `getfacl -p` output."""
+    """A single decoded entry from the `system.posix_acl_access` xattr."""
 
     tag: str  # "user_obj", "group_obj", "mask", "other", "user", "group"
     qualifier: str | None  # username/groupname for named "user"/"group" entries
@@ -79,73 +114,6 @@ class AclEntry:
     @property
     def execute(self) -> bool:
         return "x" in self.perm
-
-
-class AclClient:
-    """
-    Subprocess-based client for reading POSIX ACLs via `getfacl`, mirroring this
-    project's existing ZfsClient/BtrfsClient convention of shelling out to the
-    standard CLI tool rather than binding against a C library. `pylibacl` has no
-    prebuilt wheels (would require adding a compiler toolchain to the Docker image
-    just to read a handful of permission bits per request), and `getfacl -p` already
-    reports both extended ACL entries and plain mode bits through the exact same
-    text format, so no separate fallback path is needed for files without a real ACL.
-    """
-
-    def __init__(self, executable: str = "getfacl") -> None:
-        self._executable: str = executable
-        self._is_available_cache: bool | None = None
-
-    def is_available(self) -> bool:
-        if self._is_available_cache is not None:
-            return self._is_available_cache
-        self._is_available_cache = shutil.which(self._executable) is not None
-        return self._is_available_cache
-
-    def get_acl_entries(self, real_path: str) -> list[AclEntry] | None:
-        """Returns the parsed ACL entries for a path, or None if unreadable/unavailable."""
-        if not self.is_available():
-            return None
-        try:
-            res = subprocess.run(
-                [self._executable, "-p", "--", real_path],
-                capture_output=True,
-                text=True,
-                timeout=3,
-                check=False,
-            )
-        except OSError, subprocess.SubprocessError:
-            logger.exception("Error reading ACL for '%s'", real_path)
-            return None
-
-        if res.returncode != 0:
-            return None
-
-        return self._parse(res.stdout)
-
-    @staticmethod
-    def _parse(getfacl_output: str) -> list[AclEntry]:
-        entries: list[AclEntry] = []
-        for line in getfacl_output.splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            parts = line.split(":")
-            if len(parts) < 3:
-                continue
-            tag, qualifier, perm = parts[0], parts[1], parts[2]
-            if tag == "user" and not qualifier:
-                entries.append(AclEntry(tag="user_obj", qualifier=None, perm=perm))
-            elif tag == "group" and not qualifier:
-                entries.append(AclEntry(tag="group_obj", qualifier=None, perm=perm))
-            elif tag in ("user", "group"):
-                entries.append(AclEntry(tag=tag, qualifier=qualifier, perm=perm))
-            elif tag in ("mask", "other"):
-                entries.append(AclEntry(tag=tag, qualifier=None, perm=perm))
-        return entries
-
-
-_acl_client = AclClient()
 
 
 def get_user_groups(username: UserName) -> frozenset[GroupName]:
@@ -192,6 +160,126 @@ def _get_group_name(gid: int) -> GroupName | None:
         return None
 
 
+def _get_username(uid: int) -> UserName | None:
+    """Reverse of `_get_uid`: resolves a numeric uid to a named ACL_USER entry."""
+    if _pwd is None:
+        return None
+    try:
+        return _pwd.getpwuid(uid).pw_name
+    except KeyError:
+        return None
+
+
+# Tag values from the kernel's ACL_EA binary format (uapi/linux/posix_acl.h).
+_ACL_TAG_USER_OBJ = 0x01
+_ACL_TAG_USER = 0x02
+_ACL_TAG_GROUP_OBJ = 0x04
+_ACL_TAG_GROUP = 0x08
+_ACL_TAG_MASK = 0x10
+_ACL_TAG_OTHER = 0x20
+
+_ACL_TAG_NAMES = {
+    _ACL_TAG_USER_OBJ: "user_obj",
+    _ACL_TAG_USER: "user",
+    _ACL_TAG_GROUP_OBJ: "group_obj",
+    _ACL_TAG_GROUP: "group",
+    _ACL_TAG_MASK: "mask",
+    _ACL_TAG_OTHER: "other",
+}
+
+_ACL_EA_VERSION = 0x0002
+
+# `struct posix_acl_xattr_header { __le32 a_version; }`
+_HEADER_STRUCT = struct.Struct("<I")
+# `struct posix_acl_xattr_entry { __le16 e_tag; __le16 e_perm; __le32 e_id; }`
+_ENTRY_STRUCT = struct.Struct("<HHI")
+
+# Errno values `os.getxattr` raises when a path simply has no extended ACL set
+# (the common case -- plain mode bits only) or the filesystem doesn't support
+# xattrs at all. Not an error: `_entries_from_mode` synthesizes the equivalent
+# base ACL entries from `st_mode`, same as `getfacl -p` used to report for a
+# file without a real ACL.
+_NO_EXTENDED_ACL_ERRNOS = frozenset(
+    e
+    for e in (errno.ENODATA, getattr(errno, "ENOATTR", None), errno.ENOTSUP, getattr(errno, "EOPNOTSUPP", None), errno.ENOSYS)
+    if e is not None
+)
+
+
+def _perm_str(perm_bits: int) -> str:
+    return f"{'r' if perm_bits & 0x4 else '-'}{'w' if perm_bits & 0x2 else '-'}{'x' if perm_bits & 0x1 else '-'}"
+
+
+class AclClient:
+    """
+    Reads POSIX ACLs directly from the `system.posix_acl_access` extended
+    attribute via `os.getxattr` and unpacks the kernel's binary ACL_EA format
+    with `struct`, instead of shelling out to `getfacl` per file.
+    """
+
+    def is_available(self) -> bool:
+        return hasattr(os, "getxattr")
+
+    def get_acl_entries(self, real_path: str) -> list[AclEntry] | None:
+        """Returns the parsed ACL entries for a path, or None if unreadable/unavailable."""
+        if not self.is_available():
+            return None
+        try:
+            raw = os.getxattr(real_path, "system.posix_acl_access")
+        except OSError as exc:
+            if exc.errno in _NO_EXTENDED_ACL_ERRNOS:
+                return self._entries_from_mode(real_path)
+            logger.exception("Error reading ACL xattr for '%s'", real_path)
+            return None
+
+        try:
+            return self._parse(raw)
+        except struct.error:
+            logger.exception("Malformed POSIX ACL xattr for '%s'", real_path)
+            return None
+
+    @staticmethod
+    def _entries_from_mode(real_path: str) -> list[AclEntry] | None:
+        """
+        Synthesizes the base user/group/other ACL entries from plain `st_mode`
+        bits, for the common case of a file with no extended ACL set.
+        """
+        try:
+            mode = os.stat(real_path).st_mode
+        except OSError:
+            return None
+        return [
+            AclEntry(tag="user_obj", qualifier=None, perm=_perm_str((mode >> 6) & 0o7)),
+            AclEntry(tag="group_obj", qualifier=None, perm=_perm_str((mode >> 3) & 0o7)),
+            AclEntry(tag="other", qualifier=None, perm=_perm_str(mode & 0o7)),
+        ]
+
+    @staticmethod
+    def _parse(raw: bytes) -> list[AclEntry]:
+        version: int = cast(int, _HEADER_STRUCT.unpack_from(raw, 0)[0])
+        if version != _ACL_EA_VERSION:
+            raise struct.error(f"unsupported POSIX ACL xattr version {version}")
+
+        entries: list[AclEntry] = []
+        offset = _HEADER_STRUCT.size
+        while offset + _ENTRY_STRUCT.size <= len(raw):
+            tag, perm, entry_id = cast(tuple[int, int, int], _ENTRY_STRUCT.unpack_from(raw, offset))
+            offset += _ENTRY_STRUCT.size
+            name = _ACL_TAG_NAMES.get(tag)
+            if name is None:
+                continue
+            qualifier: str | None = None
+            if name == "user":
+                qualifier = _get_username(entry_id)
+            elif name == "group":
+                qualifier = _get_group_name(entry_id)
+            entries.append(AclEntry(tag=name, qualifier=qualifier, perm=_perm_str(perm)))
+        return entries
+
+
+_acl_client = AclClient()
+
+
 def _check_permission(real_path: str, username: UserName, want: str) -> bool:
     """
     Replicates the kernel's POSIX.1e ACL access-check algorithm for a specific
@@ -202,22 +290,33 @@ def _check_permission(real_path: str, username: UserName, want: str) -> bool:
     """
     entries = _acl_client.get_acl_entries(real_path)
     if entries is None:
-        # No ACL support / tool unavailable / path unreadable by the app's own
-        # process -- fail open rather than break browsing entirely for
-        # deployments that haven't opted into POSIX ACLs.
-        return True
+        if not _acl_client.is_available():
+            _warn_once(
+                "no_xattr_support",
+                "Security is enabled, but extended attributes are unavailable on this platform (`os.getxattr` is missing) -- POSIX ACLs cannot be read. Denying access (fail closed) until this is fixed.",  # noqa: E501
+            )
+        else:
+            # This specific path was unreadable/malformed (already logged by
+            # AclClient.get_acl_entries with the underlying reason).
+            logger.warning("Could not determine the ACL for '%s' -- denying access (fail closed).", real_path)
+        return False
 
     try:
         st = os.stat(real_path)
     except OSError:
-        return True
+        logger.warning("Could not stat '%s' to check ownership -- denying access (fail closed).", real_path)
+        return False
 
     named_user = {e.qualifier: e for e in entries if e.tag == "user" and e.qualifier is not None}
     named_group = {e.qualifier: e for e in entries if e.tag == "group" and e.qualifier is not None}
     base = {e.tag: e for e in entries if e.tag in ("user_obj", "group_obj", "mask", "other")}
 
     if _pwd is None or _grp is None:
-        return True
+        _warn_once(
+            "no_nss_support",
+            "Security is enabled, but the `pwd`/`grp` modules are unavailable on this platform -- user/group lookups cannot be performed. Denying access (fail closed) until this is fixed.",  # noqa: E501
+        )
+        return False
 
     # A named user entry (POSIX ACL_USER) always wins, same precedence as the kernel.
     if username in named_user:
@@ -291,7 +390,8 @@ def can_access_child(
     try:
         real_path = root_folder.real_path(child_path, snapshot)
     except Exception:
-        return True
+        logger.warning("Could not resolve real path for '%s' -- denying access (fail closed).", child_path)
+        return False
     return _check_permission(real_path, username, "r")
 
 
@@ -321,14 +421,16 @@ def can_access(
         try:
             ancestor_real = root_folder.real_path(accumulated, snapshot)
         except Exception:
-            # Can't resolve this ancestor -> let normal 404 handling take over
-            # rather than mask it as an access-denied.
-            return True
+            # Can't resolve this ancestor -- deny rather than risk masking a
+            # denied path as a 404, since security is enabled for this request.
+            logger.warning("Could not resolve real path for ancestor '%s' -- denying access (fail closed).", accumulated)
+            return False
         if not _check_permission(ancestor_real, username, "x"):
             return False
 
     try:
         target_real = root_folder.real_path(path, snapshot)
     except Exception:
-        return True
+        logger.warning("Could not resolve real path for '%s' -- denying access (fail closed).", path)
+        return False
     return _check_permission(target_real, username, "r")

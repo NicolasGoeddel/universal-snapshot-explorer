@@ -105,8 +105,9 @@ class SecurityConfig(BaseModel):
     request (e.g. oauth2-proxy's `X-Forwarded-User`, or `Remote-User` from an
     OIDC-aware proxy) -- USE never terminates auth itself. When `enabled` is
     True, every browse/download/diff request is checked against the real POSIX
-    ACLs already present on the underlying filesystem (via `getfacl`), using the
-    header's value as the Unix username and that user's NSS-resolved group
+    ACLs already present on the underlying filesystem (read from the
+    `system.posix_acl_access` xattr), using the header's value as the Unix
+    username and that user's NSS-resolved group
     membership -- the exact same permission model the filesystem itself already
     enforces for that user elsewhere (e.g. over Samba/NFS), so access here can
     never be wider than what the user could already reach directly.

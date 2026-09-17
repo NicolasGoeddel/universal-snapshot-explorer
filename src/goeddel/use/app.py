@@ -20,7 +20,7 @@ from .models import (
     RootFolder,
 )
 from .routers import api, differ, explorer
-from .security import can_access, current_username
+from .security import can_access, current_username, describe_enforcement_gaps
 from .utils.path_resolver import resolve_root_and_subpath
 from .utils.ui import render_error_response
 
@@ -53,6 +53,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Application starting up...")
     logger.info("Configuration loaded: %d roots, ZFS auto-discover=%s", len(loaded_config.roots), loaded_config.zfs.auto_discover)
     RootFolder.set_root_configs(loaded_config.roots)
+    if loaded_config.security.enabled:
+        for gap in describe_enforcement_gaps():
+            logger.warning("Security is enabled, but %s -- every access check will fail closed (deny) until this is fixed.", gap)
     app.state.loaded_config = loaded_config
     yield
     logger.info("Application shutting down...")

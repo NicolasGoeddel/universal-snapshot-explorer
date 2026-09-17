@@ -28,7 +28,7 @@ The backend strictly uses Python type hints (`typing.Sequence`, `typing.cast`, `
 
 ## Security (`security.py`)
 When `security.enabled` is set (see the configuration guide), a single middleware in `app.py` is the policy enforcement point for every filesystem-exposing route: it resolves the requested root/subpath the same way the route itself would, then checks the trusted-header-identified user's access via `security.can_access()` before the route ever runs.
-That function re-derives the POSIX.1e ACL algorithm against `getfacl` output and NSS-resolved group membership.
+That function re-derives the POSIX.1e ACL algorithm against the `system.posix_acl_access` xattr (read via `os.getxattr`) and NSS-resolved group membership.
 
 The currently-authenticated username is threaded into deeper layers (`FSNode.is_accessible`, per-item ZIP export filtering in `zip_streamer.py`) via a `ContextVar` rather than an added parameter on every call, since Starlette copies the request's context into whichever thread a sync handler runs on.
 

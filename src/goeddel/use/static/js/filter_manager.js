@@ -504,14 +504,17 @@ class FilterManager {
             if (isVisible) visibleRows++;
         });
 
+        const i18n = window.clientI18n || {};
+
         const badgeHidden = document.getElementById('badge-hidden-count');
         if (badgeHidden) {
             badgeHidden.textContent = String(hiddenCount);
             badgeHidden.style.display = hiddenCount > 0 ? 'inline-block' : 'none';
             badgeHidden.classList.toggle('is-filtering', hideHidden && hiddenCount > 0);
-            badgeHidden.title = hideHidden
-                ? `${hiddenCount} versteckte Dateien ausgeblendet`
-                : `${hiddenCount} versteckte Dateien eingeblendet`;
+            const hiddenPattern = hideHidden
+                ? i18n['filter.hidden_files_hidden_status'] || '{count} hidden files hidden'
+                : i18n['filter.hidden_files_shown_status'] || '{count} hidden files shown';
+            badgeHidden.title = hiddenPattern.replace('{count}', String(hiddenCount));
         }
 
         const badgeMissing = document.getElementById('badge-missing-count');
@@ -519,9 +522,10 @@ class FilterManager {
             badgeMissing.textContent = String(missingCount);
             badgeMissing.style.display = missingCount > 0 ? 'inline-block' : 'none';
             badgeMissing.classList.toggle('is-filtering', hideMissing && missingCount > 0);
-            badgeMissing.title = hideMissing
-                ? `${missingCount} fehlende Dateien ausgeblendet`
-                : `${missingCount} fehlende Dateien eingeblendet`;
+            const missingPattern = hideMissing
+                ? i18n['filter.missing_files_hidden_status'] || '{count} missing files hidden'
+                : i18n['filter.missing_files_shown_status'] || '{count} missing files shown';
+            badgeMissing.title = missingPattern.replace('{count}', String(missingCount));
         }
 
         const badgeChanged = document.getElementById('badge-changed-count');
@@ -531,8 +535,12 @@ class FilterManager {
                 badgeChanged.style.display = 'inline-block';
                 badgeChanged.classList.toggle('is-filtering', hideUnchanged && unchangedCount > 0);
                 badgeChanged.title = hideUnchanged
-                    ? `${unchangedCount} statische Dateien ausgeblendet (${changedCount} sichtbar)`
-                    : `${changedCount} geändert von ${totalRows}`;
+                    ? (i18n['filter.changed_files_hidden_status'] || '{unchanged} static files hidden ({changed} visible)')
+                          .replace('{unchanged}', String(unchangedCount))
+                          .replace('{changed}', String(changedCount))
+                    : (i18n['filter.changed_files_shown_status'] || '{changed} changed of {total}')
+                          .replace('{changed}', String(changedCount))
+                          .replace('{total}', String(totalRows));
             } else {
                 badgeChanged.style.display = 'none';
             }
@@ -542,7 +550,7 @@ class FilterManager {
         if (stats) {
             const hiddenTotal = totalRows - visibleRows;
             if (hiddenTotal > 0) {
-                const hiddenLabel = window.clientI18n?.['filter.stats_hidden'] || 'ausgeblendet';
+                const hiddenLabel = i18n['filter.stats_hidden'] || 'hidden';
                 stats.innerHTML = `<span>${visibleRows} / ${totalRows}</span> <span style="opacity: 0.7;">(${hiddenTotal} ${hiddenLabel})</span>`;
             } else {
                 stats.textContent = `${totalRows}`;

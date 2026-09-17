@@ -6,8 +6,9 @@
     <div class="breadcrumb dropdown" style="cursor: pointer;">
         {{ lang | upper }} <span style="margin-left: 4px;">{{ lucide('chevron-down', size=14) }}</span>
         <div class="dropdown-content" style="right: 0; left: auto; min-width: 100px;">
-            <a href="/set-language/de">{{ t('lang.de') }}</a>
-            <a href="/set-language/en">{{ t('lang.en') }}</a>
+            {% for code, name in languages.items() %}
+            <a href="/set-language/{{ code }}">{{ name }}</a>
+            {% endfor %}
         </div>
     </div>
 

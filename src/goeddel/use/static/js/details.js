@@ -86,7 +86,7 @@ function refreshMimeDiffs() {
             const typeText = cell.textContent.trim();
             if (prevMime !== null && typeText !== prevMime) {
                 cell.classList.add('cell-changed');
-                const i18nChangedFrom = window.clientI18n ? window.clientI18n['action.changed_from'] : 'Geändert von';
+                const i18nChangedFrom = window.clientI18n ? window.clientI18n['action.changed_from'] : 'Changed from';
                 cell.title = `${i18nChangedFrom}: ${prevMime} → ${typeText}`;
             } else {
                 cell.classList.remove('cell-changed');
@@ -107,7 +107,7 @@ function refreshMimeDiffs() {
         if (prevMime !== null && mime !== prevMime) {
             cell.classList.add('cell-changed');
 
-            const i18nChangedFrom = window.clientI18n ? window.clientI18n['action.changed_from'] : 'Geändert von';
+            const i18nChangedFrom = window.clientI18n ? window.clientI18n['action.changed_from'] : 'Changed from';
             cell.title = `${i18nChangedFrom}: ${prevMime} → ${mime}`;
             cell.textContent = mime;
         } else {

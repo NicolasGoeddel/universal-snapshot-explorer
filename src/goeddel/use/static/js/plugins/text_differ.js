@@ -256,7 +256,7 @@ class TextDifferPlugin {
         let gitHeaderHtml = '';
         if (data.are_identical) {
             const i18n = window.clientI18n || {};
-            const identicalNotice = i18n['diff.identical_notice'] || 'Dateien in diesen Snapshots sind identisch';
+            const identicalNotice = i18n['diff.identical_notice'] || 'Files are identical in these snapshots';
             const displayPath = data.file_path || 'file';
             gitHeaderHtml = `
                 <div class="diff-git-header">

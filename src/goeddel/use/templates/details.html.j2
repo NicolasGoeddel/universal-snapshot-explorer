@@ -83,17 +83,20 @@
                 {%- if not entry.does_exist -%}
                     <td class="browser-cell-size" data-sort="-1">–</td>
                 {%- elif 'size' in v.changed_attributes and prev and prev.does_exist -%}
-                    <td class="browser-cell-size cell-changed" data-sort="{{ entry.size or 0 }}" title="{{ t('action.changed_from') }}: {{ prev.size_human if not prev.is_folder else (prev.size ~ ' files') }} &rarr; {{ entry.size_human if not entry.is_folder else (entry.size ~ ' files') }}">
+                    {%- set prev_unit = t('unit.file') if prev.size == 1 else t('unit.files') -%}
+                    {%- set entry_unit = t('unit.file') if entry.size == 1 else t('unit.files') -%}
+                    <td class="browser-cell-size cell-changed" data-sort="{{ entry.size or 0 }}" title="{{ t('action.changed_from') }}: {{ prev.size_human if not prev.is_folder else (prev.size ~ ' ' ~ prev_unit) }} &rarr; {{ entry.size_human if not entry.is_folder else (entry.size ~ ' ' ~ entry_unit) }}">
                         {%- if entry.is_folder -%}
-                            {{ entry.size if entry.size is not none else 'unknown' }} files
+                            {{ entry.size if entry.size is not none else 'unknown' }} {{ entry_unit }}
                         {%- else -%}
                             {{ entry.size_human }}
                         {%- endif -%}
                     </td>
                 {%- else -%}
+                    {%- set entry_unit = t('unit.file') if entry.size == 1 else t('unit.files') -%}
                     <td class="browser-cell-size" data-sort="{{ entry.size or 0 }}">
                         {%- if entry.is_folder -%}
-                            {{ entry.size if entry.size is not none else 'unknown' }} files
+                            {{ entry.size if entry.size is not none else 'unknown' }} {{ entry_unit }}
                         {%- else -%}
                             {{ entry.size_human }}
                         {%- endif -%}

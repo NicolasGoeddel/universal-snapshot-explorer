@@ -72,6 +72,7 @@ class Language(StrEnum):
 
     EN = "en"
     DE = "de"
+    FR = "fr"
 
 
 class DiffLineType(StrEnum):

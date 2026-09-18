@@ -1,14 +1,14 @@
 <nav class="breadcrumbs">
     <!-- Home button to Root Overview -->
     <a href="{{ base_url }}/#{{ root_name | quote_plus }}" class="breadcrumb home" title="Roots Overview">
-        {{ lucide('hard-drive', size=16) }} <span style="margin-left: 4px;">{{ t('breadcrumb.root') }}</span>
+        {{ lucide('server', size=16) }} <span style="margin-left: 4px;">{{ t('breadcrumb.root') }}</span>
     </a>
     
     {{ lucide('chevron-right', size=16, class_='text-muted') }}
     
     <!-- Root dropdown breadcrumb -->
     <div class="breadcrumb root dropdown">
-        {{ breadcrumbs.root.name }} <span style="margin-left: 4px;">{{ lucide('chevron-down', size=14) }}</span>
+        {{ lucide('hard-drive', size=16) }} <span style="margin-left: 4px;">{{ breadcrumbs.root.name }}</span> <span style="margin-left: 4px;">{{ lucide('chevron-down', size=14) }}</span>
         <div class="dropdown-content">
             {% for r_name in breadcrumbs.all_roots %}
                 <a href="{{ route_url('list', r_name, '', 'Original') }}">{{ r_name }}</a>
@@ -99,6 +99,6 @@
     </div>
     
     <div style="flex-grow: 1;"></div>
-    
+
     {% include 'nav_controls.html.j2' %}
 </nav>

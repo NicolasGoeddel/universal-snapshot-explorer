@@ -40,6 +40,7 @@ class ExplorerView {
         });
         this.bindTreeEvents(this.tbody);
         this.initSorting();
+        this.initColumnVisibility();
         this.initFiltering();
         this.initMultiSelection();
         this.initTypeahead();
@@ -1168,6 +1169,15 @@ class ExplorerView {
         return this.sorter?.getSortState() || null;
     }
 
+    initColumnVisibility() {
+        if (typeof ColumnVisibilityManager === 'undefined') return;
+        this.columnVisibility = new ColumnVisibilityManager(this.table, {
+            sorter: this.sorter,
+            resizer: this.columnResizer,
+            toolbarButton: 'btn-column-visibility',
+        });
+    }
+
     sortByColumnIndex(cellIndex, forcedDirection = null) {
         this.sorter?.sortByColumnIndex(cellIndex, forcedDirection);
     }
@@ -1366,6 +1376,15 @@ class ExplorerView {
                 const downloadLink = row.querySelector('.action-download') || row.querySelector('.file-download-link');
                 if (downloadLink) downloadLink.click();
             }
+        });
+
+        // Ctrl+Enter: Open focused folder in a new tab
+        this.keyboard.register('Ctrl+Enter', (row) => {
+            if (!row) return;
+            const isFolder = row.dataset.isFolder === 'true';
+            const nameLink = row.querySelector('.browser-cell-name a');
+            if (isFolder && nameLink) 
+                window.open(nameLink.href, '_blank', 'noopener');
         });
 
         // ArrowRight: Expand folder or step into first child

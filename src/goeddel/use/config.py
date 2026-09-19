@@ -351,6 +351,7 @@ def load_config(
             roots=merged_roots,
             zfs=app_cfg.zfs,
             btrfs=app_cfg.btrfs,
+            security=app_cfg.security,
             loglevel=app_cfg.loglevel,
         )
 

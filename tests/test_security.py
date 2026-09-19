@@ -246,7 +246,7 @@ class TestCanAccessAncestorChain(unittest.TestCase):
         # Proving "a/b" traversable necessarily proved "" and "a" on the way
         # down, so every later path running through it resumes from there,
         # which is what makes a listing cost one chain walk instead of N.
-        token = security.current_traverse_ledger.set({})
+        token = security.current_traverse_cache.set({})
         try:
             with patch.object(security, "_check_permission", return_value=True) as mock_check:
                 self.assertTrue(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
@@ -259,7 +259,7 @@ class TestCanAccessAncestorChain(unittest.TestCase):
                 # The shared chain is settled: only each child's own read check.
                 self.assertEqual([c.args[2] for c in mock_check.call_args_list], ["r", "r", "r"])
         finally:
-            security.current_traverse_ledger.reset(token)
+            security.current_traverse_cache.reset(token)
 
     def test_denied_ancestor_settles_its_whole_subtree(self) -> None:
         # Nothing under an untraversable directory is reachable, so a denial
@@ -269,7 +269,7 @@ class TestCanAccessAncestorChain(unittest.TestCase):
         def fake_check(real_path: str, username: str, want: str) -> bool:
             return not (want == "x" and real_path == denied_real)
 
-        token = security.current_traverse_ledger.set({})
+        token = security.current_traverse_cache.set({})
         try:
             with patch.object(security, "_check_permission", side_effect=fake_check) as mock_check:
                 self.assertFalse(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
@@ -280,18 +280,18 @@ class TestCanAccessAncestorChain(unittest.TestCase):
                 self.assertFalse(security.can_view_metadata(self.root_folder, "a/b/c/deeper.txt", self.snapshot, "eve"))
                 mock_check.assert_not_called()
         finally:
-            security.current_traverse_ledger.reset(token)
+            security.current_traverse_cache.reset(token)
 
-    def test_chain_is_walked_in_full_without_a_ledger(self) -> None:
-        # No ledger (tests, direct calls) means no shortcuts: every chain is
+    def test_chain_is_walked_in_full_without_a_cache(self) -> None:
+        # No cache (tests, direct calls) means no shortcuts: every chain is
         # verified from the root down, so a verdict never outlives its request.
-        self.assertIsNone(security.current_traverse_ledger.get())
+        self.assertIsNone(security.current_traverse_cache.get())
         with patch.object(security, "_check_permission", return_value=True) as mock_check:
             for _ in range(3):
                 self.assertTrue(security.can_access(self.root_folder, "a/b/secret.txt", self.snapshot, "eve"))
         self.assertEqual(len([c for c in mock_check.call_args_list if c.args[2] == "x"]), 9)  # 3 chain levels x 3 calls
 
-    def test_ledger_is_namespaced_per_snapshot(self) -> None:
+    def test_cache_is_namespaced_per_snapshot(self) -> None:
         # The same logical directory in another snapshot is a different
         # directory on disk, with its own ACLs, a verdict must not carry over.
         other_snapshot = object()
@@ -301,7 +301,7 @@ class TestCanAccessAncestorChain(unittest.TestCase):
             seen.append(real_path)
             return True
 
-        token = security.current_traverse_ledger.set({})
+        token = security.current_traverse_cache.set({})
         try:
             with patch.object(security, "_check_permission", side_effect=fake_check):
                 with patch.object(self.root_folder, "real_path", side_effect=lambda path, snapshot: f"/snap-{id(snapshot)}/{path}"):
@@ -310,7 +310,7 @@ class TestCanAccessAncestorChain(unittest.TestCase):
                     seen.clear()
                     self.assertTrue(security.can_view_metadata(self.root_folder, "a/b/secret.txt", other_snapshot, "eve"))  # pyright: ignore[reportArgumentType]
         finally:
-            security.current_traverse_ledger.reset(token)
+            security.current_traverse_cache.reset(token)
 
         self.assertTrue(first)
         self.assertTrue(seen)  # re-walked rather than reusing the other snapshot's verdict

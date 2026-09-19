@@ -7,7 +7,7 @@ import threading
 from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 from .logger import logger
 
@@ -88,7 +88,7 @@ current_user_groups: ContextVar[dict[UserName, frozenset[GroupName]] | None] = C
 # directories have been *proven* traversable (and which proven not), keyed by
 # `(share root's real path for the snapshot, logical directory path)`.
 #
-# This is a prefix ledger rather than a general-purpose cache, because traverse
+# This is a prefix cache rather than a general-purpose cache, because traverse
 # permission is prefix-closed and that structure is what makes it cheap:
 #   * proving "a/b/c" is traversable necessarily proved "a" and "a/b" on the way
 #     down, so a later query for any of those -- or for anything below "a/b/c"
@@ -102,13 +102,13 @@ current_user_groups: ContextVar[dict[UserName, frozenset[GroupName]] | None] = C
 #
 # Request-scoped on purpose: a permission decision must never outlive the
 # request it was made for, or a user whose access was just revoked would keep
-# being let through. `None` means "no ledger in this context" (tests, direct
+# being let through. `None` means "no cache in this context" (tests, direct
 # calls), in which case every chain is walked and verified from the root down.
 # Keyed by (username, namespace, path) rather than just (namespace, path):
 # under an impersonation union, `_run_for_each_identity` walks the chain once
 # per candidate username, and each candidate's verdicts must stay in their own
 # lane: one user's traversable ancestor is not evidence about another's.
-current_traverse_ledger: ContextVar[dict[tuple[UserName, str, str], bool] | None] = ContextVar("current_traverse_ledger", default=None)
+current_traverse_cache: ContextVar[dict[tuple[UserName, str, str], bool] | None] = ContextVar("current_traverse_cache", default=None)
 
 
 def get_current_username() -> UserName | frozenset[UserName] | None:
@@ -149,11 +149,14 @@ def describe_enforcement_gaps() -> list[str]:
     return gaps
 
 
+_AclTag = Literal["user_obj", "group_obj", "mask", "other", "user", "group"]
+
+
 @dataclass(frozen=True)
 class AclEntry:
     """A single decoded entry from the `system.posix_acl_access` xattr."""
 
-    tag: str  # "user_obj", "group_obj", "mask", "other", "user", "group"
+    tag: _AclTag
     qualifier: str | None  # username/groupname for named "user"/"group" entries
     perm: str  # e.g. "rwx", "r-x", "---"
 
@@ -228,7 +231,7 @@ _ACL_TAG_GROUP = 0x08
 _ACL_TAG_MASK = 0x10
 _ACL_TAG_OTHER = 0x20
 
-_ACL_TAG_NAMES = {
+_ACL_TAG_NAMES: dict[int, _AclTag] = {
     _ACL_TAG_USER_OBJ: "user_obj",
     _ACL_TAG_USER: "user",
     _ACL_TAG_GROUP_OBJ: "group_obj",
@@ -328,7 +331,7 @@ class AclClient:
 _acl_client = AclClient()
 
 
-def _check_permission(real_path: str, username: UserName, want: str) -> bool:
+def _check_permission(real_path: str, username: UserName, want: Literal["r", "x"]) -> bool:
     """
     Replicates the kernel's POSIX.1e ACL access-check algorithm for a specific
     user against a specific path. This is a read-only, out-of-band re-derivation
@@ -419,7 +422,7 @@ def _run_for_each_identity(identity: UserName | frozenset[UserName], decide: Cal
     that needs to combine two decisions per identity (e.g. traverse-then-read)
     should loop over `_normalize_identities` directly instead: calling this twice
     with two different `decide`s would walk the whole `_can_traverse_chain`
-    ledger a second time for every candidate, since each call is independent
+    cache a second time for every candidate, since each call is independent
     and neither can short-circuit the other's per-identity work.
     """
     return any(decide(u) for u in _normalize_identities(identity))
@@ -474,40 +477,40 @@ def _can_traverse_chain(
     locked region we never reach the resolution attempt at all: the "x" check
     on the locked ancestor denies first.
 
-    Walks the chain top-down, consulting and extending `current_traverse_ledger`
+    Walks the chain top-down, consulting and extending `current_traverse_cache`
     (see there for why the prefix structure, not just memoization, is what makes
     this cheap). Every directory it settles on the way is recorded, so the work
     is done once per directory per request no matter how many paths run through
     it.
     """
     try:
-        # Namespaces the ledger: the same logical path in another snapshot (or
+        # Namespaces the cache: the same logical path in another snapshot (or
         # another root) is a different directory with its own ACLs.
         namespace = root_folder.real_path("", snapshot)
     except Exception:
         logger.warning("Could not resolve real path for the share root -- denying access (fail closed).")
         return False
 
-    ledger = current_traverse_ledger.get()
+    traverse_cache = current_traverse_cache.get()
     chain = _ancestor_chain(dir_path)
 
     def settle(from_index: int, verdict: bool) -> bool:
         # A denial settles everything below it too: nothing under an
         # untraversable directory is reachable, so there is nothing left to ask.
-        if ledger is not None:
+        if traverse_cache is not None:
             for path in chain[from_index:] if not verdict else chain[from_index : from_index + 1]:
-                ledger[(username, namespace, path)] = verdict
+                traverse_cache[(username, namespace, path)] = verdict
         return verdict
 
     start = 0
-    if ledger is not None:
-        known = ledger.get((username, namespace, chain[-1]))
+    if traverse_cache is not None:
+        known = traverse_cache.get((username, namespace, chain[-1]))
         if known is not None:
             return known  # this exact directory was already settled this request
         # Otherwise resume below the deepest ancestor already settled: whatever
         # is above it was necessarily verified to settle it in the first place.
         for index in range(len(chain) - 1, -1, -1):
-            known = ledger.get((username, namespace, chain[index]))
+            known = traverse_cache.get((username, namespace, chain[index]))
             if known is None:
                 continue
             if not known:

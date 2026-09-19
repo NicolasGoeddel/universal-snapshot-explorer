@@ -20,7 +20,7 @@ from .models import (
     RootFolder,
 )
 from .routers import api, differ, explorer
-from .security import can_access, current_traverse_ledger, current_user_groups, current_username, describe_enforcement_gaps, get_user_groups
+from .security import can_access, current_traverse_cache, current_user_groups, current_username, describe_enforcement_gaps, get_user_groups
 from .utils.path_resolver import resolve_root_and_subpath
 from .utils.ui import render_error_response
 
@@ -97,7 +97,7 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
     # request: the middleware's own `can_access` below already walks the chain
     # down to the requested folder, which is exactly the chain every entry in
     # that folder then asks about.
-    ledger_token = current_traverse_ledger.set({} if identity is not None else None)
+    cache_token = current_traverse_cache.set({} if identity is not None else None)
     try:
         url_path = request.url.path.strip("/")
         matched_prefix = next(
@@ -118,7 +118,7 @@ async def security_middleware(request: Request, call_next: Callable[[Request], A
                 return await custom_http_exception_handler(request, HTTPException(status_code=403, detail="Access denied"))
         return await call_next(request)
     finally:
-        current_traverse_ledger.reset(ledger_token)
+        current_traverse_cache.reset(cache_token)
         current_user_groups.reset(groups_token)
         current_username.reset(user_token)
 

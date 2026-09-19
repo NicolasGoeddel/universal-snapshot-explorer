@@ -695,14 +695,19 @@ class RootFolder:
         entries_data: dict[str, dict[str, object]] = {}
         for filename in folder.content():
             entry = folder[filename]
-            if not entry.does_exist:
+            if not entry.does_exist or not entry.is_stat_visible:
+                # Traverse denied on the parent, or file missing -- stat data
+                # must not be exposed. Redacted here rather than in the frontend, since
+                # this payload is what the browser repaints the table from and
+                # would otherwise overwrite the server-rendered "–" cells with
+                # the real values (see folder_content.html.j2).
                 entries_data[filename] = {
-                    "does_exist": False,
+                    "does_exist": entry.does_exist,
                     "is_folder": entry.is_folder,
                     "is_sub_dataset": entry.is_sub_dataset,
-                    "is_symlink": False,
+                    "is_symlink": entry.is_symlink if entry.does_exist else False,
                     "is_accessible": False,
-                    "is_stat_visible": True,
+                    "is_stat_visible": entry.is_stat_visible,
                     "size_human": "–",
                     "size": -1,
                     "owner": "–",
@@ -713,30 +718,6 @@ class RootFolder:
                     "mtime_iso": "",
                     "ctime_fmt": "–",
                     "ctime_iso": "",
-                }
-            elif not entry.is_stat_visible:
-                # Traverse denied on the parent, so `stat()` data must not be
-                # exposed -- redacted here rather than in the frontend, since
-                # this payload is what the browser repaints the table from and
-                # would otherwise overwrite the server-rendered "?" cells with
-                # the real values (see folder_content.html.j2).
-                entries_data[filename] = {
-                    "does_exist": True,
-                    "is_folder": entry.is_folder,
-                    "is_sub_dataset": entry.is_sub_dataset,
-                    "is_symlink": entry.is_symlink,
-                    "is_accessible": False,
-                    "is_stat_visible": False,
-                    "size_human": "?",
-                    "size": -1,
-                    "owner": "?:?",
-                    "group": "?",
-                    "mode_human": "?",
-                    "mode_octal": "0000",
-                    "mtime_fmt": "?",
-                    "mtime_iso": "1970-01-01T00:00:00",
-                    "ctime_fmt": "?",
-                    "ctime_iso": "1970-01-01T00:00:00",
                 }
             else:
                 mtime_fmt = entry.mtime.strftime("%d.%m.%Y %H:%M:%S") if entry.mtime else "–"

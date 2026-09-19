@@ -13,7 +13,7 @@
             data-is-accessible="{{ 'true' if entry.is_accessible else 'false' }}"
             data-is-sub-dataset="{{ 'true' if entry.is_sub_dataset else 'false' }}">
             <td class="browser-cell-select" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">
-                <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ entry.name }}">
+                <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ entry.name }}"{% if not entry.is_accessible %} disabled title="{{ t('error.permission_denied') }}"{% endif %}>
             </td>
             <td class="browser-cell-name{{ ' node-locked' if not entry.is_accessible else '' }}" style="padding-left: calc(6px + 20px * {{ level | default(0) }});" data-sort="{{ entry.name }}">
                 {%- if entry.sub_dataset_root_name is not none -%}
@@ -72,6 +72,14 @@
             <td class="browser-cell-snapshots" data-filename="{{ filename }}" data-is-sub-dataset="{{ 'true' if entry.is_sub_dataset else 'false' }}">
                 <div class="snapshot-skeleton"></div>
             </td>
+            {%- if not entry.is_stat_visible -%}
+            <td class="browser-cell-size" data-sort="-1" title="{{ t('error.permission_denied') }}">?</td>
+            <td class="browser-cell-type" data-sort="?" title="{{ t('error.permission_denied') }}">?</td>
+            <td class="browser-cell-owner" data-sort="?:?" title="{{ t('error.permission_denied') }}">?:?</td>
+            <td class="browser-cell-mode" data-sort="0000" title="{{ t('error.permission_denied') }}">?</td>
+            <td class="browser-cell-mtime" data-sort="1970-01-01T00:00:00" title="{{ t('error.permission_denied') }}">?</td>
+            <td class="browser-cell-ctime" data-sort="1970-01-01T00:00:00" title="{{ t('error.permission_denied') }}">?</td>
+            {%- else -%}
             <td class="browser-cell-size" data-sort="{{ -1 if entry.size is none else entry.size }}">
                 {%- if entry.has_independent_snapshots -%}
                     —
@@ -110,6 +118,7 @@
             <td class="browser-cell-ctime" data-sort="{{ entry.ctime.isoformat() if entry.ctime else '' }}">
                 {{- entry.ctime.strftime('%d.%m.%Y %H:%M:%S') if entry.ctime else '' -}}
             </td>
+            {%- endif -%}
             <td class="browser-cell-actions">
                 <div class="browser-cell-actions-wrapper">
                     {%- if not entry.is_folder and not entry.is_symlink and entry.is_accessible -%}

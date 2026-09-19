@@ -125,10 +125,40 @@ class ExplorerView {
         this.selectionManager?.updateUI();
     }
 
-    downloadSelectedZip(pathsSet = null, structure = 'relative') {
+    async downloadSelectedZip(pathsSet = null, structure = 'relative') {
         const paths = pathsSet ? Array.from(pathsSet) : Array.from(this.selectedPaths);
         if (paths.length === 0) return;
         const snapshot = this.snapshot || '';
+
+        // Ask the server what this exact selection would skip due to ACL
+        // restrictions BEFORE committing to the download -- reuses the exact
+        // same walk/skip logic the real export uses (zip_streamer.py's
+        // `resolve_zip_selection`), so this can never show a different answer
+        // than what actually happens. Best-effort: if the preview call itself
+        // fails (network hiccup, older server without this endpoint), fall
+        // through and let the real export's own server-side filtering handle
+        // it silently, same as before this feature existed.
+        let skipped = [];
+        try {
+            const previewUrl = `/api/zip-preview/${encodeURIComponent(this.rootName)}`;
+            const res = await fetch(previewUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paths, snapshot }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                skipped = Array.isArray(data.skipped) ? data.skipped : [];
+            }
+        } catch (_e) {
+            skipped = [];
+        }
+
+        if (skipped.length > 0) {
+            const proceed = await this.confirmZipPermissionWarning(skipped);
+            if (!proceed) return;
+        }
+
         const basePath = this.table.dataset.subpath || '';
         const structureVal = structure || 'relative';
 
@@ -153,6 +183,90 @@ class ExplorerView {
         document.body.appendChild(form);
         form.submit();
         setTimeout(() => form.remove(), 2000);
+    }
+
+    /**
+     * Shows a modal warning that `skippedPaths.length` elements will be
+     * excluded from the ZIP export because of lack of permission, with the
+     * full list of skipped paths (the modal itself only
+     * ever appears when there's something to report) inside its own scroll-contained
+     * box, capped height/width with independent X/Y overflow so a long list
+     * or a handful of very long paths can't stretch or reposition the modal
+     * itself. Resolves to `true` if the user chooses to continue anyway,
+     * `false` if they cancel.
+     *
+     * @param {string[]} skippedPaths
+     * @returns {Promise<boolean>}
+     */
+    confirmZipPermissionWarning(skippedPaths) {
+        return new Promise((resolve) => {
+            const i18n = window.clientI18n || {};
+            const title = i18n['selection.zip_permission_title'] || 'Some items will be skipped';
+            const summaryPattern =
+                i18n['selection.zip_permission_summary'] ||
+                '{count} elements will be skipped because of lack of permission.';
+            const cancelLabel = i18n['selection.zip_permission_cancel'] || 'Cancel';
+            const continueLabel = i18n['selection.zip_permission_continue'] || 'Continue anyway';
+
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop';
+
+            const dialog = document.createElement('div');
+            dialog.className = 'modal-dialog';
+
+            const header = document.createElement('div');
+            header.className = 'modal-header';
+            const heading = document.createElement('h3');
+            heading.textContent = `⚠️ ${title}`;
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'modal-close-btn';
+            closeBtn.textContent = '✕';
+            header.append(heading, closeBtn);
+
+            const body = document.createElement('div');
+            body.className = 'modal-body';
+
+            const summary = document.createElement('div');
+            summary.className = 'action-bar-warning';
+            summary.textContent = summaryPattern.replace('{count}', String(skippedPaths.length));
+
+            const list = document.createElement('ul');
+            list.className = 'zip-permission-skipped-list';
+            for (const path of skippedPaths) {
+                const li = document.createElement('li');
+                li.textContent = path;
+                list.appendChild(li);
+            }
+
+            const actions = document.createElement('div');
+            actions.className = 'zip-permission-actions';
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'action-bar-btn secondary';
+            cancelBtn.textContent = cancelLabel;
+            const continueBtn = document.createElement('button');
+            continueBtn.type = 'button';
+            continueBtn.className = 'action-bar-btn primary';
+            continueBtn.textContent = continueLabel;
+            actions.append(cancelBtn, continueBtn);
+
+            body.append(summary, list, actions);
+            dialog.append(header, body);
+            backdrop.appendChild(dialog);
+            document.body.appendChild(backdrop);
+
+            const finish = (result) => {
+                backdrop.remove();
+                resolve(result);
+            };
+            closeBtn.addEventListener('click', () => finish(false));
+            cancelBtn.addEventListener('click', () => finish(false));
+            continueBtn.addEventListener('click', () => finish(true));
+            backdrop.addEventListener('click', (e) => {
+                if (e.target === backdrop) finish(false);
+            });
+        });
     }
 
     initSnapshotDropdown() {
@@ -434,11 +548,19 @@ class ExplorerView {
                     lockIndicator.style.display = 'none';
                 }
 
+                // Traverse denied on the parent directory: the backend already
+                // redacted every stat-derived field, so render them as such
+                // rather than running them through the normal formatting (a
+                // folder's size === -1 would otherwise print as an em dash).
+                const statVisible = meta.is_stat_visible !== false;
+
                 // Update Size
                 const sizeCell = row.querySelector('.browser-cell-size');
                 if (sizeCell) {
                     let displaySize = meta.size_human;
-                    if (
+                    if (!statVisible) {
+                        displaySize = '?';
+                    } else if (
                         meta.is_folder &&
                         !meta.has_independent_snapshots &&
                         meta.size !== undefined &&
@@ -554,10 +676,14 @@ class ExplorerView {
                                     childNameCell.classList.toggle('node-locked', !childMeta.is_accessible);
                                 }
 
+                                const childStatVisible = childMeta.is_stat_visible !== false;
+
                                 const childSizeCell = childRow.querySelector('.browser-cell-size');
                                 if (childSizeCell) {
                                     let displaySize = childMeta.size_human;
-                                    if (
+                                    if (!childStatVisible) {
+                                        displaySize = '?';
+                                    } else if (
                                         childMeta.is_folder &&
                                         !childMeta.has_independent_snapshots &&
                                         childMeta.size !== undefined &&

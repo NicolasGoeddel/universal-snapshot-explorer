@@ -267,7 +267,33 @@ It then uses that value as a Unix username to enforce the **real POSIX ACLs alre
 This is deliberately not a separate permission system: it re-derives the exact same read/traverse decision the filesystem itself would make for that user, using `getfacl` and the container's own NSS configuration to resolve group membership.
 
 > [!TIP]
-> Since the container's NSS stack is used, you can wire it to an LDAP server and get all the benefits of ACLs + LDAP for complex permissions with centralized user management.
+> **Container UID/GID Mapping (Local & AD/LDAP)**  
+> Since USE runs isolated in a container, its internal standard library (`libc` NSS) only knows the users defined inside the container itself. If a requested username is not found, USE safely falls back to the "World" (Other) file permissions.
+> 
+> To enable perfect POSIX ACL enforcement for users on your host (e.g., TrueNAS):
+> 
+> **For Local Users only:**
+> You can simply mount your host's local files over the container's databases in your `docker-compose.yaml`:
+> ```yaml
+> volumes:
+>   - /etc/passwd:/etc/passwd:ro
+>   - /etc/group:/etc/group:ro
+> ```
+> 
+> **For LDAP / Active Directory (TrueNAS SCALE):**
+> Network users do not exist in the physical `/etc/passwd` file on the host. Mounting it is not enough. The most stable "Docker-native" workaround (without installing SSSD/Winbind packages into the container) is to create a cronjob on your TrueNAS host that dumps all users (including AD) into a flat text file regularly:
+> ```bash
+> # Run this via Host Cronjob (e.g., every 5 minutes):
+> getent passwd > /mnt/data/app-data/use/passwd
+> getent group > /mnt/data/app-data/use/group
+> ```
+> Then mount these static exports into the container:
+> ```yaml
+> volumes:
+>   - /mnt/data/app-data/use/passwd:/etc/passwd:ro
+>   - /mnt/data/app-data/use/group:/etc/group:ro
+> ```
+> The container's `libc` now reads these flat files natively and instantly knows all your AD users and their correct group memberships!
 
 Restricted entries are displayed as locked, details are hidden, they cannot be downloaded or diffed.
 

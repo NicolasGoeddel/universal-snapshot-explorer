@@ -17,9 +17,9 @@
  * Integrates with:
  *  - TableSorter: if the column currently being sorted on gets hidden, sorting reverts
  *    to the table's locked/primary column (see below) in ascending order.
- *  - TableColumnResizer: saved column-width percentages are rescaled so the currently
- *    visible columns always sum to 100%, avoiding a blank gap where a hidden column's
- *    reserved width used to be.
+ *  - TableColumnResizer: column widths are re-rendered for the new visible set, so the
+ *    remaining columns take over the space a hidden column used to reserve (and give it
+ *    back, at its original size, when the column is shown again).
  *
  * Columns are hidden via CSS only (`hide-col-<index>` classes on the <table> element),
  * never removed from the DOM. This keeps column indices stable for the sorter/resizer
@@ -75,8 +75,8 @@ class ColumnVisibilityManager {
         this.contextColumnKey = null;
 
         this.applyVisibility();
-        // Only rescale saved widths on load if a previous session actually hid something -
-        // avoids nudging the untouched default column-width distribution for everyone else.
+        // The resizer sized the columns during its own init, before these hide classes existed,
+        // so it needs a second pass once something is actually hidden.
         if (this.hiddenKeys.size > 0) {
             this.syncColumnWidths();
         }
@@ -175,32 +175,17 @@ class ColumnVisibilityManager {
         });
     }
 
-    /** Rescales saved column-width percentages so the currently visible columns sum to 100%. */
+    /**
+     * Re-render column widths for the new visible set.
+     *
+     * Nothing is rescaled or written back here on purpose. The resizer stores an unnormalized
+     * weight per column and divides by the weights of the *visible* columns at render time, so
+     * hiding a column already widens its peers and showing it again restores the previous
+     * layout exactly. Rewriting the stored weights to match the current visible set would throw
+     * away the hidden columns' sizes and make repeated toggling drift.
+     */
     syncColumnWidths() {
-        if (!this.resizer || !this.resizer.savedPercentages) return;
-        const sp = this.resizer.savedPercentages;
-        const visibleKeys = this.columns.filter((c) => !this.isHidden(c.key)).map((c) => c.key);
-        if (visibleKeys.length === 0) return;
-
-        let sum = 0;
-        visibleKeys.forEach((key) => {
-            if (sp[key] === undefined) {
-                const col = this.columns.find((c) => c.key === key);
-                const def = col ? parseFloat(col.th.getAttribute('data-default-pct')) : NaN;
-                sp[key] = !Number.isNaN(def) ? def : 100 / visibleKeys.length;
-            }
-            sum += sp[key];
-        });
-
-        if (sum > 0) {
-            visibleKeys.forEach((key) => {
-                sp[key] = (sp[key] / sum) * 100;
-            });
-        }
-
-        this.resizer.savedPercentages = sp;
-        if (typeof this.resizer.savePercentages === 'function') this.resizer.savePercentages();
-        if (typeof this.resizer.applySavedPercentages === 'function') this.resizer.applySavedPercentages();
+        if (this.resizer && typeof this.resizer.applyWidths === 'function') this.resizer.applyWidths();
     }
 
     getLabel(col) {

@@ -1,0 +1,571 @@
+/* Universal Snapshot Explorer (USE) - Snapshot Timeline Panel
+ * Sticky bottom panel: a "filter" timeline (full history, drag-range zoom) and
+ * a "selection" timeline (snapshots within the filtered range, clickable).
+ *
+ * Element sizing is driven by --tl-* custom properties, each computed as a base
+ * pixel value times a single continuous --tl-scale factor set by JS (see the
+ * "-"/"+" toolbar buttons in snapshot_timeline.js). Nothing below is hard-coded
+ * per size step - every element scales together from that one number.
+ */
+
+.snapshot-timeline-panel {
+    --tl-scale: 1;
+    --tl-btn-font-size: calc(13px * var(--tl-scale));
+    --tl-axis-font-size: calc(10px * var(--tl-scale));
+    --tl-btn-h: calc(24px * var(--tl-scale));
+    --tl-axis-h: calc(16px * var(--tl-scale));
+    --tl-tick-w: calc(8px * var(--tl-scale));
+    --tl-stack-w: calc(8px * var(--tl-scale));
+    --tl-handle-w: calc(8px * var(--tl-scale));
+    --tl-handle-min-h: calc(24px * var(--tl-scale));
+    --tl-resizer-h: calc(8px * var(--tl-scale));
+
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+    height: 160px;
+    min-height: 80px;
+    max-height: 420px;
+    font-size: var(--tl-btn-font-size);
+}
+
+.snapshot-timeline-resizer {
+    height: var(--tl-resizer-h);
+    flex: 0 0 auto;
+    cursor: row-resize;
+    background: transparent;
+    position: relative;
+}
+
+.snapshot-timeline-resizer::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border-color);
+}
+
+.snapshot-timeline-resizer:hover::after,
+.snapshot-timeline-resizer.is-resizing::after {
+    background: var(--primary-accent);
+}
+
+/* --- Collapsed: only the resizer strip remains, as a grab handle to reopen --- */
+.snapshot-timeline-panel.is-collapsed {
+    height: 10px !important;
+    min-height: 10px !important;
+}
+
+.snapshot-timeline-panel.is-collapsed .snapshot-timeline-resizer {
+    height: 10px;
+}
+
+.snapshot-timeline-panel.is-collapsed .snapshot-timeline-toolbar,
+.snapshot-timeline-panel.is-collapsed .snapshot-timeline-body {
+    display: none;
+}
+
+.snapshot-timeline-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 10px;
+    gap: 6px;
+}
+
+.snapshot-timeline-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.snapshot-timeline-quick-actions {
+    display: inline-flex;
+    gap: 4px;
+}
+
+.snapshot-timeline-quick-btn {
+    border: 1px solid var(--border-color-light);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--tl-btn-font-size);
+    padding: 2px 8px;
+    cursor: pointer;
+}
+
+.snapshot-timeline-quick-btn:hover {
+    background: var(--row-hover);
+    color: var(--text-main);
+}
+
+.snapshot-timeline-quick-btn.active {
+    background: var(--primary-accent);
+    border-color: var(--primary-accent);
+    color: #ffffff;
+}
+
+/* --- Grouped icon-button clusters: background + border makes them read as one
+ * linked selector, with the active choice highlighted --- */
+.snapshot-timeline-density-control,
+.snapshot-timeline-layout-toggle {
+    display: inline-flex;
+    gap: 2px;
+    background: var(--bg-header-alt);
+    border: 1px solid var(--border-color-light);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.snapshot-timeline-density-control button,
+.snapshot-timeline-layout-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tl-btn-h);
+    height: var(--tl-btn-h);
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.snapshot-timeline-density-control button:hover,
+.snapshot-timeline-layout-btn:hover {
+    background: var(--row-hover);
+    color: var(--text-main);
+}
+
+.snapshot-timeline-layout-btn.active {
+    background: var(--primary-accent);
+    color: #ffffff;
+}
+
+.snapshot-timeline-body {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+    padding: 6px 8px;
+    gap: 0;
+}
+
+.snapshot-timeline-track {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-header-alt);
+    border: 1px solid var(--border-color-light);
+    border-radius: 6px;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.snapshot-timeline-canvas {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.snapshot-timeline-axis {
+    position: relative;
+    flex: 0 0 var(--tl-axis-h);
+    border-top: 1px solid var(--border-color-light);
+}
+
+.snapshot-timeline-axis-label {
+    position: absolute;
+    top: 1px;
+    transform: translateX(-50%);
+    font-size: var(--tl-axis-font-size);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.snapshot-timeline-axis-tick {
+    position: absolute;
+    top: 0;
+    width: 1px;
+    height: 3px;
+    background: var(--border-color);
+}
+
+/* --- Split resizer between filter and selection tracks: draggable in both
+ * side-by-side (width) and stacked (height) layouts. It IS the separation
+ * between the two tracks - not an extra gap alongside it - so adjusting it
+ * never grows the dead space, it only reallocates it between the two tracks. */
+.snapshot-timeline-split-resizer {
+    display: none;
+    flex: 0 0 10px;
+    position: relative;
+}
+
+.snapshot-timeline-split-resizer::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 28px;
+    border-radius: 2px;
+    background: var(--border-color);
+}
+
+.snapshot-timeline-split-resizer:hover::after,
+.snapshot-timeline-split-resizer.is-resizing::after {
+    background: var(--primary-accent);
+}
+
+.snapshot-timeline-panel[data-layout='side-by-side'] .snapshot-timeline-split-resizer {
+    display: block;
+    cursor: col-resize;
+}
+
+.snapshot-timeline-panel[data-layout='stacked'] .snapshot-timeline-split-resizer {
+    display: block;
+    cursor: row-resize;
+}
+
+.snapshot-timeline-panel[data-layout='stacked'] .snapshot-timeline-split-resizer::after {
+    width: 28px;
+    height: 2px;
+}
+
+/* --- Side by side (default): filter narrower, on the left --- */
+.snapshot-timeline-panel[data-layout='side-by-side'] .snapshot-timeline-body {
+    flex-direction: row;
+}
+
+.snapshot-timeline-panel[data-layout='side-by-side'] .snapshot-timeline-filter {
+    flex: 0 0 var(--timeline-split-pct, 30%);
+}
+
+.snapshot-timeline-panel[data-layout='side-by-side'] .snapshot-timeline-selection {
+    flex: 1 1 auto;
+}
+
+/* --- Stacked: selection (main) on top, filter (short) below ---
+ * Note: the filter track is the FIRST DOM child (selection is third, after the
+ * split-resizer), so column-reverse is needed to put selection visually on top. */
+.snapshot-timeline-panel[data-layout='stacked'] .snapshot-timeline-body {
+    flex-direction: column-reverse;
+}
+
+.snapshot-timeline-panel[data-layout='stacked'] .snapshot-timeline-selection {
+    flex: 1 1 auto;
+}
+
+.snapshot-timeline-panel[data-layout='stacked'] .snapshot-timeline-filter {
+    flex: 0 0 var(--timeline-stack-split-pct, 35%);
+}
+
+/* --- Scrollbar+zoom: filter collapses to a thin Premiere-style zoom bar --- */
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-body {
+    flex-direction: column-reverse;
+    gap: 6px;
+}
+
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-selection {
+    flex: 1 1 auto;
+}
+
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-filter {
+    flex: 0 0 16px;
+    border-radius: 8px;
+    background: transparent;
+    border-color: transparent;
+}
+
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-filter .snapshot-timeline-tick,
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-filter .snapshot-timeline-stack,
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-filter .snapshot-timeline-axis {
+    display: none;
+}
+
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-filter .snapshot-timeline-canvas {
+    background: var(--border-color-light);
+    border-radius: 8px;
+}
+
+/* --- Filter timeline: range handles + shaded selection window --- */
+.snapshot-timeline-filter-selection {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: color-mix(in srgb, var(--primary-accent) 16%, transparent);
+    pointer-events: none;
+}
+
+.snapshot-timeline-range-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    margin-left: -0.5px;
+    background: var(--primary-accent);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-range-line {
+    display: none;
+}
+
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-filter-selection {
+    top: 3px;
+    bottom: 3px;
+    background: var(--primary-accent);
+    opacity: 0.4;
+    border: none;
+    border-radius: 6px;
+}
+
+/* The zoom bar has no drag-select-new-range interaction below it, so its ball
+ * handle can stay full-height/vertically centered rather than top-anchored. */
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-handle {
+    top: 0;
+    height: 100%;
+}
+
+/* Anchored to the top and sized to ~45% of the bar's height (with a floor so it
+ * stays grabbable on short bars) so the lower portion of the bar is always free
+ * for the click-drag "select a new range" interaction below, even directly
+ * under a handle. */
+.snapshot-timeline-handle {
+    position: absolute;
+    top: 0;
+    height: max(45%, var(--tl-handle-min-h));
+    width: var(--tl-handle-w);
+    margin-left: calc(var(--tl-handle-w) / -2);
+    cursor: ew-resize;
+    z-index: 2;
+}
+
+/* DevTools-Network-style grab tab on the handle line, to signal "draggable" */
+.snapshot-timeline-handle-grip {
+    position: absolute;
+    top: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(var(--tl-handle-w) + 2px);
+    height: calc(var(--tl-handle-w) * 2.6);
+    border-radius: 3px;
+    background: var(--primary-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.snapshot-timeline-handle-grip::before,
+.snapshot-timeline-handle-grip::after {
+    content: '';
+    width: 1px;
+    height: 55%;
+    background: rgba(255, 255, 255, 0.75);
+}
+
+.snapshot-timeline-handle:hover .snapshot-timeline-handle-grip,
+.snapshot-timeline-handle.is-dragging .snapshot-timeline-handle-grip {
+    background: var(--primary-hover);
+}
+
+/* Zoom-bar mode: hide the DevTools grip and the line, show a round "ball" handle instead */
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-handle-grip {
+    display: none;
+}
+
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-handle::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary-accent);
+    border: 2px solid var(--bg-surface);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-handle:hover::before,
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-handle.is-dragging::before {
+    background: var(--primary-hover);
+}
+
+/* Follows the cursor over the filter track's free (non-handle) area, hinting
+ * that a click-drag there starts a brand new range selection. */
+.snapshot-timeline-hover-indicator {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--primary-accent);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 0.1s ease;
+}
+
+.snapshot-timeline-hover-indicator.visible {
+    opacity: 0.45;
+}
+
+.snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-hover-indicator {
+    display: none;
+}
+
+/* --- Ticks / pills (both tracks share this) --- */
+.snapshot-timeline-tick {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    width: var(--tl-tick-w);
+    z-index: 1;
+    margin-left: calc(var(--tl-tick-w) / -2);
+    border-radius: 2px;
+    background: var(--primary-accent);
+    opacity: 0.55;
+    cursor: default;
+}
+
+.snapshot-timeline-selection .snapshot-timeline-tick {
+    cursor: pointer;
+    opacity: 0.85;
+}
+
+.snapshot-timeline-selection .snapshot-timeline-tick:hover {
+    opacity: 1;
+    background: var(--primary-hover);
+}
+
+.snapshot-timeline-tick.is-original {
+    background: #10b981;
+    opacity: 0.85;
+}
+
+/* The currently-active snapshot: a distinct color (not used anywhere else in this
+ * component) plus a glow, without resizing the tick - it stays flush with the
+ * others so it doesn't touch the track's edges. Wins over .is-original when both apply. */
+.snapshot-timeline-tick.is-current,
+.snapshot-timeline-tick.is-original.is-current {
+    opacity: 1;
+    background: #f59e0b;
+    z-index: 3;
+    box-shadow: 0 0 0 2px color-mix(in srgb, #f59e0b 35%, transparent);
+}
+
+/* --- Dense clusters: grouped vertical stack in a single time bucket --- */
+.snapshot-timeline-stack {
+    position: absolute;
+    top: 3px;
+    bottom: 12px;
+    width: var(--tl-stack-w);
+    margin-left: calc(var(--tl-stack-w) / -2);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    cursor: pointer;
+}
+
+.snapshot-timeline-stack-tick {
+    flex: 1 1 auto;
+    min-height: 2px;
+    border-radius: 1px;
+    background: var(--primary-accent);
+    opacity: 0.6;
+}
+
+.snapshot-timeline-stack:hover .snapshot-timeline-stack-tick {
+    opacity: 0.9;
+}
+
+/* The currently-active snapshot is grouped inside this stack: ring the whole
+ * cluster so it's obvious at a glance, and pick out its specific mini-tick too. */
+.snapshot-timeline-stack.is-current {
+    z-index: 3;
+}
+
+.snapshot-timeline-stack.is-current::after {
+    content: '';
+    position: absolute;
+    inset: -3px -3px -12px -3px;
+    border: 2px solid #f59e0b;
+    border-radius: 4px;
+    box-shadow: 0 0 0 2px color-mix(in srgb, #f59e0b 30%, transparent);
+    pointer-events: none;
+}
+
+.snapshot-timeline-stack-tick.is-current {
+    background: #f59e0b;
+    opacity: 1;
+}
+
+.snapshot-timeline-stack-count {
+    position: absolute;
+    bottom: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: var(--tl-axis-font-size);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* --- Popover listing grouped snapshots in a stack --- */
+.snapshot-timeline-popover {
+    position: fixed;
+    z-index: 1000;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+    min-width: 160px;
+    max-width: 260px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 4px 0;
+    display: none;
+}
+
+.snapshot-timeline-popover.visible {
+    display: block;
+}
+
+.snapshot-timeline-popover-item {
+    display: block;
+    padding: 5px 10px;
+    text-decoration: none;
+    color: var(--text-main);
+    font-size: 8.5pt;
+    cursor: pointer;
+}
+
+.snapshot-timeline-popover-item:hover {
+    background: var(--row-hover);
+}
+
+.snapshot-timeline-popover-item.is-current {
+    font-weight: 600;
+    color: var(--primary-accent);
+}
+
+body {
+    padding-bottom: var(--bottom-panel-height, 168px);
+}

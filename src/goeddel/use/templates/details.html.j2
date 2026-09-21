@@ -2,7 +2,9 @@
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2'%}
+    <link rel="stylesheet" href="{{ static_url('css/snapshot_timeline.css') }}">
     <script src="{{ static_url('js/details.js') }}" defer></script>
+    <script src="{{ static_url('js/snapshot_timeline.js') }}" defer></script>
 </head>
 <body>
     <div class="sticky-header-container">
@@ -160,5 +162,7 @@
             {%- endfor %}
         </tbody>
     </table>
+
+    {% include 'snapshot_timeline.html.j2' %}
 </body>
 </html>

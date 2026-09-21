@@ -1,0 +1,34 @@
+<div class="snapshot-timeline-panel" id="snapshot-timeline-panel" data-layout="side-by-side">
+    <div class="snapshot-timeline-resizer" id="snapshot-timeline-resizer" title="{{ t('timeline.resize_tooltip') }}"></div>
+    <div class="snapshot-timeline-toolbar">
+        <div class="snapshot-timeline-quick-actions" role="group">
+            <button type="button" class="snapshot-timeline-quick-btn" data-quick-range="today">{{ t('timeline.range_today') }}</button>
+            <button type="button" class="snapshot-timeline-quick-btn" data-quick-range="week">{{ t('timeline.range_week') }}</button>
+            <button type="button" class="snapshot-timeline-quick-btn" data-quick-range="month">{{ t('timeline.range_month') }}</button>
+            <button type="button" class="snapshot-timeline-quick-btn" data-quick-range="all">{{ t('timeline.range_all') }}</button>
+        </div>
+        <div class="snapshot-timeline-toolbar-right">
+            <div class="snapshot-timeline-density-control" role="group">
+                <button type="button" id="snapshot-timeline-density-dec" title="{{ t('timeline.density_smaller') }}">{{ lucide('minus', size=13) }}</button>
+                <button type="button" id="snapshot-timeline-density-inc" title="{{ t('timeline.density_larger') }}">{{ lucide('plus', size=13) }}</button>
+            </div>
+            <div class="snapshot-timeline-layout-toggle" role="group">
+                <button type="button" class="snapshot-timeline-layout-btn" data-layout-option="side-by-side" title="{{ t('timeline.layout_side_by_side') }}">{{ lucide('columns-2', size=14) }}</button>
+                <button type="button" class="snapshot-timeline-layout-btn" data-layout-option="stacked" title="{{ t('timeline.layout_stacked') }}">{{ lucide('rows-2', size=14) }}</button>
+                <button type="button" class="snapshot-timeline-layout-btn" data-layout-option="scrollbar-zoom" title="{{ t('timeline.layout_scrollbar') }}">{{ lucide('scan', size=14) }}</button>
+            </div>
+        </div>
+    </div>
+    <div class="snapshot-timeline-body">
+        <div class="snapshot-timeline-track snapshot-timeline-filter" id="snapshot-timeline-filter">
+            <div class="snapshot-timeline-canvas" id="snapshot-timeline-filter-canvas"></div>
+            <div class="snapshot-timeline-axis" id="snapshot-timeline-filter-axis"></div>
+        </div>
+        <div class="snapshot-timeline-split-resizer" id="snapshot-timeline-split-resizer" title="{{ t('timeline.resize_tooltip') }}"></div>
+        <div class="snapshot-timeline-track snapshot-timeline-selection" id="snapshot-timeline-selection">
+            <div class="snapshot-timeline-canvas" id="snapshot-timeline-selection-canvas"></div>
+            <div class="snapshot-timeline-axis" id="snapshot-timeline-selection-axis"></div>
+        </div>
+    </div>
+</div>
+<script type="application/json" id="snapshot-timeline-data" data-root="{{ root_name }}" data-current-snapshot="{{ breadcrumbs.snapshot.id }}">{{ timeline_snapshots_json | safe }}</script>

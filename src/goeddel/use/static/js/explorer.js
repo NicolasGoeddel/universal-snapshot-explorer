@@ -303,6 +303,8 @@ class ExplorerView {
         this.snapshot = targetSnapshotId;
         this.table.dataset.snapshot = targetSnapshotId;
 
+        document.dispatchEvent(new CustomEvent('use:snapshot-changed', { detail: { snapshotId: targetSnapshotId } }));
+
         // 1. Instantly update Header Timeline Indicator
         const snapLinks = Array.from(document.querySelectorAll('.snapshots-header-timeline a'));
         let targetSnapIndex = -1;

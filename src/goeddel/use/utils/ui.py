@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import os
 from urllib.parse import unquote_plus
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 
-from ..dependencies import get_app_config, get_base_url, templates
+from ..dependencies import get_app_config, get_base_url, make_route_url, templates
 from ..enums import FilesystemType
 from ..i18n import get_client_translations, get_language, get_translator
 from ..models.nodes import FSNode
@@ -54,6 +55,19 @@ def get_base_template_context(
         all_roots=all_roots,
     )
 
+    timeline_snapshots_json = json.dumps(
+        [
+            {
+                "id": s.id,
+                "name": s.name,
+                "ts": s.timestamp.timestamp() * 1000 if s.has_timestamp else None,
+                "isOriginal": s.is_original,
+                "url": make_route_url(module, root_name, full_logical_path, s.id),
+            }
+            for s in snapshots
+        ]
+    )
+
     return {
         "request": request,
         "root_name": root_name,
@@ -65,6 +79,7 @@ def get_base_template_context(
         "t": t,
         "lang": lang,
         "client_i18n": client_i18n,
+        "timeline_snapshots_json": timeline_snapshots_json,
     }
 
 

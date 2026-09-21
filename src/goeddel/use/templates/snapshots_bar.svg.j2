@@ -28,12 +28,15 @@ M {{ x0 }} {{ y0 }} H {{ x1 }} V {{ y1 }} H {{ x0 }} Z
 <svg class="snapshotbar{{ ' header-snapshotbar' if is_header else '' }}{{ ' is-sub-dataset' if is_sub_dataset else '' }}" viewBox="-1 -1 {{ total_w + 2 }} {{ view_h }}" preserveAspectRatio="none" style="width: 100%; max-width: {{ total_w }}px;{% if not is_header %} height: 100%;{% endif %}">
     {%- for item in bar_items %}
         {%- set snap = item.snapshot -%}
-        {%- set x = loop.index0 * cell_w -%}
+        {#- items are provided newest-first; the bar is displayed oldest-to-newest
+            (left-to-right), so the visual x position is the mirrored index and the
+            neighbor used for each side's pill rounding is swapped accordingly. -#}
+        {%- set x = (bar_count - 1 - loop.index0) * cell_w -%}
         {%- set is_current = (current_snapshot_id is not none and snap and snap.id == current_snapshot_id) -%}
-        {%- set prev_item = bar_items[loop.index0 - 1] if loop.index0 > 0 else none -%}
-        {%- set next_item = bar_items[loop.index0 + 1] if loop.index0 < bar_count - 1 else none -%}
-        {%- set round_left = (prev_item is none or prev_item.color != item.color or prev_item.missing != item.missing) -%}
-        {%- set round_right = (next_item is none or next_item.color != item.color or next_item.missing != item.missing) -%}
+        {%- set older_neighbor = bar_items[loop.index0 + 1] if loop.index0 < bar_count - 1 else none -%}
+        {%- set newer_neighbor = bar_items[loop.index0 - 1] if loop.index0 > 0 else none -%}
+        {%- set round_left = (older_neighbor is none or older_neighbor.color != item.color or older_neighbor.missing != item.missing) -%}
+        {%- set round_right = (newer_neighbor is none or newer_neighbor.color != item.color or newer_neighbor.missing != item.missing) -%}
         {%- set d = pill_path(x + 0.5, 1, seg_w, seg_h, corner_r, round_left, round_right) -%}
         {%- set fill_color = "var(--snap-missing)" if (item.missing or item.color is none) else (item.color if (item.color is string and item.color.startswith("var(")) else "var(--snap-" ~ item.color ~ ")") -%}
         {%- if with_links and snap %}

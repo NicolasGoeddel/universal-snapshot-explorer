@@ -205,13 +205,14 @@ class ExplorerView {
         if (!headerTimeline || !headerBarStr) return;
         const links = Array.from(headerTimeline.querySelectorAll('a'));
         const count = Math.min(links.length, headerBarStr.length);
+        // headerBarStr is ordered newest-first; displayed oldest-to-newest (left-to-right).
         for (let i = 0; i < count; i++) {
             const char = headerBarStr[i] || 'x';
-            const prevChar = i > 0 ? headerBarStr[i - 1] : null;
-            const nextChar = i < count - 1 ? headerBarStr[i + 1] : null;
-            const roundLeft = prevChar === null || prevChar !== char;
-            const roundRight = nextChar === null || nextChar !== char;
-            const x = i * 20;
+            const olderChar = i < count - 1 ? headerBarStr[i + 1] : null;
+            const newerChar = i > 0 ? headerBarStr[i - 1] : null;
+            const roundLeft = olderChar === null || olderChar !== char;
+            const roundRight = newerChar === null || newerChar !== char;
+            const x = (count - 1 - i) * 20;
             const pathD = this.getPillPath(x + 0.5, 1, 19, 15, 5, roundLeft, roundRight);
 
             const path = links[i].querySelector('path');
@@ -232,7 +233,10 @@ class ExplorerView {
 
     updateRowSnapshotCircles(snapIndex) {
         if (snapIndex < 0) return;
-        const cx = String(snapIndex * 20 + 10);
+        // snapIndex is newest-first; bars are displayed oldest-to-newest (left-to-right).
+        const headerLinkCount = document.querySelectorAll('.snapshots-header-timeline a').length;
+        const count = headerLinkCount || snapIndex + 1;
+        const cx = String((count - 1 - snapIndex) * 20 + 10);
         const svgs = this.tbody.querySelectorAll('svg.snapshotbar');
         svgs.forEach((svg) => {
             if (svg.classList.contains('snapshot-skeleton-svg') || svg.classList.contains('header-snapshotbar')) return;
@@ -281,7 +285,9 @@ class ExplorerView {
                 (a.dataset.snapId && a.dataset.snapId === this.snapshot),
         );
         if (currentIdx < 0) return;
-        const targetIdx = currentIdx + delta;
+        // Links are newest-first but displayed oldest-to-newest (left-to-right), so a
+        // positive (rightward/"newer") delta moves toward a lower list index.
+        const targetIdx = currentIdx - delta;
         if (targetIdx >= 0 && targetIdx < snapLinks.length) {
             const targetLink = snapLinks[targetIdx];
             const targetSnapId = targetLink.dataset.snapId || this.extractSnapIdFromHref(targetLink);
@@ -323,7 +329,7 @@ class ExplorerView {
                 if (rect) rect.classList.add('current-snapshot-rect');
                 if (!circle) {
                     const newCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    newCircle.setAttribute('cx', String(idx * 20 + 10));
+                    newCircle.setAttribute('cx', String((snapLinks.length - 1 - idx) * 20 + 10));
                     newCircle.setAttribute('cy', '8.5');
                     newCircle.setAttribute('r', '3.5');
                     newCircle.setAttribute('fill', '#ffffff');
@@ -686,10 +692,13 @@ class ExplorerView {
 
         let inner = '';
         let currentIdx = -1;
+        // barStr/snapshots are ordered newest-first; the bar is displayed oldest-to-newest
+        // (left-to-right), so the visual x position mirrors the index and the neighbor
+        // used for each side's pill rounding is swapped accordingly.
         for (let i = 0; i < count; i++) {
             const char = barStr[i] || 'x';
             const snap = snapshots[i];
-            const x = i * barWidth;
+            const x = (count - 1 - i) * barWidth;
             if (
                 !isSub &&
                 (snap.id === currentSnap || decodeURIComponent(snap.id) === decodeURIComponent(currentSnap))
@@ -697,10 +706,10 @@ class ExplorerView {
                 currentIdx = i;
             }
 
-            const prevChar = i > 0 ? barStr[i - 1] || 'x' : null;
-            const nextChar = i < count - 1 ? barStr[i + 1] || 'x' : null;
-            const roundLeft = prevChar === null || prevChar !== char;
-            const roundRight = nextChar === null || nextChar !== char;
+            const olderChar = i < count - 1 ? barStr[i + 1] || 'x' : null;
+            const newerChar = i > 0 ? barStr[i - 1] || 'x' : null;
+            const roundLeft = olderChar === null || olderChar !== char;
+            const roundRight = newerChar === null || newerChar !== char;
             const pathD = this.getPillPath(x + 0.5, 1, 19, 18, 6, roundLeft, roundRight);
 
             if (char === 'x') {
@@ -713,7 +722,7 @@ class ExplorerView {
 
         const circle =
             currentIdx >= 0 && !isSub
-                ? `<circle cx="${currentIdx * barWidth + 10}" cy="10" r="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>`
+                ? `<circle cx="${(count - 1 - currentIdx) * barWidth + 10}" cy="10" r="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>`
                 : '';
 
         return `<svg class="snapshotbar${isSub ? ' is-sub-dataset' : ''}" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; max-width: ${totalWidth}px; height: 16px;">${inner}${circle}</svg>`;

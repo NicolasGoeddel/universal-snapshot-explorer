@@ -60,7 +60,7 @@ def get_base_template_context(
             {
                 "id": s.id,
                 "name": s.name,
-                "ts": s.timestamp.timestamp() * 1000 if s.has_timestamp else None,
+                "ts": s.timestamp.timestamp() * 1000 if s.timestamp is not None and not s.is_original else None,
                 "isOriginal": s.is_original,
                 "url": make_route_url(module, root_name, full_logical_path, s.id),
             }

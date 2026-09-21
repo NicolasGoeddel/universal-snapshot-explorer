@@ -801,8 +801,12 @@ td.browser-cell-name {
 }
 
 .open-explorer-btn:hover {
-    background: var(--primary-accent);
-    color: #ffffff;
+    /* A tinted wash instead of a full solid fill: at this button's small size (8pt
+       text, 12px icon) flipping to solid accent + white text read as an unreadable
+       blue blob, especially with the light dark-mode accent. Keep the accent-colored
+       text/icon on hover and just raise the background/border for feedback. */
+    background: color-mix(in srgb, var(--primary-accent) 15%, var(--bg-surface));
+    color: var(--primary-accent);
     border-color: var(--primary-accent);
 }
 

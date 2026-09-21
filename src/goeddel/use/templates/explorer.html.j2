@@ -115,7 +115,7 @@
                             <span>{{ t('table.snapshots') }}</span>
                         </div>
                         <div class="snapshots-header-timeline">
-                            {{ render_snapshot_bar(folder.snapshots_bar, current_snapshot_id=folder.snapshot.id, is_header=true, with_links=true, root_name=root_name, path=directory_path, module='list') }}
+                            {{ render_snapshot_bar(folder.snapshots_bar, current_snapshot_id=folder.snapshot.id, is_header=true, with_links=true, root_name=root_name, path=directory_path, module='list', t=t) }}
                         </div>
                     </div>
                 </th>

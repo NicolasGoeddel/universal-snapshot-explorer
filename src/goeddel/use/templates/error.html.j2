@@ -83,7 +83,7 @@
                 </h4>
                 <div class="error-timeline-wrapper">
                     <div class="snapshots-header-timeline error-timeline-bar">
-                        {{ render_snapshot_bar(snapshots_bar, current_snapshot_id=snapshot.id if snapshot else 'Original', is_header=false, with_links=true, root_name=root_name, path=path, module='list') }}
+                        {{ render_snapshot_bar(snapshots_bar, current_snapshot_id=snapshot.id if snapshot else 'Original', is_header=false, with_links=true, root_name=root_name, path=path, module='list', t=t) }}
                     </div>
                 </div>
             </div>

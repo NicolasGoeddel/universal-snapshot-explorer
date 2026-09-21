@@ -755,10 +755,10 @@ class ExplorerView {
             const isMissing = link.dataset.isMissing === 'true';
 
             const currentBadge = isCurrent
-                ? `<span class="timeline-tooltip-badge">${window.clientI18n?.['snapshot.current'] || 'Aktuell'}</span>`
+                ? `<span class="timeline-tooltip-badge">${window.clientI18n?.['snapshot.current'] || 'Current'}</span>`
                 : '';
             const missingBadge = isMissing
-                ? `<span class="timeline-tooltip-badge missing">${window.clientI18n?.['badge.missing'] || 'Nicht vorhanden'}</span>`
+                ? `<span class="timeline-tooltip-badge missing">${window.clientI18n?.['badge.missing'] || 'Missing'}</span>`
                 : '';
 
             tooltip.innerHTML = `

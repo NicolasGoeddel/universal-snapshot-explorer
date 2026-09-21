@@ -14,7 +14,7 @@ M {{ x0 }} {{ y0 }} H {{ x1 }} V {{ y1 }} H {{ x0 }} Z
 {%- endif -%}
 {%- endmacro -%}
 
-{%- macro render_snapshot_bar(items, current_snapshot_id=none, is_header=false, is_sub_dataset=false, with_links=false, root_name='', path='', module='list') -%}
+{%- macro render_snapshot_bar(items, current_snapshot_id=none, is_header=false, is_sub_dataset=false, with_links=false, root_name='', path='', module='list', t=none) -%}
 {%- set bar_items = items | default([]) | list -%}
 {%- set bar_count = bar_items | length -%}
 {%- set cell_w = 20 -%}
@@ -43,7 +43,7 @@ M {{ x0 }} {{ y0 }} H {{ x1 }} V {{ y1 }} H {{ x0 }} Z
         <a href="{{ route_url(module, root_name, path, snap.id) }}"
            data-snap-id="{{ snap.id }}"
            data-snap-name="{{ snap.name }}"
-           data-snap-time="{{ snap.timestamp_formatted if snap.timestamp_formatted else '' }}"
+           data-snap-time="{{ t('badge.live') if (snap.is_original and t) else (snap.timestamp_formatted if snap.has_timestamp else '') }}"
            data-is-current="{{ 'true' if is_current else 'false' }}"
            data-is-missing="{{ 'true' if item.missing else 'false' }}">
         {%- endif %}

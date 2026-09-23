@@ -26,6 +26,32 @@
     font-weight: 700;
 }
 
+/* Refresh button tucked into the top-right corner of the table header (last cell),
+   styled as a header control rather than a pill. The cell reserves room for it so
+   the label never runs underneath, and the column auto-fit measures that padding. */
+#rootbrowser th.root-refresh-cell {
+    padding-right: 34px;
+}
+
+#rootbrowser th.root-refresh-cell .nav-controls {
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+}
+
+#rootbrowser th.root-refresh-cell .refresh-btn {
+    width: 24px;
+    height: 22px;
+    border-radius: 4px;
+    color: var(--text-muted);
+}
+
+#rootbrowser th.root-refresh-cell .refresh-btn:hover {
+    background: var(--row-hover);
+    color: var(--primary-accent);
+}
+
 #rootbrowser {
     --index-top-height: 76px;
     margin-top: 0;

@@ -96,12 +96,51 @@ class BtrfsConfig(BaseModel):
     snapshot_patterns: tuple[str, ...] = ()
 
 
+class SecurityConfig(BaseModel):
+    """
+    Configuration for authenticated access and POSIX ACL enforcement.
+
+    USE has no built-in login of its own: `trusted_user_header` names an HTTP
+    header a fronting reverse proxy is trusted to set after authenticating the
+    request (e.g. oauth2-proxy's `X-Forwarded-User`, or `Remote-User` from an
+    OIDC-aware proxy) -- USE never terminates auth itself. When `enabled` is
+    True, every browse/download/diff request is checked against the real POSIX
+    ACLs already present on the underlying filesystem (read from the
+    `system.posix_acl_access` xattr), using the header's value as the Unix
+    username and that user's NSS-resolved group
+    membership -- the exact same permission model the filesystem itself already
+    enforces for that user elsewhere (e.g. over Samba/NFS), so access here can
+    never be wider than what the user could already reach directly.
+
+    Defaults to disabled, matching this project's pre-existing unauthenticated
+    behavior -- this is strictly opt-in.
+
+    `impersonate_users` supports running as a standalone instance with no
+    fronting auth proxy at all, while still enforcing real POSIX ACLs rather
+    than opening everything up: when `enabled` is True but a request carries
+    no `trusted_user_header` value, it's normally denied outright (there is no
+    identity to check ACLs against). If this list is non-empty instead, the
+    request is treated as a *union* of every listed user's identity: a path
+    is accessible if ANY of them could read/traverse it as themselves.
+    This is deliberately more permissive than any single one of those users,
+    so only list users whose combined access is acceptable to expose without
+    per-request authentication.
+    """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+    enabled: bool = False
+    trusted_user_header: str = "Remote-User"
+    impersonate_users: tuple[str, ...] = ()
+
+
 class AppConfig(BaseModel):
     """Main application configuration."""
 
     roots: dict[str, RootConfig] = Field(default_factory=dict)
     zfs: ZfsConfig = Field(default_factory=ZfsConfig)
     btrfs: BtrfsConfig = Field(default_factory=BtrfsConfig)
+    security: SecurityConfig = Field(default_factory=SecurityConfig)
     loglevel: LogLevel = LogLevel.INFO
 
 
@@ -312,6 +351,7 @@ def load_config(
             roots=merged_roots,
             zfs=app_cfg.zfs,
             btrfs=app_cfg.btrfs,
+            security=app_cfg.security,
             loglevel=app_cfg.loglevel,
         )
 

@@ -238,16 +238,44 @@ class FSNode:
 
     @property
     def is_accessible(self) -> bool:
-        """Returns True if the current process has read permission for this node."""
+        """
+        Returns True if the current process has read permission for this node,
+        AND (when security.enabled), the currently authenticated user's
+        POSIX ACL access allows it too.
+        """
         if not self.does_exist:
             return True
         try:
             real_path = self._root_folder.real_path(self.path, self.snapshot)
             if self.is_symlink:
-                return os.access(real_path, os.R_OK, follow_symlinks=False)
-            return os.access(real_path, os.R_OK)
+                if not os.access(real_path, os.R_OK, follow_symlinks=False):
+                    return False
+            elif not os.access(real_path, os.R_OK):
+                return False
         except OSError:
             return False
+
+        from ...security import can_access_child, get_current_username
+
+        return can_access_child(self._root_folder, self.path, self.snapshot, get_current_username())
+
+    @property
+    def is_stat_visible(self) -> bool:
+        """
+        Returns True if this node's metadata (size, mtime, mode, owner, ...) may
+        be shown at all, independent of `is_accessible` (which additionally
+        requires the content itself to be readable). Real `stat()` only needs
+        traverse permission on the parent directory, not read on the target, so
+        a file can be stat-visible without being accessible (content denied,
+        metadata shown), but never the other way around: `is_accessible` implies
+        stat-visible.
+        """
+        if not self.does_exist:
+            return True
+
+        from ...security import can_view_metadata, get_current_username
+
+        return can_view_metadata(self._root_folder, self.path, self.snapshot, get_current_username())
 
     @property
     def size(self) -> int | None:

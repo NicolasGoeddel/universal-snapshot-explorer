@@ -91,6 +91,18 @@ def get_detail_content(request: Request, full_path: str = "", snapshot: str | No
     config = get_app_config(request)
     decoded_root_name, file_path, root_folder = resolve_root_and_subpath(full_path, config)
     file = root_folder.get_file(path=file_path, snapshot=snapshot)
+
+    # The security middleware already checked ancestor traversal and read access for
+    # this exact (path, snapshot) pair before this route ran, but that only covers
+    # the requested version. The timeline below spans every snapshot the file has
+    # ever existed in, and per-version ACLs aren't individually re-checked (see the
+    # "Cache trap"/per-version note in docs/architecture/backend.md). A hard 403 here,
+    # gated on the one node the URL actually names, keeps a guessed/known path from
+    # revealing that a file exists (and its size/mtime history) to a user who
+    # shouldn't be able to see it.
+    if not file.is_accessible:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     versions = file.version_history(reverse=True)
 
     if not file.does_exist and not any(v.entry.does_exist for v in versions):

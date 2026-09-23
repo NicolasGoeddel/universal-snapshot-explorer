@@ -20,8 +20,6 @@
     --snap-6: #8b5cf6;
     --snap-missing: #000000;
 
-    --breadcrumb-bg: var(--primary-accent);
-    --breadcrumb-text: #ffffff;
     --bg-header: #f4f4f4;
     --bg-header-alt: #f0f0f0;
     --row-odd: #f8f6f2;
@@ -31,6 +29,8 @@
     --primary-hover: #0057ac;
     --text-muted: #64748b;
     --text-very-muted: #94a3b8;
+    --toolbar-hover: color-mix(in srgb, var(--primary-accent) 11%, transparent);
+    --toolbar-pressed: color-mix(in srgb, var(--primary-accent) 20%, transparent);
     --icon-color: var(--icon-color);
     --badge-created-bg: #dcfce7;
     --badge-created-border: #bbf7d0;
@@ -89,9 +89,6 @@
     /* darker violet */
     --snap-missing: #000000;
 
-    --breadcrumb-bg: #1e3a8a;
-    /* dark blue */
-    --breadcrumb-text: #e2e8f0;
     --bg-header: #0f172a;
     --bg-header-alt: #1e293b;
     --row-odd: #1e293b;
@@ -101,6 +98,8 @@
     --primary-hover: #7dd3fc;
     --text-muted: #94a3b8;
     --text-very-muted: #64748b;
+    --toolbar-hover: color-mix(in srgb, var(--primary-accent) 14%, transparent);
+    --toolbar-pressed: color-mix(in srgb, var(--primary-accent) 24%, transparent);
     --icon-color: #cbd5e1;
     --badge-created-bg: #064e3b;
     --badge-created-border: #065f46;
@@ -815,28 +814,80 @@ tr.row-missing td {
     color: var(--text-very-muted);
 }
 
-/* Pill buttons of the global controls (help, language, theme) and the error page */
-.breadcrumb {
-    text-decoration: none;
-    background: var(--breadcrumb-bg);
-    color: var(--breadcrumb-text);
-    padding: 5px 12px;
-    border-radius: 12px;
-    font-weight: 500;
-    font-size: 12px;
+/* Toolbar primitives: flat, 28px-tall controls with a subtle accent-tinted
+   hover. Generic building blocks - not tied to any one part of the page.
+   The path bar (path_bar.css) builds its own segments on top of these. */
+.toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background-color 0.12s, color 0.12s;
+}
+
+.toolbar-btn:hover {
+    background: var(--toolbar-hover);
+    color: var(--primary-accent);
+}
+
+.toolbar-btn:active {
+    background: var(--toolbar-pressed);
+}
+
+.toolbar-item {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 4px;
+    color: var(--text-main);
+    font-weight: 500;
+    text-decoration: none;
     white-space: nowrap;
-}
-
-.breadcrumb:hover {
-    background: var(--primary-hover);
-    color: #ffffff;
-}
-
-a.breadcrumb {
     cursor: pointer;
+    transition: background-color 0.12s, color 0.12s;
+}
+
+.toolbar-item:hover {
+    background: var(--toolbar-hover);
+}
+
+.toolbar-caret {
+    margin-left: -2px;
+    opacity: 0.5;
+}
+
+.toolbar-btn:focus-visible,
+.toolbar-item:focus-visible {
+    outline: 2px solid var(--primary-accent);
+    outline-offset: -2px;
+}
+
+/* Global controls (help, language, theme): plain utility icons, so unlike the
+   path bar's toolbar-items (bold, named-segment styling) these stay muted
+   and only pick up the accent color on hover, matching .toolbar-btn. */
+.global-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+}
+
+.global-controls .toolbar-item {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.global-controls .toolbar-item:hover {
+    color: var(--primary-accent);
 }
 
 .file-download-link {

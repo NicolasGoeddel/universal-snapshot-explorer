@@ -10,8 +10,6 @@
     --pathbar-bg-focus: #ffffff;
     --pathbar-border: rgba(0, 0, 0, 0.0803);
     --pathbar-divider: rgba(0, 0, 0, 0.2);
-    --pathbar-hover: color-mix(in srgb, var(--primary-accent) 11%, transparent);
-    --pathbar-pressed: color-mix(in srgb, var(--primary-accent) 20%, transparent);
     --pathbar-icon-home: #64748b;
     --pathbar-icon-root: #3e8100;
     --pathbar-icon-snapshot: #0284c7;
@@ -29,8 +27,6 @@
     --pathbar-bg-focus: rgba(0, 0, 0, 0.3);
     --pathbar-border: rgba(255, 255, 255, 0.0698);
     --pathbar-divider: rgba(255, 255, 255, 0.1395);
-    --pathbar-hover: color-mix(in srgb, var(--primary-accent) 14%, transparent);
-    --pathbar-pressed: color-mix(in srgb, var(--primary-accent) 24%, transparent);
     --pathbar-icon-home: #94a3b8;
     --pathbar-icon-root: #84cc16;
     --pathbar-icon-snapshot: #38bdf8;
@@ -68,71 +64,49 @@
     box-shadow: inset 0 -1px 0 var(--primary-accent);
 }
 
-.pathbar-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 28px;
-    padding: 0 8px;
-    border-radius: 4px;
-    color: var(--text-main);
-    font-weight: 500;
-    text-decoration: none;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background-color 0.12s, color 0.12s;
-}
-
-.pathbar-item:hover {
-    background: var(--pathbar-hover);
-}
-
-.pathbar-item.home .pathbar-icon {
+/* Path segments and the snapshot indicator are .toolbar-item (main.css) plus
+   the coloring/weight below - the path bar's own domain-specific styling. */
+.toolbar-item.home .pathbar-icon {
     color: var(--pathbar-icon-home);
 }
 
-.pathbar-item.root .pathbar-icon {
+.toolbar-item.root .pathbar-icon {
     color: var(--pathbar-icon-root);
 }
 
-.pathbar-item.snapshot .pathbar-icon {
+.toolbar-item.snapshot .pathbar-icon {
     color: var(--pathbar-icon-snapshot);
 }
 
-.pathbar-item.root {
+.toolbar-item.root {
     font-weight: 650;
 }
 
-.pathbar-caret {
-    margin-left: -2px;
-    opacity: 0.5;
-}
-
-.pathbar-item.snapshot.static {
+.toolbar-item.snapshot.static {
     cursor: default;
 }
 
-.pathbar-item.snapshot.static:hover {
+.toolbar-item.snapshot.static:hover {
     background: none;
 }
 
 /* Lit up while browsing a past snapshot, so it's obvious you're not looking at "Now" */
-.pathbar-item.snapshot.in-past,
-.pathbar-item.snapshot.in-past:hover {
+.toolbar-item.snapshot.in-past,
+.toolbar-item.snapshot.in-past:hover {
     background: var(--pathbar-past-bg);
     color: var(--pathbar-past-text);
     box-shadow: inset 0 0 0 1px var(--pathbar-past-ring);
 }
 
-.pathbar-item.snapshot.dropdown.in-past:hover {
+.toolbar-item.snapshot.dropdown.in-past:hover {
     background: var(--pathbar-past-bg-hover);
 }
 
-.pathbar-item.snapshot.in-past .pathbar-icon {
+.toolbar-item.snapshot.in-past .pathbar-icon {
     color: var(--pathbar-past-icon);
 }
 
-.pathbar-item.snapshot.in-past .breadcrumb-snapshot-time {
+.toolbar-item.snapshot.in-past .breadcrumb-snapshot-time {
     color: inherit;
     opacity: 0.8;
 }
@@ -187,7 +161,7 @@
 
 .path-seg .path-crumb:hover,
 .path-seg .path-chevron:hover {
-    background: var(--pathbar-hover);
+    background: var(--toolbar-hover);
 }
 
 .path-crumb.current {
@@ -224,7 +198,7 @@ span.path-crumb.current:hover {
 }
 
 .path-seg .path-chevron.open {
-    background: var(--pathbar-pressed);
+    background: var(--toolbar-pressed);
     color: var(--primary-accent);
 }
 
@@ -232,9 +206,7 @@ span.path-crumb.current:hover {
     transform: rotate(90deg);
 }
 
-.path-chevron:focus-visible,
-.pathbar-btn:focus-visible,
-.pathbar-item:focus-visible {
+.path-chevron:focus-visible {
     outline: 2px solid var(--primary-accent);
     outline-offset: -2px;
 }
@@ -262,30 +234,7 @@ span.path-crumb.current:hover {
     gap: 2px;
 }
 
-.pathbar-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: background-color 0.12s, color 0.12s;
-}
-
-.pathbar-btn:hover {
-    background: var(--pathbar-hover);
-    color: var(--primary-accent);
-}
-
-.pathbar-btn:active {
-    background: var(--pathbar-pressed);
-}
-
+/* Refresh button is a plain .toolbar-btn (main.css) */
 .refresh-btn svg {
     transition: transform 0.35s ease;
 }

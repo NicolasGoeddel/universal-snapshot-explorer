@@ -1,10 +1,12 @@
-<div class="global-controls" style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
-    <div class="breadcrumb" id="shortcuts-help-btn" style="cursor: pointer;" title="{{ t('shortcuts.title') }} (h / ?)">
+<div class="global-controls">
+    <button type="button" class="toolbar-btn" id="shortcuts-help-btn" title="{{ t('shortcuts.title') }} (h / ?)">
         {{ lucide('keyboard', size=16) }}
-    </div>
+    </button>
 
-    <div class="breadcrumb dropdown" style="cursor: pointer;">
-        {{ lang | upper }} <span style="margin-left: 4px; display: inline-flex; align-items: center;">{{ lucide('chevron-down', size=14) }}</span>
+    <div class="toolbar-item dropdown">
+        {{ lucide('languages', size=15) }}
+        <span>{{ lang | upper }}</span>
+        {{ lucide('chevron-down', size=13, class_='toolbar-caret') }}
         <div class="dropdown-content" style="right: 0; left: auto; min-width: 100px;">
             {% for code, name in languages.items() %}
             <a href="/set-language/{{ code }}">{{ name }}</a>
@@ -12,11 +14,11 @@
         </div>
     </div>
 
-    <div class="breadcrumb dropdown" id="theme-switcher" style="cursor: pointer; display: inline-flex; align-items: center;">
-        <span class="icon-light-theme" style="display:none; align-items: center; justify-content: center;">{{ lucide('sun', size=16) }}</span>
-        <span class="icon-dark-theme" style="display:none; align-items: center; justify-content: center;">{{ lucide('moon', size=16) }}</span>
-        <span class="icon-system-theme" style="display:none; align-items: center; justify-content: center;">{{ lucide('monitor', size=16) }}</span>
-        <span style="margin-left: 4px; display: inline-flex; align-items: center;">{{ lucide('chevron-down', size=14) }}</span>
+    <div class="toolbar-item dropdown" id="theme-switcher">
+        <span class="icon-light-theme" style="display:none; align-items: center; justify-content: center;">{{ lucide('sun', size=15) }}</span>
+        <span class="icon-dark-theme" style="display:none; align-items: center; justify-content: center;">{{ lucide('moon', size=15) }}</span>
+        <span class="icon-system-theme" style="display:none; align-items: center; justify-content: center;">{{ lucide('monitor', size=15) }}</span>
+        {{ lucide('chevron-down', size=13, class_='toolbar-caret') }}
 
         <div class="dropdown-content" style="right: 0; left: auto; min-width: 100px;">
             <a href="#" onclick="setTheme('light'); return false;">{{ lucide('sun', size=14) }} <span style="margin-left: 4px;">{{ t('theme.light') }}</span></a>

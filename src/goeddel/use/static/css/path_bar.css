@@ -15,6 +15,12 @@
     --pathbar-icon-home: #64748b;
     --pathbar-icon-root: #3e8100;
     --pathbar-icon-snapshot: #0284c7;
+    /* Snapshot selector while a past snapshot is shown */
+    --pathbar-past-bg: #fef3c7;
+    --pathbar-past-bg-hover: #fde68a;
+    --pathbar-past-ring: #fbbf24;
+    --pathbar-past-text: #92400e;
+    --pathbar-past-icon: #d97706;
 }
 
 [data-theme="dark"] {
@@ -28,6 +34,11 @@
     --pathbar-icon-home: #94a3b8;
     --pathbar-icon-root: #84cc16;
     --pathbar-icon-snapshot: #38bdf8;
+    --pathbar-past-bg: rgba(245, 158, 11, 0.16);
+    --pathbar-past-bg-hover: rgba(245, 158, 11, 0.26);
+    --pathbar-past-ring: rgba(251, 191, 36, 0.45);
+    --pathbar-past-text: #fcd34d;
+    --pathbar-past-icon: #fbbf24;
 }
 
 /* One strip styled after the Windows 11 Explorer address bar: flat segments, chevrons
@@ -37,7 +48,7 @@
     align-items: center;
     gap: 1px;
     min-height: 38px;
-    margin: 2px 0;
+    margin: 6px 0 2px;
     padding: 4px 4px 4px 5px;
     background: var(--pathbar-bg);
     border: 1px solid var(--pathbar-border);
@@ -105,6 +116,27 @@
     background: none;
 }
 
+/* Lit up while browsing a past snapshot, so it's obvious you're not looking at "Now" */
+.pathbar-item.snapshot.in-past,
+.pathbar-item.snapshot.in-past:hover {
+    background: var(--pathbar-past-bg);
+    color: var(--pathbar-past-text);
+    box-shadow: inset 0 0 0 1px var(--pathbar-past-ring);
+}
+
+.pathbar-item.snapshot.dropdown.in-past:hover {
+    background: var(--pathbar-past-bg-hover);
+}
+
+.pathbar-item.snapshot.in-past .pathbar-icon {
+    color: var(--pathbar-past-icon);
+}
+
+.pathbar-item.snapshot.in-past .breadcrumb-snapshot-time {
+    color: inherit;
+    opacity: 0.8;
+}
+
 .breadcrumb-snapshot-time {
     color: var(--text-muted);
     font-size: 8.5pt;
@@ -112,10 +144,16 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* Hover dropdowns (root, snapshot) open a little below their segment */
+/* The snapshot hover dropdown opens a little below its segment */
 .pathbar .dropdown-content {
     margin-top: 4px;
     border-radius: 8px;
+}
+
+/* The snapshot dropdown sits at the right end of the bar: open it leftwards */
+.pathbar-actions .dropdown-content {
+    left: auto;
+    right: 0;
 }
 
 .pathbar .dropdown::after {
@@ -126,13 +164,6 @@
     right: 0;
     top: 100%;
     height: 6px;
-}
-
-.pathbar-sep {
-    display: inline-flex;
-    align-items: center;
-    color: var(--text-very-muted);
-    padding: 0 1px;
 }
 
 /* Path segments: name + chevron form a split button, like the Windows address bar */
@@ -208,7 +239,7 @@ span.path-crumb.current:hover {
     outline-offset: -2px;
 }
 
-/* Trailing actions (refresh), set apart by a short divider */
+/* Trailing actions (snapshot selector, refresh), set apart by a short divider */
 .pathbar-actions {
     display: inline-flex;
     align-items: center;
@@ -306,6 +337,10 @@ span.path-crumb.current:hover {
 .path-menu-item svg {
     flex-shrink: 0;
     color: #d97706;
+}
+
+.path-menu-item.is-root svg {
+    color: var(--pathbar-icon-root);
 }
 
 .path-menu-item span {

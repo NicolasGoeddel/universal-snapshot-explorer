@@ -2,7 +2,8 @@
  * Path bar (breadcrumbs.html.j2) behaviour:
  *  - each `.path-chevron` between path segments opens a menu listing that folder's
  *    subfolders (fetched from /api/snapshot-state), while clicking the segment's name still
- *    navigates to it.
+ *    navigates to it. A chevron with `data-menu-template` instead shows that server-rendered
+ *    <template>'s items (the home chevron's list of roots).
  *  - once a menu is open, hovering another chevron switches to its menu.
  *  - clicking the empty area of the path line switches to the editable path input.
  *
@@ -81,16 +82,27 @@ class PathBar {
     }
 
     async open(chevron, focusMenu) {
-        const segUrl = this.segmentUrl(chevron);
-        if (!segUrl) return;
+        const template = chevron.dataset.menuTemplate
+            ? document.getElementById(chevron.dataset.menuTemplate)
+            : null;
+        const segUrl = template ? null : this.segmentUrl(chevron);
+        if (!template && !segUrl) return;
 
         if (this.openChevron) this.setChevronState(this.openChevron, false);
         this.openChevron = chevron;
         this.setChevronState(chevron, true);
 
         const menu = this.ensureMenu();
-        menu.innerHTML = `<div class="path-menu-status"><span class="path-menu-spinner"></span></div>`;
         menu.classList.add('visible');
+
+        if (template) {
+            this.requestSeq++; // drop any subfolder request still in flight
+            menu.replaceChildren(template.content.cloneNode(true));
+            this.showLoaded(chevron, focusMenu);
+            return;
+        }
+
+        menu.innerHTML = `<div class="path-menu-status"><span class="path-menu-spinner"></span></div>`;
         this.position(chevron);
 
         const apiUrl = segUrl.pathname.replace(/^\/list\//, '/api/snapshot-state/') + segUrl.search;
@@ -120,7 +132,14 @@ class PathBar {
         if (seq !== this.requestSeq || this.openChevron !== chevron) return;
 
         this.render(chevron, segUrl, folders);
+        this.showLoaded(chevron, focusMenu);
+    }
+
+    /** Final positioning once the menu holds its items; keyboard openers get focus inside. */
+    showLoaded(chevron, focusMenu) {
+        const menu = this.menu;
         this.position(chevron);
+        menu.querySelector('.path-menu-item.active')?.scrollIntoView({ block: 'nearest' });
         if (focusMenu) {
             const target = menu.querySelector('.path-menu-item.active') || menu.querySelector('.path-menu-item');
             target?.focus();
@@ -165,7 +184,6 @@ class PathBar {
             frag.appendChild(item);
         });
         menu.appendChild(frag);
-        menu.querySelector('.path-menu-item.active')?.scrollIntoView({ block: 'nearest' });
     }
 
     position(chevron) {

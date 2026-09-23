@@ -361,6 +361,8 @@ class ExplorerView {
 
         const snapDropdown = document.getElementById('breadcrumb-snapshot-dropdown');
         if (snapDropdown) {
+            // Highlights the selector whenever a past snapshot (anything but the live filesystem) is shown
+            snapDropdown.classList.toggle('in-past', targetSnapshotId !== 'Original');
             snapDropdown.querySelectorAll('.snapshot-dropdown-item').forEach((item) => {
                 const snapId = this.extractSnapIdFromHref(item);
                 if (snapId === targetSnapshotId) {

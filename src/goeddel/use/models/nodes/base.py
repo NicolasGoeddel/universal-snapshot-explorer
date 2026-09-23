@@ -16,6 +16,7 @@ from ..types import (
     GroupId,
     GroupName,
     SnapshotBarItem,
+    SymlinkInfo,
     UserId,
     UserName,
 )
@@ -160,6 +161,21 @@ class FSNode:
     @property
     def symlink_target_filename(self) -> str | None:
         return None
+
+    @property
+    def symlink_info(self) -> SymlinkInfo:
+        """The symlink_* fields above, bundled for ``**entry.symlink_info``
+        expansion into a dict literal. Empty for non-symlinks."""
+        if not self.is_symlink:
+            return {}
+        return {
+            "symlink_target": self.symlink_target,
+            "symlink_is_broken": self.symlink_is_broken,
+            "symlink_target_is_dir": self.symlink_target_is_dir,
+            "symlink_resolved_subpath": self.symlink_resolved_subpath,
+            "symlink_resolved_parent_subpath": self.symlink_resolved_parent_subpath,
+            "symlink_target_filename": self.symlink_target_filename,
+        }
 
     @property
     def symlink_final_real_path(self) -> str | None:

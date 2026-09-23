@@ -26,6 +26,8 @@ from .types import (
     GroupMap,
     GroupName,
     PathCacheKey,
+    SnapshotStateEntry,
+    SnapshotStateResponse,
     UserId,
     UserMap,
     UserName,
@@ -656,7 +658,7 @@ class RootFolder:
             "header_bar": header_bar_str,
         }
 
-    def get_snapshot_state(self, path: FilePath, snapshot: str | None) -> dict[str, object]:
+    def get_snapshot_state(self, path: FilePath, snapshot: str | None) -> SnapshotStateResponse:
         """
         Returns state metadata for all entries in a directory under a specific snapshot
         for instantaneous flicker-free frontend updates.
@@ -678,7 +680,7 @@ class RootFolder:
                 "entries": {},
             }
 
-        entries_data: dict[str, dict[str, object]] = {}
+        entries_data: dict[str, SnapshotStateEntry] = {}
         for filename in folder.content():
             entry = folder[filename]
             if not entry.does_exist:
@@ -711,17 +713,6 @@ class RootFolder:
                 else:
                     size_human = f"{entry.size} files" if entry.is_folder and entry.size is not None else entry.size_human
 
-                symlink_info: dict[str, object] = {}
-                if entry.is_symlink:
-                    symlink_info = {
-                        "symlink_target": entry.symlink_target,
-                        "symlink_is_broken": entry.symlink_is_broken,
-                        "symlink_target_is_dir": entry.symlink_target_is_dir,
-                        "symlink_resolved_subpath": entry.symlink_resolved_subpath,
-                        "symlink_resolved_parent_subpath": entry.symlink_resolved_parent_subpath,
-                        "symlink_target_filename": entry.symlink_target_filename,
-                    }
-
                 entries_data[filename] = {
                     "does_exist": True,
                     "is_folder": entry.is_folder,
@@ -735,13 +726,13 @@ class RootFolder:
                     "size": entry.size if entry.size is not None else 0,
                     "owner": f"{entry.owner}:{entry.group}",
                     "group": entry.group,
-                    "mode_human": entry.mode_human,
+                    "mode_human": entry.mode_human or "–",
                     "mode_octal": entry.mode_octal or "0000",
                     "mtime_fmt": mtime_fmt,
                     "mtime_iso": mtime_iso,
                     "ctime_fmt": ctime_fmt,
                     "ctime_iso": ctime_iso,
-                    **symlink_info,
+                    **entry.symlink_info,
                 }
 
         return {

@@ -1250,6 +1250,15 @@ kbd {
     color: #ffffff;
 }
 
+/* Help icon inside a column header; its explanation is the native title tooltip */
+.col-help {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 5px;
+    color: var(--text-muted);
+    cursor: help;
+}
+
 /* Custom Checkbox Styling */
 .custom-checkbox {
     appearance: none;

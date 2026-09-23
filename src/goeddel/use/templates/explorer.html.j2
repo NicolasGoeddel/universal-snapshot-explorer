@@ -81,6 +81,7 @@
                     <div class="snapshots-header-container">
                         <div class="snapshots-header-title-row sortable" data-sort-type="snapshot-bar" data-default-dir="desc">
                             <span>{{ t('table.snapshots') }}</span>
+                            <span class="col-help" title="{{ t('table.snapshots_help') }}">{{ lucide('circle-question-mark', size=13) }}</span>
                         </div>
                         <div class="snapshots-header-timeline">
                             {{ render_snapshot_bar(folder.snapshots_bar, current_snapshot_id=folder.snapshot.id, is_header=true, with_links=true, root_name=root_name, path=directory_path, module='list', t=t) }}

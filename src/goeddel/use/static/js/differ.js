@@ -23,6 +23,7 @@ class DifferHost {
         this.initialSnapshots = initSnaps ? initSnaps.split(',') : [];
 
         this.timelineSvg = document.getElementById('diff-timeline-svg');
+        this.segmentsGroup = document.getElementById('diff-timeline-segments');
         this.bracketPath = document.getElementById('active-pair-bracket');
         this.stepperContainer = document.getElementById('diff-stepper');
         this.stepperPrevBtn = document.getElementById('stepper-prev');
@@ -48,6 +49,7 @@ class DifferHost {
         this.scrollMemory = null;
         this.plugins = new Map();
         this.activePlugin = null;
+        this.criteriaRequestId = 0;
 
         this.isDragging = false;
         this.dragStartIndex = -1;
@@ -56,9 +58,71 @@ class DifferHost {
 
         this.initTimeline();
         this.initHideToggle();
+        this.initCriteria();
         this.initStepper();
         this.initPluginSelector();
         this.initKeyboardNav();
+    }
+
+    // Mirrors the file browser's snapshot-bar criteria: which metadata changes count
+    // as "a change" when computing snapshot colors (and therefore which snapshots
+    // "Hide unchanged" treats as duplicates). Colors are computed server-side, so a
+    // change refetches just the timeline segments for the new criteria and swaps
+    // them in, the same way the file browser refetches its snapshot bars.
+    initCriteria() {
+        if (typeof SnapshotCriteriaManager === 'undefined') return;
+        const container = document.querySelector('.snapshot-criteria-dropdown');
+        if (!container) return;
+
+        this.criteriaManager = new SnapshotCriteriaManager({
+            container,
+            onChange: (attrs) => this.applyCriteria(attrs),
+        });
+
+        // The server always renders with every criterion; apply saved custom criteria
+        // right away (mirrors the file browser applying stored criteria on load).
+        const active = this.criteriaManager.getActiveAttributes();
+        if (active.length < SnapshotCriteriaManager.ALL_ATTRIBUTES.length) {
+            this.applyCriteria(active);
+        }
+    }
+
+    async applyCriteria(attrs) {
+        const isAll = attrs.length >= SnapshotCriteriaManager.ALL_ATTRIBUTES.length;
+        // Toggling several checkboxes quickly fires overlapping requests; only the
+        // latest one may be applied.
+        const requestId = ++this.criteriaRequestId;
+
+        let apiUrl = `/api/diff-timeline/${encodeURIComponent(this.rootName)}`;
+        if (this.filePath?.trim()) {
+            apiUrl += `/-/${this.filePath.split('/').map(encodeURIComponent).join('/')}`;
+        }
+        if (!isAll) apiUrl += `?attributes=${encodeURIComponent(attrs.join(','))}`;
+
+        let html;
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error(`Timeline API failed with status ${response.status}`);
+            html = await response.text();
+        } catch (err) {
+            console.error('[DifferHost] Failed reloading timeline:', err);
+            return;
+        }
+        if (requestId !== this.criteriaRequestId) return;
+
+        const previousGroupIds = (this.groups[this.activeGroupIndex] || []).map((s) => s.id).join(',');
+
+        this.segmentsGroup.innerHTML = html;
+        this.readSegments();
+        if (this.hideUnchanged) this.remapSelectionToRepresentatives();
+        this.layoutTimeline();
+        this.updateSnapshotGroups();
+        // Stay on the pair being viewed if it still exists under the new grouping.
+        const sameGroupIdx = this.groups.findIndex((g) => g.map((s) => s.id).join(',') === previousGroupIds);
+        this.activeGroupIndex = Math.max(0, sameGroupIdx);
+        this.updateTimelineUI();
+        this.updateStepperUI();
+        this.loadCurrentGroup();
     }
 
     registerPlugin(id, plugin) {
@@ -155,10 +219,10 @@ class DifferHost {
         return blocks;
     }
 
-    initTimeline() {
-        if (!this.timelineSvg) return;
-
-        const segmentNodes = this.timelineSvg.querySelectorAll('.timeline-segment');
+    // (Re)builds segment state from the server-rendered segment elements. Called on
+    // load and again whenever a criteria change swaps in freshly colored segments.
+    readSegments() {
+        const segmentNodes = this.segmentsGroup.querySelectorAll('.timeline-segment');
         this.segments = Array.from(segmentNodes).map((node, index) => {
             const pillEl = node.querySelector('.segment-pill');
             const rectEl = node.querySelector('.segment-focus-rect');
@@ -190,6 +254,14 @@ class DifferHost {
         });
 
         this.versionBlocks = this.computeVersionBlocks();
+    }
+
+    initTimeline() {
+        if (!this.timelineSvg) return;
+
+        this.readSegments();
+        // Criteria changes only recolor, never add or remove snapshots, so the
+        // server-rendered sizing stays valid for the page's whole lifetime.
         this.origViewBox = this.timelineSvg.getAttribute('viewBox');
         this.origMinWidth = this.timelineSvg.style.minWidth;
         this.origMaxWidth = this.timelineSvg.style.maxWidth;

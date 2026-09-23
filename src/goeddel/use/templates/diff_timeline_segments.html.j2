@@ -1,0 +1,39 @@
+{#- The diff timeline's pills, one <g> per snapshot. Rendered both inline by
+    diff.html.j2 and on its own by /api/diff-timeline, so a criteria change can swap
+    in freshly colored segments without a page reload (like the file browser
+    refetching /api/snapshot-bars), while colors and pill shapes stay computed
+    server-side only. -#}
+{% from 'snapshots_bar.svg.j2' import pill_path %}
+{%- set bar_items = snapshots_bar | default([]) | list -%}
+{%- set bar_count = bar_items | length -%}
+{%- set cell_w = 20 -%}
+{%- set seg_w = 20 -%}
+{%- set seg_h = 16 -%}
+{%- set corner_r = 5 -%}
+{%- for item in bar_items %}
+    {%- set snap = item.snapshot -%}
+    {#- bar_items is newest-first; displayed oldest-to-newest (left-to-right),
+        so the visual x position is the mirrored index and the neighbor used
+        for each side's pill rounding is swapped accordingly. -#}
+    {%- set x = (bar_count - 1 - loop.index0) * cell_w -%}
+    {%- set older_item = bar_items[loop.index0 + 1] if loop.index0 < bar_count - 1 else none -%}
+    {%- set newer_item = bar_items[loop.index0 - 1] if loop.index0 > 0 else none -%}
+    {%- set round_left = (older_item is none or older_item.color != item.color or older_item.missing != item.missing) -%}
+    {%- set round_right = (newer_item is none or newer_item.color != item.color or newer_item.missing != item.missing) -%}
+    {%- set d = pill_path(x, 10, seg_w, seg_h, corner_r, round_left, round_right) -%}
+    {%- set fill_color = "var(--snap-missing)" if (item.missing or item.color is none) else (item.color if (item.color is string and item.color.startswith("var(")) else "var(--snap-" ~ item.color ~ ")") -%}
+    <g class="timeline-segment"
+       data-snap-id="{{ snap.id if snap else '' }}"
+       data-snap-name="{{ snap.name if snap else '' }}"
+       data-snap-time="{{ t('badge.live') if (snap and snap.is_original) else (snap.timestamp_formatted if (snap and snap.has_timestamp) else '') }}"
+       data-is-missing="{{ 'true' if item.missing else 'false' }}"
+       data-snap-index="{{ loop.index0 }}"
+       data-color="{{ item.color }}">
+        <path d="{{ d }}" fill="{{ fill_color }}" stroke="rgba(0,0,0,0.18)" stroke-width="1" class="segment-pill" />
+        {%- if item.missing %}
+            <line x1="{{ x + 3 }}" y1="12" x2="{{ x + 17 }}" y2="24" stroke="#ef4444" stroke-width="1.5" pointer-events="none" />
+            <line x1="{{ x + 17 }}" y1="12" x2="{{ x + 3 }}" y2="24" stroke="#ef4444" stroke-width="1.5" pointer-events="none" />
+        {%- endif %}
+        <rect class="segment-focus-rect" x="{{ x }}" y="9" width="{{ seg_w }}" height="{{ seg_h + 2 }}" rx="0" />
+    </g>
+{%- endfor %}

@@ -1,10 +1,12 @@
-{% from 'snapshots_bar.svg.j2' import pill_path %}
+{% from 'criteria_dropdown.html.j2' import snapshot_criteria_dropdown %}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2' %}
+    <link rel="stylesheet" href="{{ static_url('css/criteria_manager.css') }}">
     <link rel="stylesheet" href="{{ static_url('css/differ.css') }}">
     <link rel="stylesheet" href="{{ static_url('css/pygments.css') }}">
+    <script src="{{ static_url('js/criteria_manager.js') }}" defer></script>
     <script src="{{ static_url('js/differ.js') }}" defer></script>
     <script src="{{ static_url('js/plugins/text_differ.js') }}" defer></script>
 </head>
@@ -43,6 +45,7 @@
                 <div class="differ-timeline-header-group">
                     <span class="timeline-title">{{ lucide('history', size=15) }} {{ t('diff.timeline_title') }}</span>
                     <div class="differ-timeline-header-actions">
+                        {{ snapshot_criteria_dropdown('diff', t, icon_size=14) }}
                         <label class="differ-toggle-label differ-hide-toggle" title="{{ t('diff.hide_unchanged_hint') }}">
                             <input type="checkbox" id="diff-hide-unchanged-check" checked>
                             <span>{{ t('diff.hide_unchanged') }}</span>
@@ -54,9 +57,6 @@
                     {%- set bar_items = snapshots_bar | default([]) | list -%}
                     {%- set bar_count = bar_items | length -%}
                     {%- set cell_w = 20 -%}
-                    {%- set seg_w = 20 -%}
-                    {%- set seg_h = 16 -%}
-                    {%- set corner_r = 5 -%}
                     {%- set total_w = bar_count * cell_w -%}
                     {#- Same bounded-width approach as the browser's snapshot bars: pills
                         stay close to square, grow a little when there are few snapshots,
@@ -69,34 +69,9 @@
                             <path id="active-pair-bracket" class="bracket-path" d="" />
                         </g>
 
-                        {%- for item in bar_items %}
-                            {%- set snap = item.snapshot -%}
-                            {#- bar_items is newest-first; displayed oldest-to-newest (left-to-right),
-                                so the visual x position is the mirrored index and the neighbor used
-                                for each side's pill rounding is swapped accordingly. -#}
-                            {%- set x = (bar_count - 1 - loop.index0) * cell_w -%}
-                            {%- set older_item = bar_items[loop.index0 + 1] if loop.index0 < bar_count - 1 else none -%}
-                            {%- set newer_item = bar_items[loop.index0 - 1] if loop.index0 > 0 else none -%}
-                            {%- set round_left = (older_item is none or older_item.color != item.color or older_item.missing != item.missing) -%}
-                            {%- set round_right = (newer_item is none or newer_item.color != item.color or newer_item.missing != item.missing) -%}
-                            {%- set d = pill_path(x, 10, seg_w, seg_h, corner_r, round_left, round_right) -%}
-                            {%- set fill_color = "var(--snap-missing)" if (item.missing or item.color is none) else (item.color if (item.color is string and item.color.startswith("var(")) else "var(--snap-" ~ item.color ~ ")") -%}
-                            {%- set is_initially_selected = (snap and (snap.id == left_snapshot_id or snap.id == right_snapshot_id)) -%}
-                            <g class="timeline-segment {{ 'selected' if is_initially_selected else '' }}"
-                               data-snap-id="{{ snap.id if snap else '' }}"
-                               data-snap-name="{{ snap.name if snap else '' }}"
-                               data-snap-time="{{ t('badge.live') if (snap and snap.is_original) else (snap.timestamp_formatted if (snap and snap.has_timestamp) else '') }}"
-                               data-is-missing="{{ 'true' if item.missing else 'false' }}"
-                               data-snap-index="{{ loop.index0 }}"
-                               data-color="{{ item.color }}">
-                                <path d="{{ d }}" fill="{{ fill_color }}" stroke="rgba(0,0,0,0.18)" stroke-width="1" class="segment-pill" />
-                                {%- if item.missing %}
-                                    <line x1="{{ x + 3 }}" y1="12" x2="{{ x + 17 }}" y2="24" stroke="#ef4444" stroke-width="1.5" pointer-events="none" />
-                                    <line x1="{{ x + 17 }}" y1="12" x2="{{ x + 3 }}" y2="24" stroke="#ef4444" stroke-width="1.5" pointer-events="none" />
-                                {%- endif %}
-                                <rect class="segment-focus-rect" x="{{ x }}" y="9" width="{{ seg_w }}" height="{{ seg_h + 2 }}" rx="0" />
-                            </g>
-                        {%- endfor %}
+                        <g id="diff-timeline-segments">
+                            {% include 'diff_timeline_segments.html.j2' %}
+                        </g>
                     </svg>
                 </div>
             </div>

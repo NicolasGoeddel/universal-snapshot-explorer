@@ -1,4 +1,5 @@
 {% from 'snapshots_bar.svg.j2' import render_snapshot_bar %}
+{% from 'criteria_dropdown.html.j2' import snapshot_criteria_dropdown %}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
@@ -42,40 +43,7 @@
                     <span class="toggle-badge" id="badge-changed-count" style="display: none;">0</span>
                 </span>
             </label>
-            <div class="dropdown snapshot-criteria-dropdown">
-                <button type="button" class="criteria-dropdown-btn" id="btn-snapshot-criteria" title="{{ t('filter.criteria_title') }}">
-                    {{ lucide('sliders-horizontal', size=15, class_='text-muted') }}
-                    <span>{{ t('filter.criteria') }}</span>
-                    <span class="criteria-badge" style="display: none;">5</span>
-                    {{ lucide('chevron-down', size=13, class_='text-muted') }}
-                </button>
-                <div class="dropdown-content criteria-dropdown-content" id="snapshot-criteria-menu">
-                    <div class="criteria-header">
-                        <span>{{ t('filter.criteria_header') }}</span>
-                        <button type="button" class="criteria-reset-btn">{{ t('filter.criteria_reset') }}</button>
-                    </div>
-                    <label class="criteria-checkbox-item">
-                        <input type="checkbox" class="custom-checkbox criteria-checkbox" data-attr="size" checked>
-                        <span>{{ t('filter.criteria_attr_size') }}</span>
-                    </label>
-                    <label class="criteria-checkbox-item">
-                        <input type="checkbox" class="custom-checkbox criteria-checkbox" data-attr="mtime" checked>
-                        <span>{{ t('filter.criteria_attr_mtime') }}</span>
-                    </label>
-                    <label class="criteria-checkbox-item">
-                        <input type="checkbox" class="custom-checkbox criteria-checkbox" data-attr="ctime" checked>
-                        <span>{{ t('filter.criteria_attr_ctime') }}</span>
-                    </label>
-                    <label class="criteria-checkbox-item">
-                        <input type="checkbox" class="custom-checkbox criteria-checkbox" data-attr="mode" checked>
-                        <span>{{ t('filter.criteria_attr_mode') }}</span>
-                    </label>
-                    <label class="criteria-checkbox-item">
-                        <input type="checkbox" class="custom-checkbox criteria-checkbox" data-attr="owner" checked>
-                        <span>{{ t('filter.criteria_attr_owner') }}</span>
-                    </label>
-                </div>
-            </div>
+            {{ snapshot_criteria_dropdown('snapshot', t) }}
             <div class="dropdown col-visibility-dropdown">
                 <button type="button" class="col-visibility-toolbar-btn" id="btn-column-visibility" title="{{ t('columns.toolbar_button') }}">
                     {{ lucide('columns-3', size=15, class_='text-muted') }}

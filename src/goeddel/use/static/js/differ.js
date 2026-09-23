@@ -36,10 +36,11 @@ class DifferHost {
         this.viewport = document.getElementById('diff-viewport');
         this.loadingIndicator = document.getElementById('diff-loading');
 
-        this.mode = localStorage.getItem('use_diff_timeline_mode') || 'changes'; // 'changes' | 'all'
+        // hideUnchanged is set from localStorage inside initTimeline(), before the
+        // timeline's first layout pass.
+        this.hideUnchanged = true;
         this.segments = [];
         this.versionBlocks = [];
-        this.selectedBlockIndices = new Set();
         this.selectedSnapshotIds = new Set();
         this.activeGroupIndex = 0;
         this.groups = [];
@@ -54,7 +55,7 @@ class DifferHost {
         this.dragIsCtrl = false;
 
         this.initTimeline();
-        this.initModes();
+        this.initHideToggle();
         this.initStepper();
         this.initPluginSelector();
         this.initKeyboardNav();
@@ -159,6 +160,9 @@ class DifferHost {
 
         const segmentNodes = this.timelineSvg.querySelectorAll('.timeline-segment');
         this.segments = Array.from(segmentNodes).map((node, index) => {
+            const pillEl = node.querySelector('.segment-pill');
+            const rectEl = node.querySelector('.segment-focus-rect');
+            const lineEls = Array.from(node.querySelectorAll('line'));
             return {
                 id: node.dataset.snapId || '',
                 name: node.dataset.snapName || '',
@@ -168,12 +172,29 @@ class DifferHost {
                 index,
                 versionBlockIndex: 0,
                 element: node,
+                pillEl,
+                rectEl,
+                lineEls,
+                currentX: 0,
+                // Cached so "show all" can restore the server-rendered (possibly
+                // merged-run) layout exactly, instead of trying to recompute it.
+                origPillD: pillEl ? pillEl.getAttribute('d') : '',
+                origRectX: rectEl ? rectEl.getAttribute('x') : '0',
+                origLineCoords: lineEls.map((l) => ({
+                    x1: l.getAttribute('x1'),
+                    x2: l.getAttribute('x2'),
+                    y1: l.getAttribute('y1'),
+                    y2: l.getAttribute('y2'),
+                })),
             };
         });
 
         this.versionBlocks = this.computeVersionBlocks();
+        this.origViewBox = this.timelineSvg.getAttribute('viewBox');
+        this.origMinWidth = this.timelineSvg.style.minWidth;
+        this.origMaxWidth = this.timelineSvg.style.maxWidth;
 
-        this.selectedBlockIndices = new Set(this.versionBlocks.map((b) => b.index));
+        this.hideUnchanged = localStorage.getItem('use_diff_hide_unchanged') !== 'false';
 
         if (this.initialSnapshots.length > 0) {
             this.initialSnapshots.forEach((id) => this.selectedSnapshotIds.add(id));
@@ -182,12 +203,14 @@ class DifferHost {
             this.selectedSnapshotIds.add(this.segments[0].id);
             this.selectedSnapshotIds.add(this.segments[1].id);
         }
+        if (this.hideUnchanged) this.remapSelectionToRepresentatives();
 
         this.timelineSvg.addEventListener('mousedown', (e) => this.onTimelineMouseDown(e));
         window.addEventListener('mousemove', (e) => this.onTimelineMouseMove(e));
         window.addEventListener('mouseup', () => this.onTimelineMouseUp());
         this.timelineSvg.addEventListener('mouseleave', () => this.clearVersionHover());
 
+        this.layoutTimeline();
         this.updateSnapshotGroups();
 
         if (this.initialSnapshots.length > 0 && this.groups.length > 0) {
@@ -206,42 +229,118 @@ class DifferHost {
         this.updateTimelineUI();
     }
 
-    initModes() {
-        const btnModeChanges = document.getElementById('btn-mode-changes');
-        const btnModeAll = document.getElementById('btn-mode-all');
+    isRepresentative(seg) {
+        const block = this.versionBlocks[seg.versionBlockIndex];
+        return Boolean(block && block.segments[block.segments.length - 1] === seg);
+    }
 
-        const setMode = (newMode) => {
-            if (this.mode === newMode) return;
-            this.mode = newMode;
-            localStorage.setItem('use_diff_timeline_mode', newMode);
-
-            if (btnModeChanges) btnModeChanges.classList.toggle('active', newMode === 'changes');
-            if (btnModeAll) btnModeAll.classList.toggle('active', newMode === 'all');
-
-            if (newMode === 'changes') {
-                this.selectedBlockIndices = new Set(this.versionBlocks.map((b) => b.index));
-            } else {
-                const currentGroup = this.groups[this.activeGroupIndex] || [];
-                this.selectedSnapshotIds.clear();
-                if (currentGroup.length > 0) {
-                    currentGroup.forEach((s) => this.selectedSnapshotIds.add(s.id));
-                } else if (this.segments.length >= 2) {
-                    this.selectedSnapshotIds.add(this.segments[0].id);
-                    this.selectedSnapshotIds.add(this.segments[1].id);
-                }
+    // If the current selection includes a snapshot that's about to be hidden (not the
+    // most recent one in its unchanged run), snap it to that run's representative
+    // instead, so hiding never silently strands the selection on invisible pills.
+    remapSelectionToRepresentatives() {
+        const remapped = new Set();
+        for (const id of this.selectedSnapshotIds) {
+            const seg = this.segments.find((s) => s.id === id);
+            if (!seg) continue;
+            const block = this.versionBlocks[seg.versionBlockIndex];
+            const rep = block ? block.segments[block.segments.length - 1] : seg;
+            remapped.add(rep.id);
+        }
+        if (remapped.size < 2) {
+            for (const block of this.versionBlocks) {
+                remapped.add(block.segments[block.segments.length - 1].id);
+                if (remapped.size >= 2) break;
             }
+        }
+        this.selectedSnapshotIds = remapped;
+    }
 
+    pillPathIsolated(x) {
+        const r = 5;
+        const y = 10;
+        const w = 20;
+        const h = 16;
+        return `M ${x + r} ${y} H ${x + w - r} A ${r} ${r} 0 0 1 ${x + w} ${y + r} V ${y + h - r} A ${r} ${r} 0 0 1 ${x + w - r} ${y + h} H ${x + r} A ${r} ${r} 0 0 1 ${x} ${y + h - r} V ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} Z`;
+    }
+
+    // Lays out the timeline for the current hideUnchanged state. When hiding, only
+    // each unchanged run's representative pill is shown, repacked left-to-right with
+    // no gaps left by the hidden ones — an actual filter, not just dimming. When
+    // showing all, restores the exact server-rendered (possibly merged-run) layout.
+    layoutTimeline() {
+        const cellW = 20;
+
+        if (!this.hideUnchanged) {
+            for (const seg of this.segments) {
+                seg.element.style.display = '';
+                if (seg.pillEl) seg.pillEl.setAttribute('d', seg.origPillD);
+                if (seg.rectEl) seg.rectEl.setAttribute('x', seg.origRectX);
+                seg.lineEls.forEach((l, i) => {
+                    const c = seg.origLineCoords[i];
+                    if (!c) return;
+                    l.setAttribute('x1', c.x1);
+                    l.setAttribute('x2', c.x2);
+                    l.setAttribute('y1', c.y1);
+                    l.setAttribute('y2', c.y2);
+                });
+                seg.currentX = Number(seg.origRectX) || 0;
+            }
+            if (this.timelineSvg && this.origViewBox) {
+                this.timelineSvg.setAttribute('viewBox', this.origViewBox);
+                this.timelineSvg.style.minWidth = this.origMinWidth;
+                this.timelineSvg.style.maxWidth = this.origMaxWidth;
+            }
+            return;
+        }
+
+        const visible = this.segments.filter((seg) => this.isRepresentative(seg));
+        const visibleIds = new Set(visible.map((s) => s.id));
+        // this.segments (and therefore `visible`) stays in newest-first order for the
+        // pairing/grouping logic elsewhere, but the timeline displays oldest-to-newest
+        // (left-to-right), so the x position is the mirrored index.
+        visible.forEach((seg, vIdx) => {
+            const x = (visible.length - 1 - vIdx) * cellW;
+            seg.element.style.display = '';
+            seg.currentX = x;
+            if (seg.pillEl) seg.pillEl.setAttribute('d', this.pillPathIsolated(x));
+            if (seg.rectEl) seg.rectEl.setAttribute('x', String(x));
+            if (seg.lineEls.length === 2) {
+                seg.lineEls[0].setAttribute('x1', String(x + 3));
+                seg.lineEls[0].setAttribute('x2', String(x + 17));
+                seg.lineEls[1].setAttribute('x1', String(x + 17));
+                seg.lineEls[1].setAttribute('x2', String(x + 3));
+            }
+        });
+        for (const seg of this.segments) {
+            if (!visibleIds.has(seg.id)) seg.element.style.display = 'none';
+        }
+
+        const totalW = visible.length * cellW;
+        if (this.timelineSvg) {
+            this.timelineSvg.setAttribute('viewBox', `-1 -6 ${totalW + 2} 34`);
+            // Same bounded sizing as the initial render: close to square, a little
+            // wider when few pills are visible, squished rather than stretched when many.
+            const minCell = 8;
+            const maxCell = 28;
+            this.timelineSvg.style.minWidth = `${visible.length * minCell}px`;
+            this.timelineSvg.style.maxWidth = `${visible.length * maxCell}px`;
+        }
+    }
+
+    initHideToggle() {
+        const checkbox = document.getElementById('diff-hide-unchanged-check');
+        if (checkbox) checkbox.checked = this.hideUnchanged;
+
+        checkbox?.addEventListener('change', (e) => {
+            this.hideUnchanged = Boolean(e.target.checked);
+            localStorage.setItem('use_diff_hide_unchanged', String(this.hideUnchanged));
+            if (this.hideUnchanged) this.remapSelectionToRepresentatives();
             this.activeGroupIndex = 0;
+            this.layoutTimeline();
             this.updateSnapshotGroups();
             this.updateTimelineUI();
             this.loadCurrentGroup();
-        };
-
-        btnModeChanges?.addEventListener('click', () => setMode('changes'));
-        btnModeAll?.addEventListener('click', () => setMode('all'));
-
-        if (btnModeChanges) btnModeChanges.classList.toggle('active', this.mode === 'changes');
-        if (btnModeAll) btnModeAll.classList.toggle('active', this.mode === 'all');
+        });
     }
 
     getSegmentFromEvent(e) {
@@ -274,7 +373,7 @@ class DifferHost {
                 this.dragRange.add(i);
             }
             this.updateDragPreview();
-        } else if (this.mode === 'changes' && segment) {
+        } else if (segment) {
             this.highlightVersionHover(segment.versionBlockIndex);
         } else {
             this.clearVersionHover();
@@ -301,53 +400,50 @@ class DifferHost {
         }
 
         if (this.dragRange.size > 1) {
-            if (this.mode === 'changes') {
-                const touchedBlocks = new Set();
-                for (const idx of this.dragRange) {
-                    if (this.segments[idx]) touchedBlocks.add(this.segments[idx].versionBlockIndex);
-                }
-                if (!this.dragIsCtrl) this.selectedBlockIndices.clear();
-                for (const bIdx of touchedBlocks) this.selectedBlockIndices.add(bIdx);
-            } else {
-                if (!this.dragIsCtrl) this.selectedSnapshotIds.clear();
-                for (const idx of this.dragRange) {
-                    if (this.segments[idx]) this.selectedSnapshotIds.add(this.segments[idx].id);
-                }
-            }
+            const touchedIds = this.collectIdsForIndices(this.dragRange);
+            if (!this.dragIsCtrl) this.selectedSnapshotIds.clear();
+            for (const id of touchedIds) this.selectedSnapshotIds.add(id);
             this.activeGroupIndex = 0;
             this.updateSnapshotGroups();
             this.updateTimelineUI();
             this.loadCurrentGroup();
         } else if (this.dragStartIndex >= 0 && this.segments[this.dragStartIndex]) {
-            const seg = this.segments[this.dragStartIndex];
-            if (this.mode === 'changes') {
-                const blockIdx = seg.versionBlockIndex;
-                if (this.dragIsCtrl) {
-                    if (this.selectedBlockIndices.has(blockIdx)) this.selectedBlockIndices.delete(blockIdx);
-                    else this.selectedBlockIndices.add(blockIdx);
-                    this.activeGroupIndex = 0;
-                } else {
-                    this.selectedBlockIndices.clear();
-                    this.selectedBlockIndices.add(blockIdx);
-                    this.activeGroupIndex = 0;
+            const touchedIds = this.collectIdsForIndices(new Set([this.dragStartIndex]));
+            if (this.dragIsCtrl) {
+                const allSelected = touchedIds.every((id) => this.selectedSnapshotIds.has(id));
+                for (const id of touchedIds) {
+                    if (allSelected) this.selectedSnapshotIds.delete(id);
+                    else this.selectedSnapshotIds.add(id);
                 }
             } else {
-                if (this.dragIsCtrl) {
-                    if (this.selectedSnapshotIds.has(seg.id)) this.selectedSnapshotIds.delete(seg.id);
-                    else this.selectedSnapshotIds.add(seg.id);
-                    this.activeGroupIndex = 0;
-                } else {
-                    this.selectedSnapshotIds.clear();
-                    this.selectedSnapshotIds.add(seg.id);
-                    this.activeGroupIndex = 0;
-                }
+                this.selectedSnapshotIds.clear();
+                for (const id of touchedIds) this.selectedSnapshotIds.add(id);
             }
+            this.activeGroupIndex = 0;
             this.updateSnapshotGroups();
             this.updateTimelineUI();
             this.loadCurrentGroup();
         }
         this.dragStartIndex = -1;
         this.dragRange.clear();
+    }
+
+    // Maps raw segment indices (which may span hidden duplicates) to the snapshot ids
+    // that a click/drag should actually select: the whole block's representative when
+    // hiding unchanged runs, or the literal snapshots themselves when showing all.
+    collectIdsForIndices(indexSet) {
+        if (this.hideUnchanged) {
+            const blocks = new Set();
+            for (const idx of indexSet) {
+                const seg = this.segments[idx];
+                if (seg) blocks.add(seg.versionBlockIndex);
+            }
+            return [...blocks].map((bIdx) => {
+                const block = this.versionBlocks[bIdx];
+                return block.segments[block.segments.length - 1].id;
+            });
+        }
+        return [...indexSet].map((idx) => this.segments[idx]?.id).filter(Boolean);
     }
 
     updateDragPreview() {
@@ -358,7 +454,6 @@ class DifferHost {
     }
 
     isSegmentSelected(seg) {
-        if (this.mode === 'changes') return this.selectedBlockIndices.has(seg.versionBlockIndex);
         return this.selectedSnapshotIds.has(seg.id);
     }
 
@@ -373,17 +468,16 @@ class DifferHost {
             }
         }
 
-        let selected = [];
-        if (this.mode === 'changes') {
-            const activeBlocks = this.versionBlocks.filter((b) => this.selectedBlockIndices.has(b.index));
-            if (activeBlocks.length > 0) {
-                selected = activeBlocks.map((b) => b.segments[b.segments.length - 1]);
-                if (activeBlocks[0].segments.length > 1) {
-                    selected.unshift(activeBlocks[0].segments[0]); // to get the full transition
-                }
+        let selected = this.segments.filter((s) => this.selectedSnapshotIds.has(s.id));
+
+        // When hiding unchanged runs, extend the newest selected block back to its
+        // newest member so the first transition compares against the true newest
+        // state, not just the oldest snapshot that still had it.
+        if (this.hideUnchanged && selected.length > 0) {
+            const firstBlock = this.versionBlocks[selected[0].versionBlockIndex];
+            if (firstBlock && firstBlock.segments.length > 1 && firstBlock.segments[0] !== selected[0]) {
+                selected = [firstBlock.segments[0], ...selected];
             }
-        } else {
-            selected = this.segments.filter((s) => this.selectedSnapshotIds.has(s.id));
         }
 
         if (selected.length >= groupSize) {
@@ -393,6 +487,12 @@ class DifferHost {
         } else if (selected.length >= 2) {
             this.groups.push(selected);
         }
+
+        // `selected` (and therefore each group's internal newer/older order, which the
+        // plugin relies on for left/right diff semantics) stays newest-first, but the
+        // step sequence itself should read like the timeline: Step 1 = oldest
+        // transition, Step N = newest, and "next" moves forward in time.
+        this.groups.reverse();
 
         if (this.activeGroupIndex >= this.groups.length) {
             this.activeGroupIndex = Math.max(0, this.groups.length - 1);
@@ -415,18 +515,19 @@ class DifferHost {
 
         const bracket = this.timelineSvg?.querySelector('#active-pair-bracket');
         if (bracket) {
-            if (activeGroup.length >= 2) {
-                const indices = activeGroup.map((s) => s.index);
-                const minIdx = Math.min(...indices);
-                const maxIdx = Math.max(...indices);
-
-                const minX = minIdx * 20 + 10;
-                const maxX = maxIdx * 20 + 10;
+            // Bracket only across segments actually visible on the (possibly
+            // compacted) timeline; a hidden group member has no coordinate to
+            // bracket, and currentX (not the raw index) reflects any compaction.
+            const visibleActive = activeGroup.filter((s) => s.element.style.display !== 'none');
+            if (visibleActive.length >= 2) {
+                const xs = visibleActive.map((s) => s.currentX + 10);
+                const minX = Math.min(...xs);
+                const maxX = Math.max(...xs);
 
                 let d = `M ${minX} 8.5 V 1.5 H ${maxX} V 8.5`;
                 // Add middle prongs
-                for (let i = 1; i < activeGroup.length - 1; i++) {
-                    const prongX = activeGroup[i].index * 20 + 10;
+                for (let i = 1; i < visibleActive.length - 1; i++) {
+                    const prongX = visibleActive[i].currentX + 10;
                     d += ` M ${prongX} 1.5 V 8.5`;
                 }
 

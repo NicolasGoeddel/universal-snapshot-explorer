@@ -85,24 +85,29 @@ body.differ-view {
     color: var(--primary-accent);
 }
 
-/* Differ Toolbar */
+/* Differ Toolbar: flows as part of the sticky header (same background, no card
+   border/shadow/radius of its own) so it reads as one continuous surface with the
+   title row and breadcrumbs above it, instead of a floating panel stacked on top of
+   the main content. The sticky header's own bottom border is the only seam between
+   this and the viewport below. */
 .differ-toolbar {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 8px 12px;
-    margin-top: 6px;
+}
+
+.differ-panel-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 0 6px;
     background: var(--bg-surface);
-    border: 1px solid var(--border-color-light);
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 /* Row 1: Timeline Selector */
 .differ-timeline-container {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     width: 100%;
 }
 
@@ -110,53 +115,41 @@ body.differ-view {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-}
-
-.differ-mode-toggle {
-    display: inline-flex;
-    border: 1px solid var(--border-color-light);
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.differ-mode-btn {
-    padding: 2px 7px;
-    font-size: 0.72rem;
-    font-weight: 500;
-    border: none;
-    border-right: 1px solid var(--border-color-light);
-    background: var(--bg-surface);
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.differ-mode-btn:last-child {
-    border-right: none;
-}
-
-.differ-mode-btn.active {
-    background: var(--primary-accent);
-    color: #ffffff;
-    font-weight: 600;
-}
-
-.differ-timeline-label {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
+    gap: 12px;
 }
 
 .timeline-title {
-    font-size: 0.8rem;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--text-main);
 }
 
 .timeline-hint {
-    font-size: 0.72rem;
+    display: block;
+    font-size: 12px;
     color: var(--text-muted);
+}
+
+.differ-timeline-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.differ-hide-toggle {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    background: var(--bg-body);
+    border: 1px solid var(--border-color-light);
+    border-radius: 6px;
+}
+
+.differ-hide-toggle:hover {
+    border-color: var(--primary-accent);
 }
 
 .differ-timeline-bar-wrapper {
@@ -165,7 +158,7 @@ body.differ-view {
     width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 2px 4px;
+    padding: 6px 8px;
     background: var(--bg-body);
     border: 1px solid var(--border-color-light);
     border-radius: 6px;
@@ -179,6 +172,26 @@ body.differ-view {
     cursor: pointer;
     width: 100%;
     height: 32px;
+}
+
+/* Row 2: legend + stepper, so the stepper always has flanking context instead of
+   sitting alone in empty space when there's only one comparison group. */
+.differ-timeline-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+}
+
+.timeline-edge-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
 }
 
 .bracket-path {
@@ -217,13 +230,13 @@ body.differ-view {
     transition: stroke 0.15s ease;
 }
 
-.timeline-segment.active-left .segment-focus-rect {
+.timeline-segment.active-group-member .segment-focus-rect {
     stroke: #3b82f6;
     stroke-width: 2;
 }
 
-.timeline-segment.active-right .segment-focus-rect {
-    stroke: #10b981;
+.timeline-segment.version-hover .segment-focus-rect {
+    stroke: #94a3b8;
     stroke-width: 2;
 }
 
@@ -232,29 +245,12 @@ body.differ-view {
     stroke-width: 2;
 }
 
-/* Row 2: Controls Row */
-.differ-controls-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-    width: 100%;
-}
-
-.differ-controls-right {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
 /* Stepper */
 .differ-stepper-container {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 2px 6px;
+    padding: 3px 8px;
     background: var(--bg-body);
     border: 1px solid var(--border-color-light);
     border-radius: 6px;
@@ -264,8 +260,8 @@ body.differ-view {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     padding: 0;
     border: 1px solid var(--border-color-light);
     background: var(--bg-surface);
@@ -497,6 +493,11 @@ body.differ-view {
     cursor: pointer;
 }
 
+.differ-toggle-label input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+}
+
 .diff-stats-badge {
     display: inline-flex;
     align-items: center;
@@ -523,6 +524,8 @@ body.differ-view {
 /* Main Content Area */
 .differ-main-content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
     position: relative;
     overflow: hidden;
     margin: 0;
@@ -533,9 +536,25 @@ body.differ-view {
     box-shadow: none;
 }
 
+/* Diff Display Settings bar: lives directly above the viewport it controls
+   (instead of the far-away snapshot-selection toolbar) so the connection between
+   the two is obvious. */
+.differ-display-settings-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--bg-header, var(--bg-body));
+    border-bottom: 1px solid var(--border-color-light);
+}
+
 .diff-viewport {
     width: 100%;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
 }
 

@@ -725,7 +725,12 @@ class ExplorerView {
                 ? `<circle cx="${(count - 1 - currentIdx) * barWidth + 10}" cy="10" r="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>`
                 : '';
 
-        return `<svg class="snapshotbar${isSub ? ' is-sub-dataset' : ''}" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; max-width: ${totalWidth}px; height: 16px;">${inner}${circle}</svg>`;
+        // Bound pill width the same way the server-rendered bars are: close to
+        // square, a little wider when there are few snapshots, squished rather than
+        // stretched into blobs when there are many.
+        const minCell = 8;
+        const maxCell = 28;
+        return `<svg class="snapshotbar${isSub ? ' is-sub-dataset' : ''}" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; min-width: ${count * minCell}px; max-width: ${count * maxCell}px; height: 16px;">${inner}${circle}</svg>`;
     }
 
     initTimelineTooltip() {

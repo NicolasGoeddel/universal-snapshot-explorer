@@ -1106,6 +1106,9 @@ class ExplorerView {
 
         if (isExpanded) {
             this.collapseDescendants(path);
+            this.tbody
+                .querySelectorAll(`.folder-error-row[data-parent="${CSS.escape(path)}"]`)
+                .forEach((el) => el.remove());
             row.dataset.expanded = 'false';
             btn.classList.remove('opened');
             if (
@@ -1179,7 +1182,9 @@ class ExplorerView {
                     errorRow.className = 'folder-error-row';
                     errorRow.dataset.parent = path;
                     errorRow.dataset.level = String(level + 1);
-                    errorRow.innerHTML = `<td colspan="7" class="browser-cell-error" style="padding-left: calc(24px + 20px * ${level + 1});">🔒 <em>Zugriff verweigert (Permission denied): Keine Leseberechtigung für diesen Ordner</em></td>`;
+                    const fallbackMsg = 'Permission denied: No read access for this folder';
+                    const localizedMsg = window.clientI18n?.['error.permission_denied_folder'] || fallbackMsg;
+                    errorRow.innerHTML = `<td colspan="10" class="browser-cell-error" style="padding-left: calc(24px + 20px * ${level + 1});">🔒 <em>${localizedMsg}</em></td>`;
                     row.after(errorRow);
                     row.dataset.expanded = 'true';
                     btn.classList.add('opened');

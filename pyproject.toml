@@ -27,6 +27,7 @@ dev = [
     "coverage>=7.0.0",
     "httpx>=0.24.0",
     "types-pygments>=2.21.0.20260819",
+    "symbex>=2.0",
 ]
 
 [project.scripts]

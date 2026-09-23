@@ -815,13 +815,7 @@ tr.row-missing td {
     color: var(--text-very-muted);
 }
 
-.breadcrumbs {
-    display: flex;
-    align-items: center;
-    font-size: 14px;
-    padding: 2px 0;
-}
-
+/* Pill buttons of the global controls (help, language, theme) and the error page */
 .breadcrumb {
     text-decoration: none;
     background: var(--breadcrumb-bg);
@@ -841,51 +835,8 @@ tr.row-missing td {
     color: #ffffff;
 }
 
-.breadcrumb.home {
-    background: #4a5568;
-    font-weight: bold;
-}
-
-.breadcrumb.home:hover {
-    background: #2d3748;
-}
-
-.breadcrumb.root {
-    font-weight: bold;
-    background: #3e8100;
-    cursor: pointer;
-}
-
-.breadcrumb.root:hover {
-    font-weight: bold;
-    background: #285300;
-}
-
 a.breadcrumb {
     cursor: pointer;
-}
-
-.breadcrumb.snapshot-static {
-    background: #0284c7;
-    font-weight: 500;
-    cursor: default;
-}
-
-.breadcrumb.snapshot-static:hover {
-    background: #0284c7;
-}
-
-span.breadcrumb.current {
-    background: var(--bg-header-alt);
-    color: var(--text-main);
-    font-weight: 600;
-    border: 1px solid var(--border-color);
-    cursor: default;
-}
-
-span.breadcrumb.current:hover {
-    background: var(--bg-header-alt);
-    color: var(--text-main);
 }
 
 .file-download-link {
@@ -1235,55 +1186,6 @@ kbd {
     border-radius: 4px;
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
     margin: 0 2px;
-}
-
-/* Editable Breadcrumbs Path */
-.breadcrumbs-path-container {
-    display: inline-flex;
-    align-items: center;
-    flex-grow: 1;
-    min-width: 0;
-    position: relative;
-}
-
-.breadcrumbs-path-view {
-    display: inline-flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 2px;
-}
-
-.breadcrumbs-path-edit {
-    display: inline-flex;
-    align-items: center;
-    flex-grow: 1;
-    margin: 0 4px;
-}
-
-.breadcrumb-path-input {
-    width: 100%;
-    max-width: 600px;
-    height: 24px;
-    padding: 2px 8px;
-    font-size: 9.5pt;
-    font-family: ui-monospace, monospace, sans-serif;
-    color: var(--text-main);
-    background: var(--bg-surface);
-    border: 1px solid var(--primary-accent);
-    border-radius: 4px;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25);
-}
-
-.breadcrumb.path-edit-btn {
-    cursor: pointer;
-    padding: 4px 6px;
-    opacity: 0.7;
-    transition: opacity 0.15s;
-}
-
-.breadcrumb.path-edit-btn:hover {
-    opacity: 1;
 }
 
 /* Floating Timeline Tooltip */

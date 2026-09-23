@@ -459,7 +459,7 @@ td.browser-cell-name {
     width: 16px;
     height: 16px;
     margin-right: 4px;
-    vertical-align: -3px;
+    vertical-align: middle;
     stroke-width: 1.8px;
 }
 

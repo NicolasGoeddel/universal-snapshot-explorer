@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
-from ..dependencies import get_app_config
+from ..dependencies import get_app_config, render_lucide
 from ..utils.path_resolver import resolve_root_and_subpath
 
 router = APIRouter()
@@ -35,7 +35,14 @@ def get_snapshot_state_api(request: Request, full_path: str = "", snapshot: str 
     _ = request
     config = get_app_config(request)
     _, directory_path, root_folder = resolve_root_and_subpath(full_path, config)
-    return root_folder.get_snapshot_state(directory_path, snapshot)
+    data = root_folder.get_snapshot_state(directory_path, snapshot)
+    for meta in data.get("entries", {}).values():
+        # icon_name/icon_class are already the final, access-aware selection
+        # (FSNode.effective_icon_name/_class - see models/nodes/base.py), so
+        # this is a plain render, not a re-decision of which icon to show.
+        css_class = f"file-icon {meta.get('icon_class', '')}"
+        meta["icon_svg"] = render_lucide(meta.get("icon_name", "file"), size=16, **{"class": css_class})  # type: ignore[arg-type]
+    return data
 
 
 @router.post("/api/invalidate")

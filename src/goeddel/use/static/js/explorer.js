@@ -424,6 +424,9 @@ class ExplorerView {
                 if (nameCell) {
                     nameCell.classList.toggle('stroke', !doesExist);
                     nameCell.classList.toggle('node-locked', !meta.is_accessible);
+
+                    const iconEl = nameCell.querySelector('svg.file-icon');
+                    if (iconEl && meta.icon_svg) iconEl.outerHTML = meta.icon_svg;
                 }
 
                 // Update lock indicator
@@ -561,6 +564,9 @@ class ExplorerView {
                                 if (childNameCell) {
                                     childNameCell.classList.toggle('stroke', !childExists);
                                     childNameCell.classList.toggle('node-locked', !childMeta.is_accessible);
+
+                                    const childIconEl = childNameCell.querySelector('svg.file-icon');
+                                    if (childIconEl && childMeta.icon_svg) childIconEl.outerHTML = childMeta.icon_svg;
                                 }
 
                                 const childSizeCell = childRow.querySelector('.browser-cell-size');

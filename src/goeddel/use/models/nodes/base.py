@@ -225,6 +225,27 @@ class FSNode:
         )
 
     @property
+    def effective_icon_name(self) -> str:
+        """icon_name, plus the locked-folder override applied when access is denied.
+        Single source of truth for the row icon shown by both the Jinja templates
+        (folder_content.html.j2) and the snapshot-state API (explorer.js swaps this
+        icon in when a snapshot switch changes a row's existence/access)."""
+        return self._get_effective_icon_info()[0]
+
+    @property
+    def effective_icon_class(self) -> str:
+        return self._get_effective_icon_info()[1]
+
+    def _get_effective_icon_info(self) -> tuple[str, str]:
+        if not self.does_exist or self.is_accessible:
+            return self.icon_name, self.icon_class
+        if self.is_folder:
+            return "folder-lock", "icon-folder folder-locked"
+        if self.is_symlink:
+            return self.icon_name, self.icon_class
+        return self.icon_name, f"{self.icon_class} file-locked"
+
+    @property
     def filetype(self) -> str | None:
         return self._filetype
 

@@ -103,28 +103,30 @@ class TestAppRoutes(unittest.TestCase):
 
     def test_api_security_header_authorized(self) -> None:
         import pwd
+
         from goeddel.use.config import SecurityConfig
-        
+
         # Get actual username so the test temp files are authorized by ownership
         current_user = pwd.getpwuid(os.getuid()).pw_name
-        
+
         # Enable security requiring 'Remote-User'
         app.state.loaded_config = AppConfig(
             roots=self.config.roots,
             security=SecurityConfig(enabled=True, trusted_user_header="Remote-User", impersonate_users=()),
         )
-        
+
         # Request with header should succeed
         response = self.client.get("/api/snapshot-state/mock-root", headers={"Remote-User": current_user})
         self.assertEqual(response.status_code, 200)
-        
+
     def test_api_security_unauthorized(self) -> None:
         from goeddel.use.config import SecurityConfig
+
         app.state.loaded_config = AppConfig(
             roots=self.config.roots,
             security=SecurityConfig(enabled=True, trusted_user_header="Remote-User", impersonate_users=()),
         )
-        
+
         # Request without header should be forbidden
         response = self.client.get("/api/snapshot-state/mock-root")
         self.assertEqual(response.status_code, 403)

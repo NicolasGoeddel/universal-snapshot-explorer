@@ -4,7 +4,7 @@ import os
 import tempfile
 import unittest
 
-from goeddel.use.config import AppConfig, RootConfig, load_config
+from goeddel.use.config import RootConfig, load_config
 from goeddel.use.enums import FilesystemType
 
 
@@ -30,14 +30,14 @@ roots:
             temp_path = f.name
 
         try:
-            # We don't provide clients, so auto_discover will just skip finding new ones, 
+            # We don't provide clients, so auto_discover will just skip finding new ones,
             # but the merge logic will still run.
             app_cfg = load_config(temp_path)
-            
+
             self.assertTrue(app_cfg.security.enabled)
             self.assertEqual(app_cfg.security.trusted_user_header, "X-Proxy-User")
             self.assertEqual(app_cfg.security.impersonate_users, ("admin",))
-            
+
             self.assertIn("test-root", app_cfg.roots)
             self.assertEqual(app_cfg.roots["test-root"].filesystem_type, FilesystemType.GENERIC)
         finally:

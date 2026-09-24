@@ -12,17 +12,13 @@
     -webkit-user-select: none;
 }
 
-/* Multi-Selected Row Highlight */
-tr.selected-multi {
-    background-color: rgba(2, 132, 199, 0.08) !important;
+/* Multi-Selected Row Highlight (on the cells, so it gets the table's rounded row ends) */
+tr.selected-multi td {
+    background-color: color-mix(in srgb, var(--primary-accent) 8%, transparent) !important;
 }
 
-[data-theme="dark"] tr.selected-multi {
-    background-color: rgba(56, 189, 248, 0.12) !important;
-}
-
-tr.selected-multi.selected-row {
-    background-color: var(--table-row-selected-bg) !important;
+tr.selected-multi.selected-row td {
+    background-color: var(--table-row-selected) !important;
 }
 
 /* Keyboard / Shift-Range Selection Preview

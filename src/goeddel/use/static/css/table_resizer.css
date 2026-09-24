@@ -15,7 +15,7 @@ th.has-col-resizer {
 .col-resizer {
     position: absolute;
     top: 0;
-    right: -1px; /* Align with the border */
+    right: 0;
     transform: translateX(50%); /* Center the handle on the edge */
     width: 11px;
     height: 100%;

@@ -19,10 +19,10 @@ M {{ x0 }} {{ y0 }} H {{ x1 }} V {{ y1 }} H {{ x0 }} Z
 {%- set bar_count = bar_items | length -%}
 {%- set cell_w = 20 -%}
 {%- set seg_w = 19 -%}
-{%- set seg_h = 15 if is_header else 18 -%}
-{%- set corner_r = 5 if is_header else 6 -%}
-{%- set view_h = 18 if is_header else 21 -%}
-{%- set circle_cy = 8.5 if is_header else 10 -%}
+{%- set seg_h = 18 -%}
+{%- set corner_r = 6 -%}
+{%- set view_h = 21 -%}
+{%- set circle_cy = 10 -%}
 {%- set circle_r = 3.5 if (is_header or with_links) else 4 -%}
 {%- set total_w = bar_count * cell_w -%}
 {#- Bound each pill's rendered width instead of letting the SVG stretch to fill
@@ -56,8 +56,8 @@ M {{ x0 }} {{ y0 }} H {{ x1 }} V {{ y1 }} H {{ x0 }} Z
         {%- endif %}
         {%- if item.missing %}
             <path d="{{ d }}" fill="{{ fill_color }}" stroke="rgba(0,0,0,0.25)" stroke-width="1" class="{% if is_header or with_links %}header-snap-rect {{ 'current-snapshot-rect' if is_current else '' }}{% endif %}"/>
-            <line x1="{{ x + 3 }}" y1="{{ 2.5 if is_header else 3.5 }}" x2="{{ x + 16.5 }}" y2="{{ 13.5 if is_header else 16.5 }}" stroke="#ef4444" stroke-width="1.5"/>
-            <line x1="{{ x + 16.5 }}" y1="{{ 2.5 if is_header else 3.5 }}" x2="{{ x + 3 }}" y2="{{ 13.5 if is_header else 16.5 }}" stroke="#ef4444" stroke-width="1.5"/>
+            <line x1="{{ x + 3 }}" y1="3.5" x2="{{ x + 16.5 }}" y2="16.5" stroke="#ef4444" stroke-width="1.5"/>
+            <line x1="{{ x + 16.5 }}" y1="3.5" x2="{{ x + 3 }}" y2="16.5" stroke="#ef4444" stroke-width="1.5"/>
         {%- else %}
             <path d="{{ d }}" fill="{{ fill_color }}" stroke="{% if is_header or with_links %}rgba(0,0,0,0.15){% else %}rgba(0,0,0,0.12){% endif %}" stroke-width="1" class="{% if is_header or with_links %}header-snap-rect {{ 'current-snapshot-rect' if is_current else '' }}{% endif %}"/>
         {%- endif -%}

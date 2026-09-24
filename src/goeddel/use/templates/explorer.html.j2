@@ -4,6 +4,7 @@
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2' %}
+    <link rel="stylesheet" href="{{ static_url('css/file_browser.css') }}">
     <link rel="stylesheet" href="{{ static_url('css/criteria_manager.css') }}">
     <link rel="stylesheet" href="{{ static_url('css/column_visibility.css') }}">
     <script src="{{ static_url('js/criteria_manager.js') }}" defer></script>
@@ -70,16 +71,9 @@
                     <input type="checkbox" id="master-select-checkbox" class="custom-checkbox" title="{{ t('selection.select_all_visible') }}">
                 </th>
                 <th class="browser-header-name sortable" data-sort-type="text" data-col-key="name" data-elastic="true" data-default-pct="28" data-min-width="45">{{ t('table.name') }}</th>
-                <th class="browser-header-snapshots" data-col-key="snapshots" data-ignore-content="true" data-default-pct="27" data-min-width="120" data-soft-min="160" style="padding: 2px 8px;">
-                    <div class="snapshots-header-container">
-                        <div class="snapshots-header-title-row sortable" data-sort-type="snapshot-bar" data-default-dir="desc">
-                            <span>{{ t('table.snapshots') }}</span>
-                            <span class="col-help" title="{{ t('table.snapshots_help') }}">{{ lucide('circle-question-mark', size=13) }}</span>
-                        </div>
-                        <div class="snapshots-header-timeline">
-                            {{ render_snapshot_bar(folder.snapshots_bar, current_snapshot_id=folder.snapshot.id, is_header=true, with_links=true, root_name=root_name, path=directory_path, module='list', t=t) }}
-                        </div>
-                    </div>
+                <th class="browser-header-snapshots sortable" data-sort-type="snapshot-bar" data-default-dir="desc" data-col-key="snapshots" data-ignore-content="true" data-default-pct="27" data-min-width="120" data-soft-min="160">
+                    {{ t('table.snapshots') }}
+                    <span class="col-help" title="{{ t('table.snapshots_help') }}">{{ lucide('circle-question-mark', size=13) }}</span>
                 </th>
                 <th class="browser-header-size sortable" data-sort-type="number" data-col-key="size" data-default-pct="8" data-min-width="50">{{ t('table.size') }}</th>
                 <th class="browser-header-type sortable" data-sort-type="text" data-col-key="type" data-default-pct="9" data-min-width="45">{{ t('table.type') }}</th>
@@ -89,7 +83,7 @@
                 <th class="browser-header-ctime sortable" data-sort-type="date" data-col-key="ctime" data-default-pct="12" data-min-width="45">{{ t('table.changed') }}</th>
                 <th class="browser-header-actions" data-fixed-width="84" style="width: 84px; min-width: 84px; max-width: 84px;">
                     <div class="browser-cell-actions-wrapper">
-                        <a href="{{ base_url }}/detail/{{ root_name | quote_plus }}/{{ directory_path | quote_path }}?snapshot={{ folder.snapshot.id | quote_plus }}" title="{{ t('action.show_folder_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
+                        <a href="{{ base_url }}/detail/{{ root_name | quote_plus }}/{{ directory_path | quote_path }}?snapshot={{ folder.snapshot.id | quote_plus }}" title="{{ t('action.show_folder_details') }}" class="action-btn action-info">{{ lucide('info', size=16) }}</a>
                     </div>
                 </th>
             </tr>
@@ -102,7 +96,11 @@
                         <button type="button" class="filter-clear-btn" style="display: none;" title="{{ t('filter.clear') }}">&times;</button>
                     </div>
                 </td>
-                <td></td>
+                <td class="browser-filter-snapshots">
+                    <div class="snapshots-header-timeline">
+                        {{ render_snapshot_bar(folder.snapshots_bar, current_snapshot_id=folder.snapshot.id, is_header=true, with_links=true, root_name=root_name, path=directory_path, module='list', t=t) }}
+                    </div>
+                </td>
                 <td>
                     <div class="filter-input-wrapper">
                         <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="3" data-filter-type="size">

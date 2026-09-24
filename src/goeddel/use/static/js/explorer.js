@@ -213,7 +213,7 @@ class ExplorerView {
             const roundLeft = olderChar === null || olderChar !== char;
             const roundRight = newerChar === null || newerChar !== char;
             const x = (count - 1 - i) * 20;
-            const pathD = this.getPillPath(x + 0.5, 1, 19, 15, 5, roundLeft, roundRight);
+            const pathD = this.getPillPath(x + 0.5, 1, 19, 18, 6, roundLeft, roundRight);
 
             const path = links[i].querySelector('path');
             if (path) {
@@ -330,7 +330,7 @@ class ExplorerView {
                 if (!circle) {
                     const newCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                     newCircle.setAttribute('cx', String((snapLinks.length - 1 - idx) * 20 + 10));
-                    newCircle.setAttribute('cy', '8.5');
+                    newCircle.setAttribute('cy', '10');
                     newCircle.setAttribute('r', '3.5');
                     newCircle.setAttribute('fill', '#ffffff');
                     newCircle.setAttribute('stroke', '#1e293b');

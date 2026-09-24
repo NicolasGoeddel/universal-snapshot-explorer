@@ -6,10 +6,10 @@
 table.filebrowser>thead>tr.column-filter>td {
     position: sticky;
     top: calc(var(--top-header-height, 85px) + var(--header-row-height, 27px));
-    background-color: var(--bg-header-alt) !important;
+    background-color: var(--bg-surface) !important;
     padding: 2px 4px;
     z-index: 39;
-    border-bottom: 2px solid var(--border-color-light);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .filter-input-wrapper {
@@ -24,14 +24,23 @@ table.filebrowser>thead>tr.column-filter>td>input {
     width: 100%;
     height: auto;
     margin: 0;
-    padding: 3px 5px;
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 3px;
+    padding: 2px 7px;
+    background-color: var(--pathbar-bg);
+    border: 1px solid var(--pathbar-border);
+    border-radius: 4px;
     color: var(--text-main);
+    font-family: inherit;
     font-size: 9pt;
     box-sizing: border-box;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: background-color 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.filter-input-wrapper input::placeholder {
+    color: var(--text-very-muted);
+}
+
+.filter-input-wrapper input:hover {
+    background-color: var(--pathbar-bg-hover);
 }
 
 .filter-input-wrapper.has-filter input {
@@ -41,8 +50,9 @@ table.filebrowser>thead>tr.column-filter>td>input {
 .filter-input-wrapper input:focus,
 table.filebrowser>thead>tr.column-filter>td>input:focus {
     outline: none;
-    border-color: var(--primary-accent);
-    box-shadow: 0 0 3px rgba(0, 119, 204, 0.4);
+    background-color: var(--pathbar-bg-focus);
+    border-bottom-color: var(--primary-accent);
+    box-shadow: inset 0 -1px 0 var(--primary-accent);
 }
 
 .filter-badge {

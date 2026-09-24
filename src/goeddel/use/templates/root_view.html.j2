@@ -2,6 +2,7 @@
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2' %}
+    <link rel="stylesheet" href="{{ static_url('css/file_browser.css') }}">
     <link rel="stylesheet" href="{{ static_url('css/root_view.css') }}">
     <script src="{{ static_url('js/root_view.js') }}" defer></script>
     
@@ -42,7 +43,7 @@
                     data-expanded="true">
                     <td>
                         <div class="tree-cell">
-                            <span class="folder-toggle icon opened" title="Toggle group">▶</span>
+                            <span class="folder-toggle icon opened" title="Toggle group">{{ lucide('chevron-right', size=14) }}</span>
                             {% if root.group_type == 'zfs' %}
                             <img src="{{ static_url('img/logos/zfs.svg') }}" class="fs-logo" alt="ZFS">
                             {% elif root.group_type == 'btrfs' %}
@@ -71,7 +72,7 @@
                     <td>
                         <div class="tree-cell" style="padding-left: {{ root.level * 20 }}px;">
                             {% if root.has_children %}
-                            <span class="folder-toggle icon opened" title="Toggle hierarchy">▶</span>
+                            <span class="folder-toggle icon opened" title="Toggle hierarchy">{{ lucide('chevron-right', size=14) }}</span>
                             {% else %}
                             <span class="folder-spacer"></span>
                             {% endif %}
@@ -106,7 +107,7 @@
                     <td>
                         <div class="tree-cell" style="padding-left: {{ root.level * 20 }}px;">
                             {% if root.has_children %}
-                            <span class="folder-toggle icon opened" title="Toggle hierarchy">▶</span>
+                            <span class="folder-toggle icon opened" title="Toggle hierarchy">{{ lucide('chevron-right', size=14) }}</span>
                             {% else %}
                             <span class="folder-spacer"></span>
                             {% endif %}

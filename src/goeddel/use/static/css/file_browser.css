@@ -366,6 +366,41 @@ th.sort-flash {
     font-style: italic;
 }
 
+/* Selection column */
+.filebrowser :is(.browser-header-select, .browser-cell-select) > .custom-checkbox {
+    display: flex;
+    margin-inline: auto;
+}
+
+.filebrowser > thead > .column-filter > .browser-filter-select {
+    text-align: center;
+}
+
+.invert-selection-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--text-muted);
+    vertical-align: middle;
+    cursor: pointer;
+    transition: color 0.12s, background-color 0.12s;
+
+    &:hover {
+        color: var(--primary-accent);
+        background-color: var(--toolbar-hover);
+    }
+
+    &:active {
+        background-color: var(--toolbar-pressed);
+    }
+}
+
 /* Actions column */
 .filebrowser :is(.browser-header-actions, .browser-cell-actions) {
     width: 84px;

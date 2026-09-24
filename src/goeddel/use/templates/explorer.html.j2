@@ -88,7 +88,9 @@
                 </th>
             </tr>
             <tr class="column-filter">
-                <td class="browser-filter-select"></td>
+                <td class="browser-filter-select">
+                    <button type="button" class="invert-selection-btn" id="btn-invert-selection" title="{{ t('selection.invert') }}" aria-label="{{ t('selection.invert') }}">{{ lucide('replace', size=14) }}</button>
+                </td>
                 <td>
                     <div class="filter-input-wrapper">
                         <input type="text" placeholder="{{ t('filter.search_placeholder') }}" data-col="1" data-filter-type="text">

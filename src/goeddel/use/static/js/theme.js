@@ -161,7 +161,11 @@ window.addEventListener('keydown', (e) => {
 });
 
 function initTimelineTooltips() {
-    const timelines = document.querySelectorAll('.snapshots-header-timeline, .error-timeline-bar');
+    // The diff view's timeline uses <g class="timeline-segment"> (SVG, not <a>) since
+    // its pills aren't navigation links, so both selectors are matched below.
+    const timelines = document.querySelectorAll(
+        '.snapshots-header-timeline, .error-timeline-bar, .differ-timeline-bar-wrapper',
+    );
     if (timelines.length === 0) return;
     let tooltip = document.getElementById('timeline-tooltip');
     if (!tooltip) {
@@ -180,21 +184,21 @@ function initTimelineTooltips() {
         timeline._timelineTooltipsInitialized = true;
 
         timeline.addEventListener('mouseover', (e) => {
-            const link = e.target.closest('a');
-            if (!link || !timeline.contains(link)) {
+            const link = e.target.closest('a, .timeline-segment');
+            if (!link || !timeline.contains(link) || link.style.display === 'none') {
                 hideTooltip();
                 return;
             }
             const name = link.dataset.snapName || '';
             const time = link.dataset.snapTime || '';
-            const isCurrent = link.dataset.isCurrent === 'true';
+            const isCurrent = link.dataset.isCurrent === 'true' || link.classList.contains('active-group-member');
             const isMissing = link.dataset.isMissing === 'true';
 
             const currentBadge = isCurrent
-                ? `<span class="timeline-tooltip-badge">${window.clientI18n?.['snapshot.current'] || 'Aktuell'}</span>`
+                ? `<span class="timeline-tooltip-badge">${window.clientI18n?.['snapshot.current'] || 'Current'}</span>`
                 : '';
             const missingBadge = isMissing
-                ? `<span class="timeline-tooltip-badge missing">${window.clientI18n?.['badge.missing'] || 'Nicht vorhanden'}</span>`
+                ? `<span class="timeline-tooltip-badge missing">${window.clientI18n?.['badge.missing'] || 'Missing'}</span>`
                 : '';
 
             tooltip.innerHTML = `

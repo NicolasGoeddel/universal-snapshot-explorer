@@ -2,6 +2,7 @@
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2' %}
+    <link rel="stylesheet" href="{{ static_url('css/file_browser.css') }}">
     <link rel="stylesheet" href="{{ static_url('css/root_view.css') }}">
     <script src="{{ static_url('js/root_view.js') }}" defer></script>
     
@@ -11,9 +12,9 @@
         <div class="root-header-sticky-container">
             <div class="root-header-bar">
                 <h2 style="display: flex; align-items: center; gap: 10px; margin: 0;">
-                    {{ lucide('hard-drive', size=26) }} {{ t('index.title') }}
+                    {{ lucide('server', size=26) }} {{ t('index.title') }}
                 </h2>
-                {% include 'nav_controls.html.j2' %}
+                {% include 'global_controls.html.j2' %}
             </div>
             <p style="color: var(--text-muted); margin: 0 0 6px 0; font-size: 9.5pt;">{{ t('index.prompt') }}</p>
         </div>
@@ -24,7 +25,11 @@
                     <th data-col-key="root_name" data-elastic="true" data-default-pct="32" data-min-width="60" style="text-align: left;">{{ t('index.header.name') }}</th>
                     <th data-col-key="root_snapshots" data-ignore-content="true" data-default-pct="18" data-min-width="120" style="text-align: center;">{{ t('table.snapshots') }}</th>
                     <th data-col-key="root_path" data-default-pct="25" data-min-width="60" style="text-align: left;">{{ t('index.header.mount_point') }}</th>
-                    <th data-col-key="sub_path" data-default-pct="25" data-min-width="60" style="text-align: left;">{{ t('index.header.sub_path') }}</th>
+                    <th data-col-key="sub_path" data-default-pct="25" data-min-width="60" class="root-refresh-cell" style="text-align: left;">
+                        {{ t('index.header.sub_path') }}
+                        {#- Refresh lives in the header's top-right corner instead of an extra column -#}
+                        {% include 'nav_controls.html.j2' %}
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -38,7 +43,7 @@
                     data-expanded="true">
                     <td>
                         <div class="tree-cell">
-                            <span class="folder-toggle icon opened" title="Toggle group">▶</span>
+                            <span class="folder-toggle icon opened" title="Toggle group">{{ lucide('chevron-right', size=14) }}</span>
                             {% if root.group_type == 'zfs' %}
                             <img src="{{ static_url('img/logos/zfs.svg') }}" class="fs-logo" alt="ZFS">
                             {% elif root.group_type == 'btrfs' %}
@@ -67,7 +72,7 @@
                     <td>
                         <div class="tree-cell" style="padding-left: {{ root.level * 20 }}px;">
                             {% if root.has_children %}
-                            <span class="folder-toggle icon opened" title="Toggle hierarchy">▶</span>
+                            <span class="folder-toggle icon opened" title="Toggle hierarchy">{{ lucide('chevron-right', size=14) }}</span>
                             {% else %}
                             <span class="folder-spacer"></span>
                             {% endif %}
@@ -102,7 +107,7 @@
                     <td>
                         <div class="tree-cell" style="padding-left: {{ root.level * 20 }}px;">
                             {% if root.has_children %}
-                            <span class="folder-toggle icon opened" title="Toggle hierarchy">▶</span>
+                            <span class="folder-toggle icon opened" title="Toggle hierarchy">{{ lucide('chevron-right', size=14) }}</span>
                             {% else %}
                             <span class="folder-spacer"></span>
                             {% endif %}

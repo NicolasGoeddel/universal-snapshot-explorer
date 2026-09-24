@@ -40,10 +40,12 @@ class ExplorerView {
         });
         this.bindTreeEvents(this.tbody);
         this.initSorting();
+        this.initColumnVisibility();
         this.initFiltering();
         this.initMultiSelection();
         this.initTypeahead();
         this.initKeyboardNavigation();
+        this.initRowActivation();
         this.initTimelineTooltip();
         this.initSnapshotDropdown();
         this.initSnapshotCriteria();
@@ -310,7 +312,18 @@ class ExplorerView {
                 td.innerHTML = '<div class="snapshot-skeleton"></div>';
             }
         });
-        this.loadSnapshotBars(this.tbody, this.table.dataset.subpath || '');
+        // Timelines are fetched per folder: the current one and every loaded subfolder
+        const folders = [this.table.dataset.subpath || '', ...this.getLoadedFolderRows().map((r) => r.dataset.path)];
+        folders.forEach((path) => this.loadSnapshotBars(this.tbody, path));
+    }
+
+    /**
+     * @returns {HTMLTableRowElement[]} Folder rows whose contents have been loaded (expanded or not).
+     */
+    getLoadedFolderRows() {
+        return this.treeTable
+            .getAllRows()
+            .filter((r) => r.dataset.isFolder === 'true' && this.getDirectChildren(r.dataset.path).length > 0);
     }
 
     updateHeaderTimeline(headerBarStr) {
@@ -318,14 +331,15 @@ class ExplorerView {
         if (!headerTimeline || !headerBarStr) return;
         const links = Array.from(headerTimeline.querySelectorAll('a'));
         const count = Math.min(links.length, headerBarStr.length);
+        // headerBarStr is ordered newest-first; displayed oldest-to-newest (left-to-right).
         for (let i = 0; i < count; i++) {
             const char = headerBarStr[i] || 'x';
-            const prevChar = i > 0 ? headerBarStr[i - 1] : null;
-            const nextChar = i < count - 1 ? headerBarStr[i + 1] : null;
-            const roundLeft = prevChar === null || prevChar !== char;
-            const roundRight = nextChar === null || nextChar !== char;
-            const x = i * 20;
-            const pathD = this.getPillPath(x + 0.5, 1, 19, 15, 5, roundLeft, roundRight);
+            const olderChar = i < count - 1 ? headerBarStr[i + 1] : null;
+            const newerChar = i > 0 ? headerBarStr[i - 1] : null;
+            const roundLeft = olderChar === null || olderChar !== char;
+            const roundRight = newerChar === null || newerChar !== char;
+            const x = (count - 1 - i) * 20;
+            const pathD = this.getPillPath(x + 0.5, 1, 19, 18, 6, roundLeft, roundRight);
 
             const path = links[i].querySelector('path');
             if (path) {
@@ -345,7 +359,10 @@ class ExplorerView {
 
     updateRowSnapshotCircles(snapIndex) {
         if (snapIndex < 0) return;
-        const cx = String(snapIndex * 20 + 10);
+        // snapIndex is newest-first; bars are displayed oldest-to-newest (left-to-right).
+        const headerLinkCount = document.querySelectorAll('.snapshots-header-timeline a').length;
+        const count = headerLinkCount || snapIndex + 1;
+        const cx = String((count - 1 - snapIndex) * 20 + 10);
         const svgs = this.tbody.querySelectorAll('svg.snapshotbar');
         svgs.forEach((svg) => {
             if (svg.classList.contains('snapshot-skeleton-svg') || svg.classList.contains('header-snapshotbar')) return;
@@ -356,7 +373,7 @@ class ExplorerView {
                 (td && td.dataset.isSubDataset === 'true') ||
                 (row && row.dataset.isSubDataset === 'true') ||
                 td?._snapshotData?.isSubDataset ||
-                (row && row.querySelector('.sub-dataset-link') !== null) ||
+                (row && row.querySelector('.sub-dataset-name') !== null) ||
                 row?.querySelector('.symlink-target-badge')?.textContent?.includes('Dataset') ||
                 row?.querySelector('.symlink-target-badge')?.textContent?.includes('Mount');
 
@@ -394,7 +411,9 @@ class ExplorerView {
                 (a.dataset.snapId && a.dataset.snapId === this.snapshot),
         );
         if (currentIdx < 0) return;
-        const targetIdx = currentIdx + delta;
+        // Links are newest-first but displayed oldest-to-newest (left-to-right), so a
+        // positive (rightward/"newer") delta moves toward a lower list index.
+        const targetIdx = currentIdx - delta;
         if (targetIdx >= 0 && targetIdx < snapLinks.length) {
             const targetLink = snapLinks[targetIdx];
             const targetSnapId = targetLink.dataset.snapId || this.extractSnapIdFromHref(targetLink);
@@ -436,8 +455,8 @@ class ExplorerView {
                 if (rect) rect.classList.add('current-snapshot-rect');
                 if (!circle) {
                     const newCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    newCircle.setAttribute('cx', String(idx * 20 + 10));
-                    newCircle.setAttribute('cy', '8.5');
+                    newCircle.setAttribute('cx', String((snapLinks.length - 1 - idx) * 20 + 10));
+                    newCircle.setAttribute('cy', '10');
                     newCircle.setAttribute('r', '3.5');
                     newCircle.setAttribute('fill', '#ffffff');
                     newCircle.setAttribute('stroke', '#1e293b');
@@ -468,6 +487,8 @@ class ExplorerView {
 
         const snapDropdown = document.getElementById('breadcrumb-snapshot-dropdown');
         if (snapDropdown) {
+            // Highlights the selector whenever a past snapshot (anything but the live filesystem) is shown
+            snapDropdown.classList.toggle('in-past', targetSnapshotId !== 'Original');
             snapDropdown.querySelectorAll('.snapshot-dropdown-item').forEach((item) => {
                 const snapId = this.extractSnapIdFromHref(item);
                 if (snapId === targetSnapshotId) {
@@ -524,11 +545,15 @@ class ExplorerView {
                 const doesExist = isSubDataset ? true : !!meta.does_exist;
                 row.dataset.isMissing = doesExist ? 'false' : 'true';
                 row.classList.toggle('row-missing', !doesExist);
+                this.syncFolderToggle(row, doesExist);
 
                 const nameCell = row.querySelector('.browser-cell-name');
                 if (nameCell) {
                     nameCell.classList.toggle('stroke', !doesExist);
                     nameCell.classList.toggle('node-locked', !meta.is_accessible);
+
+                    const iconEl = nameCell.querySelector('svg.file-icon');
+                    if (iconEl && meta.icon_svg) iconEl.outerHTML = meta.icon_svg;
                 }
 
                 // Update lock indicator
@@ -610,40 +635,15 @@ class ExplorerView {
                     ctimeCell.dataset.sort = meta.ctime_iso;
                 }
 
-                // Update links (Folder link, Symlink target link, Download link, Details link)
-                const nameLink = row.querySelector('.browser-cell-name a');
-                if (nameLink) {
-                    try {
-                        const u = new URL(nameLink.href, window.location.origin);
-                        u.searchParams.set('snapshot', targetSnapshotId);
-                        nameLink.href = u.pathname + u.search + u.hash;
-                    } catch (_e) {}
-                }
-
-                const downloadLink = row.querySelector('.action-download') || row.querySelector('.file-download-link');
-                if (downloadLink) {
-                    try {
-                        const u = new URL(downloadLink.href, window.location.origin);
-                        u.searchParams.set('snapshot', targetSnapshotId);
-                        downloadLink.href = u.pathname + u.search + u.hash;
-                    } catch (_e) {}
-                }
-
-                const detailsLink = row.querySelector('.action-details');
-                if (detailsLink) {
-                    try {
-                        const u = new URL(detailsLink.href, window.location.origin);
-                        u.searchParams.set('snapshot', targetSnapshotId);
-                        detailsLink.href = u.pathname + u.search + u.hash;
-                    } catch (_e) {}
-                }
+                this.retargetRowUrls(row, targetSnapshotId);
             });
 
-            // Update subfolders if any are expanded
-            const expandedRows = this.treeTable.getAllRows().filter((r) => r.dataset.expanded === 'true');
-            if (expandedRows.length > 0) {
+            // Update the rows of every loaded subfolder, collapsed ones included, so they are
+            // current when expanded again
+            const loadedFolders = this.getLoadedFolderRows();
+            if (loadedFolders.length > 0) {
                 await Promise.all(
-                    expandedRows.map(async (expRow) => {
+                    loadedFolders.map(async (expRow) => {
                         const expPath = expRow.dataset.path;
                         if (!expPath) return;
                         try {
@@ -669,11 +669,15 @@ class ExplorerView {
                                 const childExists = isChildSubDataset ? true : !!childMeta.does_exist;
                                 childRow.dataset.isMissing = childExists ? 'false' : 'true';
                                 childRow.classList.toggle('row-missing', !childExists);
+                                this.syncFolderToggle(childRow, childExists);
 
                                 const childNameCell = childRow.querySelector('.browser-cell-name');
                                 if (childNameCell) {
                                     childNameCell.classList.toggle('stroke', !childExists);
                                     childNameCell.classList.toggle('node-locked', !childMeta.is_accessible);
+
+                                    const childIconEl = childNameCell.querySelector('svg.file-icon');
+                                    if (childIconEl && childMeta.icon_svg) childIconEl.outerHTML = childMeta.icon_svg;
                                 }
 
                                 const childStatVisible = childMeta.is_stat_visible !== false;
@@ -724,6 +728,8 @@ class ExplorerView {
                                     childCtimeCell.textContent = childMeta.ctime_fmt;
                                     childCtimeCell.dataset.sort = childMeta.ctime_iso;
                                 }
+
+                                this.retargetRowUrls(childRow, targetSnapshotId);
                             });
                         } catch (_e) {}
                     }),
@@ -741,6 +747,7 @@ class ExplorerView {
 
             this.updateZebra();
             this.updateToggleCounts();
+            this.keyboard?.sanitizeFocus();
 
             if (this.selectedRow) {
                 this.selectRow(this.selectedRow, { updateHash: false });
@@ -811,10 +818,13 @@ class ExplorerView {
 
         let inner = '';
         let currentIdx = -1;
+        // barStr/snapshots are ordered newest-first; the bar is displayed oldest-to-newest
+        // (left-to-right), so the visual x position mirrors the index and the neighbor
+        // used for each side's pill rounding is swapped accordingly.
         for (let i = 0; i < count; i++) {
             const char = barStr[i] || 'x';
             const snap = snapshots[i];
-            const x = i * barWidth;
+            const x = (count - 1 - i) * barWidth;
             if (
                 !isSub &&
                 (snap.id === currentSnap || decodeURIComponent(snap.id) === decodeURIComponent(currentSnap))
@@ -822,10 +832,10 @@ class ExplorerView {
                 currentIdx = i;
             }
 
-            const prevChar = i > 0 ? barStr[i - 1] || 'x' : null;
-            const nextChar = i < count - 1 ? barStr[i + 1] || 'x' : null;
-            const roundLeft = prevChar === null || prevChar !== char;
-            const roundRight = nextChar === null || nextChar !== char;
+            const olderChar = i < count - 1 ? barStr[i + 1] || 'x' : null;
+            const newerChar = i > 0 ? barStr[i - 1] || 'x' : null;
+            const roundLeft = olderChar === null || olderChar !== char;
+            const roundRight = newerChar === null || newerChar !== char;
             const pathD = this.getPillPath(x + 0.5, 1, 19, 18, 6, roundLeft, roundRight);
 
             if (char === 'x') {
@@ -838,10 +848,15 @@ class ExplorerView {
 
         const circle =
             currentIdx >= 0 && !isSub
-                ? `<circle cx="${currentIdx * barWidth + 10}" cy="10" r="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>`
+                ? `<circle cx="${(count - 1 - currentIdx) * barWidth + 10}" cy="10" r="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"></circle>`
                 : '';
 
-        return `<svg class="snapshotbar${isSub ? ' is-sub-dataset' : ''}" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; max-width: ${totalWidth}px; height: 16px;">${inner}${circle}</svg>`;
+        // Bound pill width the same way the server-rendered bars are: close to
+        // square, a little wider when there are few snapshots, squished rather than
+        // stretched into blobs when there are many.
+        const minCell = 8;
+        const maxCell = 28;
+        return `<svg class="snapshotbar${isSub ? ' is-sub-dataset' : ''}" viewBox="-1 -1 ${totalWidth + 2} 21" preserveAspectRatio="none" style="width: 100%; min-width: ${count * minCell}px; max-width: ${count * maxCell}px; height: 16px;">${inner}${circle}</svg>`;
     }
 
     initTimelineTooltip() {
@@ -871,10 +886,10 @@ class ExplorerView {
             const isMissing = link.dataset.isMissing === 'true';
 
             const currentBadge = isCurrent
-                ? `<span class="timeline-tooltip-badge">${window.clientI18n?.['snapshot.current'] || 'Aktuell'}</span>`
+                ? `<span class="timeline-tooltip-badge">${window.clientI18n?.['snapshot.current'] || 'Current'}</span>`
                 : '';
             const missingBadge = isMissing
-                ? `<span class="timeline-tooltip-badge missing">${window.clientI18n?.['badge.missing'] || 'Nicht vorhanden'}</span>`
+                ? `<span class="timeline-tooltip-badge missing">${window.clientI18n?.['badge.missing'] || 'Missing'}</span>`
                 : '';
 
             tooltip.innerHTML = `
@@ -994,14 +1009,15 @@ class ExplorerView {
                 this.updateHeaderTimeline(data.header_bar);
             }
 
-            const allRows = this.treeTable.getAllRows();
+            // Bars are keyed by filename, so only this folder's own rows may take them
+            const rows = this.treeTable.getChildrenOfPath(dirPath);
             const chunkSize = 500;
             let index = 0;
 
             const processChunk = () => {
-                const end = Math.min(index + chunkSize, allRows.length);
+                const end = Math.min(index + chunkSize, rows.length);
                 for (; index < end; index++) {
-                    const row = allRows[index];
+                    const row = rows[index];
                     const fn = row.dataset.filename;
                     if (!fn || !bars[fn]) continue;
 
@@ -1047,7 +1063,7 @@ class ExplorerView {
                     this.snapshotObserver.observe(td);
                 }
 
-                if (index < allRows.length) {
+                if (index < rows.length) {
                     requestAnimationFrame(processChunk);
                 } else {
                     this.updateZebra();
@@ -1086,6 +1102,38 @@ class ExplorerView {
             const row = visibleRows[i];
             row.classList.toggle('odd', i % 2 === 0);
             row.classList.toggle('even', i % 2 !== 0);
+        }
+    }
+
+    /**
+     * Give a folder row its expand chevron only while the folder exists in the shown snapshot,
+     * collapsing it when it disappears.
+     *
+     * @param {HTMLTableRowElement} row - Table row.
+     * @param {boolean} exists - Whether the entry exists in the shown snapshot.
+     */
+    syncFolderToggle(row, exists) {
+        if (row.dataset.isFolder !== 'true') return;
+        const toggle = row.querySelector('.browser-cell-name .folder-toggle');
+
+        if (exists && !toggle) {
+            const spacer = row.querySelector('.browser-cell-name .folder-spacer');
+            const template = document.getElementById('folder-toggle-template');
+            if (!spacer || !template) return;
+            const newToggle = template.content.firstElementChild.cloneNode(true);
+            spacer.replaceWith(newToggle);
+            this.bindTreeEvents(row);
+        } else if (!exists && toggle) {
+            if (row.dataset.expanded === 'true') {
+                this.collapseDescendants(row.dataset.path);
+                this.tbody
+                    .querySelectorAll(`.folder-error-row[data-parent="${CSS.escape(row.dataset.path)}"]`)
+                    .forEach((el) => el.remove());
+                row.dataset.expanded = 'false';
+            }
+            const spacer = document.createElement('span');
+            spacer.className = 'folder-spacer';
+            toggle.replaceWith(spacer);
         }
     }
 
@@ -1274,7 +1322,7 @@ class ExplorerView {
                     const isDirLike = (row) =>
                         row.dataset.isFolder === 'true' ||
                         row.dataset.isSubDataset === 'true' ||
-                        row.querySelector('.sub-dataset-link') !== null ||
+                        row.querySelector('.sub-dataset-name') !== null ||
                         row.querySelector('.folder-toggle') !== null;
                     const isDirA = isDirLike(a);
                     const isDirB = isDirLike(b);
@@ -1295,6 +1343,15 @@ class ExplorerView {
 
     get currentSort() {
         return this.sorter?.getSortState() || null;
+    }
+
+    initColumnVisibility() {
+        if (typeof ColumnVisibilityManager === 'undefined') return;
+        this.columnVisibility = new ColumnVisibilityManager(this.table, {
+            sorter: this.sorter,
+            resizer: this.columnResizer,
+            toolbarButton: 'btn-column-visibility',
+        });
     }
 
     sortByColumnIndex(cellIndex, forcedDirection = null) {
@@ -1342,6 +1399,115 @@ class ExplorerView {
 
     getVisibleRows() {
         return this.filterManager ? this.filterManager.getVisibleRows() : this.treeTable.getVisibleRows();
+    }
+
+    /**
+     * @param {HTMLTableRowElement} row - Table row.
+     * @returns {string|null} Where opening the row navigates (folder, sub-dataset, symlink target).
+     */
+    getRowOpenUrl(row) {
+        return row.dataset.openUrl || null;
+    }
+
+    /**
+     * @param {HTMLTableRowElement} row - Table row.
+     * @returns {string|null} Download URL of a readable file row.
+     */
+    getRowDownloadUrl(row) {
+        return row.dataset.downloadUrl || null;
+    }
+
+    /**
+     * Point every URL of a row (open/download targets, row link, action buttons) at another snapshot.
+     *
+     * @param {HTMLTableRowElement} row - Table row.
+     * @param {string} snapshotId - Target snapshot.
+     */
+    retargetRowUrls(row, snapshotId) {
+        const retarget = (url) => {
+            const u = new URL(url, window.location.origin);
+            u.searchParams.set('snapshot', snapshotId);
+            return u.pathname + u.search + u.hash;
+        };
+        for (const key of ['openUrl', 'downloadUrl']) {
+            if (row.dataset[key]) row.dataset[key] = retarget(row.dataset[key]);
+        }
+        row.querySelectorAll('a[href]').forEach((a) => {
+            a.setAttribute('href', retarget(a.getAttribute('href')));
+        });
+    }
+
+    /**
+     * Open a row: navigate into folders / symlink targets, download files.
+     *
+     * @param {HTMLTableRowElement} row - Table row.
+     */
+    openRow(row) {
+        const url = this.getRowOpenUrl(row) || this.getRowDownloadUrl(row);
+        if (url) {
+            window.location.assign(url);
+            return;
+        }
+        const toggleBtn = row.querySelector('.folder-toggle');
+        if (toggleBtn) this.toggleFolder(toggleBtn);
+    }
+
+    /**
+     * Double-click opens a row; a right-click exposes the row's link to the browser's own
+     * context menu (copy link, open in new tab).
+     */
+    initRowActivation() {
+        const isRowControl = (target) => target.closest('.row-checkbox, .folder-toggle, .action-btn');
+
+        // A double-click that drags before release is a word-by-word text selection, not an open
+        let secondPressAt = null;
+        this.tbody.addEventListener('mousedown', (e) => {
+            secondPressAt = e.detail === 2 ? { x: e.clientX, y: e.clientY } : null;
+        });
+
+        this.tbody.addEventListener('dblclick', (e) => {
+            if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+            const row = e.target.closest('tr');
+            if (!row?.dataset.path || isRowControl(e.target)) return;
+            if (secondPressAt && Math.hypot(e.clientX - secondPressAt.x, e.clientY - secondPressAt.y) > 3) return;
+
+            window.getSelection()?.removeAllRanges();
+            this.openRow(row);
+        });
+
+        // Middle-click and Ctrl+click open folders in a new tab, like they would on a link
+        const newTabUrl = (e) => {
+            const wantsNewTab = e.button === 1 || (e.button === 0 && (e.ctrlKey || e.metaKey));
+            if (!wantsNewTab || isRowControl(e.target)) return null;
+            const row = e.target.closest('tr');
+            return row?.dataset.path ? this.getRowOpenUrl(row) : null;
+        };
+        const openInNewTab = (e) => {
+            const url = newTabUrl(e);
+            if (!url) return;
+            e.preventDefault();
+            window.open(url, '_blank', 'noopener');
+        };
+        this.tbody.addEventListener('mousedown', (e) => {
+            if (e.button === 1 && newTabUrl(e)) e.preventDefault(); // no autoscroll
+        });
+        this.tbody.addEventListener('auxclick', openInNewTab);
+        this.tbody.addEventListener('click', openInNewTab);
+
+        // The row link ignores the pointer so it never gets clicked; it only becomes hit-testable
+        // between a right-button press and the context menu that follows it
+        let armedLink = null;
+        const disarm = () => {
+            armedLink?.classList.remove('is-armed');
+            armedLink = null;
+        };
+        document.addEventListener('mousedown', (e) => {
+            disarm();
+            if (e.button !== 2 || !this.tbody.contains(e.target) || isRowControl(e.target)) return;
+            armedLink = e.target.closest('tr')?.querySelector('.row-link') || null;
+            armedLink?.classList.add('is-armed');
+        });
+        document.addEventListener('contextmenu', () => setTimeout(disarm));
     }
 
     selectRow(row, options = { updateHash: true }) {
@@ -1483,18 +1649,13 @@ class ExplorerView {
 
         // Enter: Open folder / Follow symlink / Download file
         this.keyboard.register('Enter', (row) => {
-            if (!row) return;
-            const isFolder = row.dataset.isFolder === 'true';
-            const toggleBtn = row.querySelector('.folder-toggle');
-            const nameLink = row.querySelector('.browser-cell-name a');
-            if (nameLink) {
-                nameLink.click();
-            } else if (isFolder && toggleBtn) {
-                this.toggleFolder(toggleBtn);
-            } else {
-                const downloadLink = row.querySelector('.action-download') || row.querySelector('.file-download-link');
-                if (downloadLink) downloadLink.click();
-            }
+            if (row) this.openRow(row);
+        });
+
+        // Ctrl+Enter: Open focused folder / symlink target in a new tab
+        this.keyboard.register('Ctrl+Enter', (row) => {
+            const url = row && this.getRowOpenUrl(row);
+            if (url) window.open(url, '_blank', 'noopener');
         });
 
         // ArrowRight: Expand folder or step into first child

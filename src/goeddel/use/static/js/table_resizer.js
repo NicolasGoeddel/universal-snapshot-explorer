@@ -9,7 +9,7 @@
  *  5. Autonomous MutationObserver lifecycle monitoring with debounced cache invalidation.
  *  6. Idempotent, Content-Aware Auto-Fit Reset on double-click.
  *  7. HTML5 Declarative Dataset Configuration (zero hardcoded CSS selectors in JS).
- *  8. LocalStorage Persistence with proportional percentage scaling across viewports.
+ *  8. LocalStorage Persistence of per-column weights, independent of viewport and visible set.
  *
  * =================================================================================================
  * ARCHITECTURAL OVERVIEW & ALGORITHM SPECIFICATIONS
@@ -21,7 +21,7 @@
  *  - `data-fixed-width="[px]"` : Strict pixel width (e.g. 32px select checkbox, 60px actions).
  *                               Fixed columns NEVER participate in accordion dragging or auto-fit.
  *  - `data-elastic="true"`     : Designates the primary flexible column (e.g. Name) that absorbs
- *                               surplus space on auto-fit and serves as the primary shock absorber.
+ *                               surplus space on auto-fit and is the shock absorber during drags.
  *  - `data-ignore-content="true"`: Bypasses DOM cell content measurement entirely for elastic columns
  *                               (such as responsive SVG timelines) that adapt dynamically to column width.
  *  - `data-min-width="[px]"`   : Stage 2 hard minimum floor in pixels (default: 45px).
@@ -60,7 +60,26 @@
  * or attribute changes (e.g. filter/search toggles) and executes debounced (150ms) background cache
  * recalculation so that dragging constraints always match the currently visible dataset.
  *
- * 5. IDEMPOTENT CONTENT-AWARE AUTO-FIT RESET (DOUBLE-CLICK):
+ * 5. COLUMN WEIGHTS (PERSISTENCE & COLUMN VISIBILITY):
+ * -------------------------------------------------------------------------------------------------
+ * Each flexible column persists a `weight`: how much room it wants COMPARED TO ITS VISIBLE PEERS.
+ * Weights are never normalized, and `resolveWidths()` is the only place one becomes a pixel width:
+ *
+ *      available = tableWidth - Σ(width of VISIBLE fixed columns)
+ *      width[j]  = available × weight[j] / Σ(weight of VISIBLE flexible columns)
+ *
+ * Columns hidden by `column_visibility.js` (via `display: none`) drop out of both sums and keep
+ * their stored weight, so hiding one lets its peers absorb the freed space and showing it again
+ * reproduces the earlier layout exactly - including a width the user set by dragging. Rescaling
+ * the stored weights to match the visible set instead would discard the hidden columns' sizes and
+ * make repeated toggling drift.
+ *
+ * Leaving a hidden column IN the sums is the failure this rules out: it renders nothing, so its
+ * share goes missing from the table and `table-layout: fixed` makes up the shortfall by inflating
+ * every column that IS rendered - `data-fixed-width` ones included, which then visibly exceed
+ * their declared pixel size (min/max-width do not constrain cells under fixed layout).
+ *
+ * 6. IDEMPOTENT CONTENT-AWARE AUTO-FIT RESET (DOUBLE-CLICK):
  * -------------------------------------------------------------------------------------------------
  * Double-clicking any resizer handle computes an optimal, content-preserving width distribution:
  *  - `minRequiredWidth[j]`: Intrinsic width required so that header and all visible data rows fit
@@ -70,11 +89,17 @@
  *    Columns that were too small EXPAND to `minRequiredWidth`.
  *  - Surplus Distribution: Any remaining table width is routed to the `data-elastic` column.
  *  - Deficit Handling: If target widths exceed viewport width:
- *      Phase 1: Columns wider than their content are reduced proportionally.
- *      Phase 2: If still overflowing, the `data-elastic` column compresses towards `hardMinWidth`.
- *      Phase 3: If still overflowing, all flexible columns compress towards `hardMinWidth`.
- *  - Idempotence Guarantee: Calculations are based on intrinsic content metrics rather than
- *    transient rendered dimensions, producing identical, stable pixel layouts across repeated double-clicks.
+ *      Phase 1: Columns wider than their content give that surplus back, proportionally. No text
+ *               is lost yet, so every column contributes its slack regardless of position.
+ *      Phase 2: If it still overflows, content must be truncated - so columns now give in from
+ *               RIGHT TO LEFT, each down to `hardMinWidth`. Leading columns are the important
+ *               ones (Name, Snapshots), so the trailing ones absorb the whole deficit first and
+ *               the leading ones only start truncating once everything to their right is at its
+ *               floor.
+ *  - Idempotence Guarantee: `currentWidths` is what the weights resolve to, never what the DOM
+ *    measures. A rendered width is only an approximation of the `width: X%` that produced it, so
+ *    feeding it back in would leave a rounding residue for the surplus step to hand to the elastic
+ *    column again on every call, drifting a little further each time.
  */
 (() => {
     class TableColumnResizer {
@@ -104,7 +129,7 @@
             this.isFixedColumn = [];
             this.totalTableWidth = 0;
             this.justResized = false;
-            this.savedPercentages = {};
+            this.columnWeights = {};
             this.optimalWidths = [];
             this.elasticColIndex = -1;
             this.ths = [];
@@ -134,7 +159,7 @@
                 return;
             }
 
-            this.loadSavedPercentages();
+            this.loadWeights();
 
             // Set table to fixed layout
             this.table.style.tableLayout = 'fixed';
@@ -189,12 +214,8 @@
                 }
             }
 
-            // Apply saved percentage widths if present, otherwise set default initial percentages
-            if (Object.keys(this.savedPercentages).length > 0 && this.validateSavedPercentages()) {
-                this.applySavedPercentages();
-            } else {
-                this.applyDefaultPercentages();
-            }
+            // Render from stored weights; columns without one fall back to their data-default-pct
+            this.applyWidths();
 
             const defaultTooltip =
                 window.clientI18n?.['table.resizer_tooltip'] || 'Drag to resize, double-click to reset';
@@ -411,130 +432,128 @@
         }
 
         /**
-         * Load stored percentage distribution from browser LocalStorage.
+         * Resolve each visible flexible column's stored weight into a pixel width.
+         *
+         * A weight says how much room a column wants COMPARED TO ITS VISIBLE PEERS, so hidden
+         * columns are simply left out of both sums: they render nothing, and any width handed
+         * to them would go missing from the table (the browser then makes up the shortfall by
+         * inflating every column that IS rendered, `data-fixed-width` ones included).
+         *
+         * @returns {{tableWidth: number, available: number, flexibleIndices: number[], widths: Object<number, number>}}
          */
-        loadSavedPercentages() {
-            try {
-                const raw = localStorage.getItem(this.storageKey);
-                if (raw) {
-                    this.savedPercentages = JSON.parse(raw);
-                }
-            } catch (e) {
-                console.debug('Failed to load table column percentages:', e);
-                this.savedPercentages = {};
-            }
-        }
-
-        /**
-         * Serialize active percentage distribution to browser LocalStorage.
-         */
-        savePercentages() {
-            try {
-                localStorage.setItem(this.storageKey, JSON.stringify(this.savedPercentages));
-            } catch (e) {
-                console.debug('Failed to save table column percentages:', e);
-            }
-        }
-
-        /**
-         * Validate that saved percentages sum to ~100% and cover all flexible columns.
-         * @returns {boolean} True if valid.
-         */
-        validateSavedPercentages() {
-            let total = 0;
-            const flexibleThs = this.ths.filter((_, idx) => !this.isFixedColumn[idx]);
-            for (const th of flexibleThs) {
-                const k = th.dataset.colKey;
-                if (!k || this.savedPercentages[k] === undefined) return false;
-                total += parseFloat(this.savedPercentages[k]);
-            }
-            return total > 95 && total < 105;
-        }
-
-        /**
-         * Apply loaded percentage styles to flexible table headers.
-         */
-        applySavedPercentages() {
-            this.ths.forEach((th, idx) => {
-                if (this.isFixedColumn[idx]) return;
-                const k = th.dataset.colKey;
-                if (k && this.savedPercentages[k] !== undefined) {
-                    const pct = this.savedPercentages[k];
-                    th.style.width = `${pct.toFixed(4)}%`;
-                }
-            });
-        }
-
-        /**
-         * Fallback to initial declarative HTML proportions (`data-default-pct`).
-         */
-        applyDefaultPercentages() {
-            this.ths.forEach((th, idx) => {
-                if (this.isFixedColumn[idx]) return;
-                const defaultPct = th.getAttribute('data-default-pct');
-                if (defaultPct) {
-                    th.style.width = `${parseFloat(defaultPct).toFixed(4)}%`;
-                } else {
-                    const flexibleCount = this.ths.filter((t) => !t.hasAttribute('data-fixed-width')).length;
-                    th.style.width = `${(100 / flexibleCount).toFixed(4)}%`;
-                }
-            });
-        }
-
-        /**
-         * Perform intelligent, idempotent, content-aware Auto-Fit Reset:
-         *  - Scans visible data rows and headers in an off-screen context.
-         *  - Expands undersized columns to their minimum readable width.
-         *  - Preserves user-expanded wide columns.
-         *  - Routes surplus width to the primary elastic column (`Name`).
-         *  - Manages narrow viewport compression via prioritized deficit phases.
-         */
-        autoFitColumns() {
-            const totalTableWidth = this.table.getBoundingClientRect().width;
-
-            // Recalculate optimal widths based on current visible rows
-            this.recalculateOptimalWidths();
-            const minRequiredWidths = [...this.optimalWidths];
-
-            // 2. Measure current widths in pixels
-            const currentWidths = this.ths.map((th) => th.getBoundingClientRect().width);
-
-            // 3. Start target widths: keep current width if already >= minRequired, otherwise expand to minRequired
-            const targetWidths = this.ths.map((_, idx) => {
-                if (this.isFixedColumn[idx]) {
-                    return minRequiredWidths[idx];
-                }
-                return Math.max(currentWidths[idx], minRequiredWidths[idx]);
-            });
-
-            // 4. Calculate flexible space and overflow
-            let fixedWidthSum = 0;
+        resolveWidths() {
+            const tableWidth = this.table.getBoundingClientRect().width;
             const flexibleIndices = [];
-            this.ths.forEach((_, idx) => {
+            let fixedWidthSum = 0;
+
+            this.ths.forEach((th, idx) => {
+                if (window.getComputedStyle(th).display === 'none') return;
                 if (this.isFixedColumn[idx]) {
-                    fixedWidthSum += minRequiredWidths[idx];
+                    fixedWidthSum += parseInt(th.getAttribute('data-fixed-width'), 10) || 0;
                 } else {
                     flexibleIndices.push(idx);
                 }
             });
 
-            const availableFlexibleWidth = totalTableWidth - fixedWidthSum;
+            const available = Math.max(0, tableWidth - fixedWidthSum);
+            const weightOf = (idx) => {
+                const stored = parseFloat(this.columnWeights[this.ths[idx].dataset.colKey]);
+                if (stored > 0) return stored;
+                const declared = parseFloat(this.ths[idx].getAttribute('data-default-pct'));
+                return declared > 0 ? declared : 10;
+            };
+            const totalWeight = flexibleIndices.reduce((sum, idx) => sum + weightOf(idx), 0) || 1;
+
+            const widths = {};
+            flexibleIndices.forEach((idx) => {
+                widths[idx] = (available * weightOf(idx)) / totalWeight;
+            });
+
+            return { tableWidth, available, flexibleIndices, widths };
+        }
+
+        /**
+         * Render the resolved widths. They go out as a percentage of the table because a cell's
+         * `width: X%` always resolves against the whole table (never against the flexible columns
+         * alone), which keeps the layout scaling with the viewport without any JS. Fixed columns
+         * are never touched here - `init()` pins them to their declared pixel width once.
+         */
+        applyWidths() {
+            const { tableWidth, flexibleIndices, widths } = this.resolveWidths();
+            if (tableWidth <= 0) return;
+            flexibleIndices.forEach((idx) => {
+                this.ths[idx].style.width = `${((widths[idx] / tableWidth) * 100).toFixed(4)}%`;
+            });
+        }
+
+        /**
+         * Load stored column weights from browser LocalStorage.
+         */
+        loadWeights() {
+            try {
+                const raw = localStorage.getItem(this.storageKey);
+                const parsed = raw ? JSON.parse(raw) : null;
+                if (parsed && typeof parsed === 'object') this.columnWeights = parsed;
+            } catch (e) {
+                console.debug('Failed to load table column widths:', e);
+                this.columnWeights = {};
+            }
+        }
+
+        /**
+         * Serialize active column weights to browser LocalStorage.
+         */
+        saveWeights() {
+            try {
+                localStorage.setItem(this.storageKey, JSON.stringify(this.columnWeights));
+            } catch (e) {
+                console.debug('Failed to save table column widths:', e);
+            }
+        }
+
+        /**
+         * Content-aware Auto-Fit Reset: every visible column gets at least the width its content
+         * needs, columns already wider than that keep their width, and the leftover goes to the
+         * elastic column. Hidden columns are left out entirely and keep their stored weight.
+         *
+         * Idempotent by construction, because the starting point is what the current weights
+         * resolve to rather than what the DOM currently measures. Measuring the DOM would feed
+         * the rounding error of `width: X%` back in as the next run's baseline, and the surplus
+         * step would hand that residue to the elastic column again on every single call.
+         */
+        autoFitColumns() {
+            // Recalculate optimal widths based on current visible rows
+            this.recalculateOptimalWidths();
+            const minRequiredWidths = this.optimalWidths;
+
+            // 2. Current widths come from the stored weights, not from the DOM
+            const { available, flexibleIndices, widths } = this.resolveWidths();
+            if (flexibleIndices.length === 0) return;
+            const elasticIdx = flexibleIndices.includes(this.elasticColIndex)
+                ? this.elasticColIndex
+                : flexibleIndices[0];
+
+            // 3. Start target widths: keep current width if already >= minRequired, otherwise expand to minRequired
+            const targetWidths = {};
+            flexibleIndices.forEach((idx) => {
+                targetWidths[idx] = Math.max(widths[idx], minRequiredWidths[idx] || 0);
+            });
+
+            // 4. Compare against the space the visible flexible columns actually share
             let sumTargetFlexible = flexibleIndices.reduce((sum, idx) => sum + targetWidths[idx], 0);
 
-            if (sumTargetFlexible <= availableFlexibleWidth) {
+            if (sumTargetFlexible <= available) {
                 // Surplus table space: distribute to Elastic column
-                const surplus = availableFlexibleWidth - sumTargetFlexible;
-                targetWidths[this.elasticColIndex] += surplus;
-                sumTargetFlexible += surplus;
+                targetWidths[elasticIdx] += available - sumTargetFlexible;
             } else {
                 // Deficit: target widths exceed available table width
-                let deficit = sumTargetFlexible - availableFlexibleWidth;
+                let deficit = sumTargetFlexible - available;
 
                 // Phase 1: Proportional reduction of columns that are currently wider than their minRequiredWidth
                 let totalReducible = 0;
                 const reducibleCapacities = {};
                 for (const idx of flexibleIndices) {
-                    const capacity = Math.max(0, targetWidths[idx] - minRequiredWidths[idx]);
+                    const capacity = Math.max(0, targetWidths[idx] - (minRequiredWidths[idx] || 0));
                     reducibleCapacities[idx] = capacity;
                     totalReducible += capacity;
                 }
@@ -544,51 +563,34 @@
                     for (const idx of flexibleIndices) {
                         const cap = reducibleCapacities[idx];
                         if (cap > 0) {
-                            const share = Math.round((cap / totalReducible) * reduction);
-                            targetWidths[idx] -= share;
+                            targetWidths[idx] -= (cap / totalReducible) * reduction;
                         }
                     }
                     deficit -= reduction;
                 }
 
-                // Phase 2: Edge Case — all columns are at minRequiredWidth, but still overflow (viewport too narrow)
-                if (deficit > 0) {
-                    const elasticHardMin = this.hardMinWidths[this.elasticColIndex] || 45;
-                    const elasticCapacity = Math.max(0, targetWidths[this.elasticColIndex] - elasticHardMin);
-                    const elasticReduction = Math.min(deficit, elasticCapacity);
-                    targetWidths[this.elasticColIndex] -= elasticReduction;
-                    deficit -= elasticReduction;
-                }
-
-                // Phase 3: Extreme Edge Case — Elastic is at HardMin, compress other flexible columns down to hard limits
-                if (deficit > 0) {
-                    for (const idx of flexibleIndices) {
-                        if (idx === this.elasticColIndex) continue;
-                        const hard = this.hardMinWidths[idx] || 45;
-                        const cap = Math.max(0, targetWidths[idx] - hard);
-                        const red = Math.min(deficit, cap);
-                        targetWidths[idx] -= red;
-                        deficit -= red;
-                        if (deficit <= 0) break;
-                    }
+                // Phase 2: Every column is down to its content width and it still overflows, so
+                // from here on content has to be truncated. Give in from the RIGHT: trailing
+                // columns are the least important ones, so they absorb the whole deficit before
+                // the leading columns (Name, Snapshots) lose a single pixel of their content.
+                for (let i = flexibleIndices.length - 1; i >= 0 && deficit > 0; i--) {
+                    const idx = flexibleIndices[i];
+                    const hard = this.hardMinWidths[idx] || 45;
+                    const reduction = Math.min(deficit, Math.max(0, targetWidths[idx] - hard));
+                    targetWidths[idx] -= reduction;
+                    deficit -= reduction;
                 }
             }
 
-            // 5. Convert targetWidths to exact percentage shares
-            const flexibleTotalAllocated = flexibleIndices.reduce((sum, idx) => sum + targetWidths[idx], 0) || 1;
-            this.savedPercentages = {};
-
-            this.ths.forEach((th, idx) => {
-                if (this.isFixedColumn[idx]) return;
-                const pct = (targetWidths[idx] / flexibleTotalAllocated) * 100;
-                th.style.width = `${pct.toFixed(4)}%`;
-                const key = th.dataset.colKey;
-                if (key) {
-                    this.savedPercentages[key] = pct;
-                }
+            // 5. Adopt the targets as the new weights. Only visible columns are written, so a
+            // hidden column keeps the weight it had when last visible and returns at that size.
+            flexibleIndices.forEach((idx) => {
+                const key = this.ths[idx].dataset.colKey;
+                if (key) this.columnWeights[key] = Math.max(1, targetWidths[idx]);
             });
 
-            this.savePercentages();
+            this.saveWeights();
+            this.applyWidths();
         }
 
         /**
@@ -720,8 +722,9 @@
                 }
             } else if (deltaX < 0) {
                 // Dragging left: Expand right column (k+1), compress leftward non-fixed columns (k .. 0) in 2 stages
+                // A hidden column measures 0 wide, so skipping those also skips hidden ones
                 let targetExpandIdx = k + 1;
-                while (targetExpandIdx < N && this.isFixedColumn[targetExpandIdx]) {
+                while (targetExpandIdx < N && (this.isFixedColumn[targetExpandIdx] || widths[targetExpandIdx] <= 0)) {
                     targetExpandIdx++;
                 }
                 if (targetExpandIdx >= N) return;
@@ -766,23 +769,16 @@
                 }
             }
 
-            // Calculate percentage shares of the flexible columns
-            let flexibleTotalWidth = 0;
-            this.ths.forEach((_, idx) => {
-                if (!this.isFixedColumn[idx]) {
-                    flexibleTotalWidth += widths[idx];
-                }
-            });
-
-            if (flexibleTotalWidth > 0) {
+            // Adopt the dragged pixel widths as the new weights and render them straight away.
+            // Hidden columns measure 0 and are skipped, so they keep the weight they had when
+            // last visible. The drag-start table width is reused so a drag frame never forces a
+            // fresh layout measurement; weights are persisted once, on release.
+            if (this.totalTableWidth > 0) {
                 this.ths.forEach((th, idx) => {
-                    if (this.isFixedColumn[idx]) return;
-                    const pct = (widths[idx] / flexibleTotalWidth) * 100;
-                    th.style.width = `${pct.toFixed(4)}%`;
+                    if (this.isFixedColumn[idx] || widths[idx] <= 0) return;
+                    th.style.width = `${((widths[idx] / this.totalTableWidth) * 100).toFixed(4)}%`;
                     const key = th.dataset.colKey;
-                    if (key) {
-                        this.savedPercentages[key] = pct;
-                    }
+                    if (key) this.columnWeights[key] = widths[idx];
                 });
             }
         }
@@ -829,7 +825,7 @@
                 this.activeResizerIndex = -1;
             }
             document.body.classList.remove('is-resizing-columns');
-            this.savePercentages();
+            this.saveWeights();
         }
 
         onDoubleClick(e) {

@@ -2,6 +2,22 @@
 {%- for filename in folder.content() -%}
     {%- set entry = folder[filename] -%}
     {%- if entry.does_exist -%}
+        {%- set open_url = none -%}
+        {%- set download_url = none -%}
+        {%- if entry.sub_dataset_root_name is not none -%}
+            {%- set open_url = route_url(module, entry.sub_dataset_root_name, '', entry.snapshot.id) -%}
+        {%- elif entry.is_kernel_fs -%}
+        {%- elif entry.is_folder -%}
+            {%- set open_url = route_url(module, root_name, entry.logical_path, entry.snapshot.id) -%}
+        {%- elif entry.is_symlink and not entry.symlink_is_broken -%}
+            {%- if entry.symlink_target_is_dir and entry.symlink_resolved_subpath is not none -%}
+                {%- set open_url = route_url('list', root_name, entry.symlink_resolved_subpath, entry.snapshot.id) -%}
+            {%- elif not entry.symlink_target_is_dir and entry.symlink_resolved_parent_subpath is not none -%}
+                {%- set open_url = route_url('list', root_name, entry.symlink_resolved_parent_subpath, entry.snapshot.id) ~ '#' ~ (entry.symlink_target_filename | quote_plus) -%}
+            {%- endif -%}
+        {%- elif not entry.is_symlink and entry.is_accessible -%}
+            {%- set download_url = route_url('download', root_name, entry.logical_path, entry.snapshot.id) -%}
+        {%- endif -%}
         <tr data-expanded="false"
             data-level="{{ level | default(0) }}"
             data-path="{{ entry.logical_path }}"
@@ -11,59 +27,52 @@
             data-is-hidden="{{ 'true' if entry.is_hidden else 'false' }}"
             data-is-missing="false"
             data-is-accessible="{{ 'true' if entry.is_accessible else 'false' }}"
-            data-is-sub-dataset="{{ 'true' if entry.is_sub_dataset else 'false' }}">
+            data-is-sub-dataset="{{ 'true' if entry.is_sub_dataset else 'false' }}"
+            {%- if open_url %} data-open-url="{{ open_url }}"{% endif %}
+            {%- if download_url %} data-download-url="{{ download_url }}"{% endif %}>
             <td class="browser-cell-select" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">
                 <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ entry.name }}"{% if not entry.is_accessible %} disabled title="{{ t('error.permission_denied') }}"{% endif %}>
             </td>
             <td class="browser-cell-name{{ ' node-locked' if not entry.is_accessible else '' }}" style="padding-left: calc(6px + 20px * {{ level | default(0) }});" data-sort="{{ entry.name }}">
+                {%- if open_url or download_url %}<a class="row-link" href="{{ open_url or download_url }}" tabindex="-1" aria-hidden="true"></a>{% endif -%}
                 {%- if entry.sub_dataset_root_name is not none -%}
-                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class}) }}{{ lucide('folder-x', size=16, **{'class': 'file-icon icon-missing'}) }}
-                <a href="{{ route_url(module, entry.sub_dataset_root_name, '', entry.snapshot.id) }}" class="sub-dataset-link" title="{{ entry.display_type }}">{{ entry.name }}</a>
+                <span class="folder-spacer"></span>{{ lucide(entry.effective_icon_name, size=16, **{'class': 'file-icon ' ~ entry.effective_icon_class}) }}
+                <span class="sub-dataset-name" title="{{ entry.display_type }}">{{ entry.name }}</span>
                 <span class="symlink-target-badge">{{ entry.display_type }}</span>
                 {%- elif entry.is_kernel_fs -%}
-                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class}) }}{{ lucide('folder-x' if entry.is_folder else 'file-x', size=16, **{'class': 'file-icon icon-missing'}) }}
+                <span class="folder-spacer"></span>{{ lucide(entry.effective_icon_name, size=16, **{'class': 'file-icon ' ~ entry.effective_icon_class}) }}
                 <span title="{{ entry.display_type }}">{{ entry.name }} <span class="symlink-target-badge">{{ entry.display_type }}</span></span>
                 {%- elif entry.is_folder -%}
                 {%- if not entry.is_sub_dataset -%}
-                <span class="folder-toggle icon" title="Toggle folder">▶</span>
+                <span class="folder-toggle icon" title="Toggle folder">{{ lucide('chevron-right', size=14) }}</span>
                 {%- else -%}
                 <span class="folder-spacer"></span>
                 {%- endif -%}
-                {%- if not entry.is_accessible -%}
-                    {{ lucide('folder-lock', size=16, **{'class': 'file-icon icon-standard icon-folder folder-locked'}) }}
-                {%- elif entry.is_mount or (entry.display_type and 'Dataset' in entry.display_type) -%}
-                    {{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class}) }}
-                {%- else -%}
-                    {{ lucide('folder', size=16, **{'class': 'file-icon icon-standard icon-folder'}) }}
-                {%- endif -%}{{ lucide('folder-x', size=16, **{'class': 'file-icon icon-missing'}) }}
-                <a href="{{ route_url(module, root_name, entry.logical_path, entry.snapshot.id) }}" {%- if not entry.is_accessible %} title="{{ t('error.permission_denied') }}"{%- endif -%}>{{ entry.name }}</a>
+                {{ lucide(entry.effective_icon_name, size=16, **{'class': 'file-icon ' ~ entry.effective_icon_class}) }}
+                <span {%- if not entry.is_accessible %} title="{{ t('error.permission_denied') }}"{%- endif -%}>{{ entry.name }}</span>
                 {%- if entry.is_mount or (entry.display_type and entry.display_type != 'directory') -%}
                 <span class="symlink-target-badge">{{ entry.display_type }}</span>
                 {%- endif -%}
                 {%- elif entry.is_symlink -%}
-                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class}) }}{{ lucide('folder-x' if entry.is_folder else 'file-x', size=16, **{'class': 'file-icon icon-missing'}) }}
+                <span class="folder-spacer"></span>{{ lucide(entry.effective_icon_name, size=16, **{'class': 'file-icon ' ~ entry.effective_icon_class}) }}
                 {%- if entry.symlink_is_broken -%}
                 <span class="symlink-broken" title="{{ t('error.broken_symlink') }}: {{ entry.symlink_target }}">{{ entry.name }} <span class="symlink-target-badge">➔ {{ entry.symlink_target }} ({{ t('badge.missing') }})</span></span>
                 {%- elif entry.symlink_target_is_dir -%}
                     {%- if entry.symlink_resolved_subpath is not none -%}
-                    <a href="{{ route_url('list', root_name, entry.symlink_resolved_subpath, entry.snapshot.id) }}" title="Symlink ➔ {{ entry.symlink_target }}">{{ entry.name }} <span class="symlink-target-badge">➔ {{ entry.symlink_target }}</span></a>
+                    <span title="Symlink ➔ {{ entry.symlink_target }}">{{ entry.name }} <span class="symlink-target-badge">➔ {{ entry.symlink_target }}</span></span>
                     {%- else -%}
                     <span title="Target outside root: {{ entry.symlink_target }}">{{ entry.name }} <span class="symlink-target-badge">➔ {{ entry.symlink_target }}</span></span>
                     {%- endif -%}
                 {%- else -%}
                     {%- if entry.symlink_resolved_parent_subpath is not none -%}
-                    <a href="{{ route_url('list', root_name, entry.symlink_resolved_parent_subpath, entry.snapshot.id) }}#{{ entry.symlink_target_filename | quote_plus }}" title="{{ t('action.open_target') }}: {{ entry.symlink_target }}">{{ entry.name }} <span class="symlink-target-badge">➔ {{ entry.symlink_target }}</span></a>
+                    <span title="{{ t('action.open_target') }}: {{ entry.symlink_target }}">{{ entry.name }} <span class="symlink-target-badge">➔ {{ entry.symlink_target }}</span></span>
                     {%- else -%}
                     <span title="Target outside root: {{ entry.symlink_target }}">{{ entry.name }} <span class="symlink-target-badge">➔ {{ entry.symlink_target }}</span></span>
                     {%- endif -%}
                 {%- endif -%}
                 {%- else -%}
-                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class ~ (' file-locked' if not entry.is_accessible else '')}) }}{{ lucide('folder-x' if entry.is_folder else 'file-x', size=16, **{'class': 'file-icon icon-missing'}) }}
-                {%- if entry.is_accessible -%}
-                <a href="{{ route_url('download', root_name, entry.logical_path, entry.snapshot.id) }}" class="file-download-link" title="{{ t('action.download') }}">{{ entry.name }}</a>
-                {%- else -%}
-                <span title="{{ t('error.permission_denied') }}">{{ entry.name }}</span>
-                {%- endif -%}
+                <span class="folder-spacer"></span>{{ lucide(entry.effective_icon_name, size=16, **{'class': 'file-icon ' ~ entry.effective_icon_class}) }}
+                <span {%- if not entry.is_accessible %} title="{{ t('error.permission_denied') }}"{%- endif -%}>{{ entry.name }}</span>
                 {%- endif -%}
                 {%- if not entry.is_accessible -%}
                     <span class="lock-indicator" title="{{ t('error.permission_denied') }}">{{ lucide('lock', size=12) }}</span>
@@ -121,20 +130,20 @@
             {%- endif -%}
             <td class="browser-cell-actions">
                 <div class="browser-cell-actions-wrapper">
+                    {%- if entry.sub_dataset_root_name is not none -%}
+                    <a href="{{ route_url('detail', entry.sub_dataset_root_name, '', entry.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=16) }}</a>
+                    {%- else -%}
+                    <a href="{{ route_url('detail', root_name, entry.logical_path, entry.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=16) }}</a>
+                    {%- endif -%}
                     {%- if not entry.is_folder and not entry.is_symlink and entry.is_accessible -%}
                     {%- if entry.sub_dataset_root_name is not none -%}
-                    <a href="{{ route_url('diff', entry.sub_dataset_root_name, '', entry.snapshot.id) }}" title="{{ t('action.diff') }}" class="action-btn action-diff">{{ lucide('file-diff', size=15) }}</a>
+                    <a href="{{ route_url('diff', entry.sub_dataset_root_name, '', entry.snapshot.id) }}" title="{{ t('action.diff') }}" class="action-btn action-diff">{{ lucide('file-diff', size=16) }}</a>
                     {%- else -%}
-                    <a href="{{ route_url('diff', root_name, entry.logical_path, entry.snapshot.id) }}" title="{{ t('action.diff') }}" class="action-btn action-diff">{{ lucide('file-diff', size=15) }}</a>
+                    <a href="{{ route_url('diff', root_name, entry.logical_path, entry.snapshot.id) }}" title="{{ t('action.diff') }}" class="action-btn action-diff">{{ lucide('file-diff', size=16) }}</a>
                     {%- endif -%}
-                    {%- endif -%}
-                    {%- if entry.sub_dataset_root_name is not none -%}
-                    <a href="{{ route_url('detail', entry.sub_dataset_root_name, '', entry.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
-                    {%- else -%}
-                    <a href="{{ route_url('detail', root_name, entry.logical_path, entry.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
                     {%- endif -%}
                     {%- if not entry.is_folder and not entry.is_symlink and entry.is_accessible -%}
-                    <a href="{{ route_url('download', root_name, entry.logical_path, entry.snapshot.id) }}" title="{{ t('action.download') }}" class="action-btn action-download">{{ lucide('download', size=15) }}</a>
+                    <a href="{{ route_url('download', root_name, entry.logical_path, entry.snapshot.id) }}" title="{{ t('action.download') }}" class="action-btn action-download">{{ lucide('download', size=16) }}</a>
                     {%- endif -%}
                 </div>
             </td>
@@ -148,18 +157,15 @@
             data-parent="{{ parent_path | default('') }}"
             data-is-folder="{{ 'true' if entry.is_folder else 'false' }}"
             data-is-hidden="{{ 'true' if entry.is_hidden else 'false' }}"
-            data-is-missing="true">
+            data-is-missing="true"
+            {%- if entry.is_folder %} data-open-url="{{ route_url(module, root_name, entry.logical_path, folder.snapshot.id) }}"{% endif %}>
             <td class="browser-cell-select" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">
                 <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ filename }}">
             </td>
             <td class="browser-cell-name stroke" style="padding-left: calc(6px + 20px * {{ level | default(0) }});" data-sort="{{ filename }}">
-                <span class="folder-spacer"></span>{%- if entry.is_folder -%}
-                {{ lucide('folder', size=16, **{'class': 'file-icon icon-standard icon-folder'}) }}{{ lucide('folder-x', size=16, **{'class': 'file-icon icon-missing'}) }}
-                <a href="{{ route_url(module, root_name, entry.logical_path, folder.snapshot.id) }}">{{ filename }}</a>
-                {%- else -%}
-                {{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class}) }}{{ lucide('file-x', size=16, **{'class': 'file-icon icon-missing'}) }}
-                {{ filename }}
-                {%- endif -%}
+                {%- if entry.is_folder %}<a class="row-link" href="{{ route_url(module, root_name, entry.logical_path, folder.snapshot.id) }}" tabindex="-1" aria-hidden="true"></a>{% endif %}
+                <span class="folder-spacer"></span>{{ lucide(entry.effective_icon_name, size=16, **{'class': 'file-icon ' ~ entry.effective_icon_class}) }}
+                <span>{{ filename }}</span>
             </td>
             <td class="browser-cell-snapshots" data-filename="{{ filename }}">
                 <div class="snapshot-skeleton"></div>
@@ -172,17 +178,17 @@
             <td class="browser-cell-ctime" data-sort="1970-01-01T00:00:00">?</td>
             <td class="browser-cell-actions">
                 <div class="browser-cell-actions-wrapper">
+                    {%- if entry.sub_dataset_root_name is not none -%}
+                    <a href="{{ route_url('detail', entry.sub_dataset_root_name, '', folder.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=16) }}</a>
+                    {%- else -%}
+                    <a href="{{ route_url('detail', root_name, entry.logical_path, folder.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=16) }}</a>
+                    {%- endif -%}
                     {%- if not entry.is_folder -%}
                     {%- if entry.sub_dataset_root_name is not none -%}
-                    <a href="{{ route_url('diff', entry.sub_dataset_root_name, '', folder.snapshot.id) }}" title="{{ t('action.diff') }}" class="action-btn action-diff">{{ lucide('file-diff', size=15) }}</a>
+                    <a href="{{ route_url('diff', entry.sub_dataset_root_name, '', folder.snapshot.id) }}" title="{{ t('action.diff') }}" class="action-btn action-diff">{{ lucide('file-diff', size=16) }}</a>
                     {%- else -%}
-                    <a href="{{ route_url('diff', root_name, entry.logical_path, folder.snapshot.id) }}" title="{{ t('action.diff') }}" class="action-btn action-diff">{{ lucide('file-diff', size=15) }}</a>
+                    <a href="{{ route_url('diff', root_name, entry.logical_path, folder.snapshot.id) }}" title="{{ t('action.diff') }}" class="action-btn action-diff">{{ lucide('file-diff', size=16) }}</a>
                     {%- endif -%}
-                    {%- endif -%}
-                    {%- if entry.sub_dataset_root_name is not none -%}
-                    <a href="{{ route_url('detail', entry.sub_dataset_root_name, '', folder.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
-                    {%- else -%}
-                    <a href="{{ route_url('detail', root_name, entry.logical_path, folder.snapshot.id) }}" title="{{ t('action.show_details') }}" class="action-btn action-info">{{ lucide('info', size=15) }}</a>
                     {%- endif -%}
                 </div>
             </td>

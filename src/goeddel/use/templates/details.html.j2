@@ -2,17 +2,29 @@
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2'%}
+    <link rel="stylesheet" href="{{ static_url('css/file_browser.css') }}">
+    <link rel="stylesheet" href="{{ static_url('css/column_visibility.css') }}">
+    <script src="{{ static_url('js/column_visibility.js') }}" defer></script>
     <script src="{{ static_url('js/details.js') }}" defer></script>
 </head>
 <body>
     <div class="sticky-header-container">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px;">
             <h2 style="display: flex; align-items: center; gap: 8px; margin: 0;">{{ lucide('database' if file.is_sub_dataset or file.is_mount else ('folder' if file.is_folder else 'file-text'), size=24) }} {{ file.name if file.name else root_name }}</h2>
-            {%- if not file.is_folder and not file.is_symlink -%}
-            <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="dropdown col-visibility-dropdown">
+                    <button type="button" class="col-visibility-toolbar-btn" id="btn-column-visibility" title="{{ t('columns.toolbar_button') }}">
+                        {{ lucide('columns-3', size=15, class_='text-muted') }}
+                        <span>{{ t('columns.toolbar_button') }}</span>
+                        {{ lucide('chevron-down', size=13, class_='text-muted') }}
+                    </button>
+                    <div class="dropdown-content col-visibility-menu" id="col-visibility-panel"></div>
+                </div>
+                {%- if not file.is_folder and not file.is_symlink -%}
                 <a class="open-explorer-btn" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 0.85rem;" href="{{ route_url('diff', root_name, file.path, file.snapshot.id) }}" title="{{ t('action.diff') }}">{{ lucide('file-diff', size=14) }} {{ t('action.diff') }}</a>
+                {%- endif -%}
+                {% include 'global_controls.html.j2' %}
             </div>
-            {%- endif -%}
         </div>
         {% include 'breadcrumbs.html.j2' %}
     </div>

@@ -86,7 +86,7 @@ def get_breadcrumbs(
         {
             "name": "/",
             "path": "",
-            "separator": bool(full_logical_path),
+            "separator": bool(full_logical_path) or file.is_folder,
             "is_current": not bool(full_logical_path),
             "is_boundary": False,
             "icon_name": None,

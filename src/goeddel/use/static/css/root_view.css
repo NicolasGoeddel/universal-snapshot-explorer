@@ -57,11 +57,16 @@
     margin-top: 0;
 }
 
-#rootbrowser>thead>tr.header-row>th,
-#rootbrowser>thead>tr:first-child>th {
+/* Make the header row sticky instead of each column to avoid col-resizer z-index issues */
+#rootbrowser>thead>tr.header-row,
+#rootbrowser>thead>tr:first-child {
     position: sticky;
     top: var(--index-top-height, 76px);
     z-index: 40;
+}
+
+#rootbrowser>thead>tr.header-row>th,
+#rootbrowser>thead>tr:first-child>th {
     background-color: var(--bg-header) !important;
 }
 

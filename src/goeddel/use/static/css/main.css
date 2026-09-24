@@ -185,14 +185,19 @@ table.filebrowser> :is(thead, tbody)>tr> :is(th, td):last-child {
     border-right: none;
 }
 
-table.filebrowser>thead>tr.header-row>th,
-table.filebrowser>thead>tr:first-child>th {
+/* Make the header row sticky instead of each column to avoid col-resizer z-index issues */
+table.filebrowser>thead>tr.header-row,
+table.filebrowser>thead>tr:first-child {
     position: sticky;
     top: var(--top-header-height, 85px);
+    z-index: 40;
+}
+
+table.filebrowser>thead>tr.header-row>th,
+table.filebrowser>thead>tr:first-child>th {
     background-color: var(--bg-header) !important;
     font-weight: bold;
     text-align: left;
-    z-index: 40;
     border-bottom: 1px solid var(--border-color);
 }
 

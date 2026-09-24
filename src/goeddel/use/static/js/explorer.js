@@ -420,6 +420,7 @@ class ExplorerView {
                 const doesExist = isSubDataset ? true : !!meta.does_exist;
                 row.dataset.isMissing = doesExist ? 'false' : 'true';
                 row.classList.toggle('row-missing', !doesExist);
+                this.syncFolderToggle(row, doesExist);
 
                 const nameCell = row.querySelector('.browser-cell-name');
                 if (nameCell) {
@@ -504,11 +505,14 @@ class ExplorerView {
                 this.retargetRowUrls(row, targetSnapshotId);
             });
 
-            // Update subfolders if any are expanded
-            const expandedRows = this.treeTable.getAllRows().filter((r) => r.dataset.expanded === 'true');
-            if (expandedRows.length > 0) {
+            // Update the rows of every loaded subfolder, collapsed ones included, so they are
+            // current when expanded again
+            const loadedFolders = this.treeTable
+                .getAllRows()
+                .filter((r) => r.dataset.isFolder === 'true' && this.getDirectChildren(r.dataset.path).length > 0);
+            if (loadedFolders.length > 0) {
                 await Promise.all(
-                    expandedRows.map(async (expRow) => {
+                    loadedFolders.map(async (expRow) => {
                         const expPath = expRow.dataset.path;
                         if (!expPath) return;
                         try {
@@ -534,6 +538,7 @@ class ExplorerView {
                                 const childExists = isChildSubDataset ? true : !!childMeta.does_exist;
                                 childRow.dataset.isMissing = childExists ? 'false' : 'true';
                                 childRow.classList.toggle('row-missing', !childExists);
+                                this.syncFolderToggle(childRow, childExists);
 
                                 const childNameCell = childRow.querySelector('.browser-cell-name');
                                 if (childNameCell) {
@@ -607,6 +612,7 @@ class ExplorerView {
 
             this.updateZebra();
             this.updateToggleCounts();
+            this.keyboard?.sanitizeFocus();
 
             if (this.selectedRow) {
                 this.selectRow(this.selectedRow, { updateHash: false });
@@ -960,6 +966,35 @@ class ExplorerView {
             const row = visibleRows[i];
             row.classList.toggle('odd', i % 2 === 0);
             row.classList.toggle('even', i % 2 !== 0);
+        }
+    }
+
+    /**
+     * Give a folder row its expand chevron only while the folder exists in the shown snapshot,
+     * collapsing it when it disappears.
+     *
+     * @param {HTMLTableRowElement} row - Table row.
+     * @param {boolean} exists - Whether the entry exists in the shown snapshot.
+     */
+    syncFolderToggle(row, exists) {
+        if (row.dataset.isFolder !== 'true') return;
+        const toggle = row.querySelector('.browser-cell-name .folder-toggle');
+
+        if (exists && !toggle) {
+            const spacer = row.querySelector('.browser-cell-name .folder-spacer');
+            const template = document.getElementById('folder-toggle-template');
+            if (!spacer || !template) return;
+            const newToggle = template.content.firstElementChild.cloneNode(true);
+            spacer.replaceWith(newToggle);
+            this.bindTreeEvents(row);
+        } else if (!exists && toggle) {
+            if (row.dataset.expanded === 'true') {
+                this.collapseDescendants(row.dataset.path);
+                row.dataset.expanded = 'false';
+            }
+            const spacer = document.createElement('span');
+            spacer.className = 'folder-spacer';
+            toggle.replaceWith(spacer);
         }
     }
 

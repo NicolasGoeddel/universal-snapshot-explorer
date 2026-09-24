@@ -32,4 +32,9 @@ roots:
     user_map: etc/passwd
     group_map: etc/group
 
-loglevel: info
+loglevel: debug
+
+# security:
+#   enabled: true
+#   impersonate_users:
+#     - nicolas

@@ -164,10 +164,10 @@ class ZfsClient:
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
             if res.returncode != 0:
                 logger.error("ZFS list snapshots failed for %s with status %d: %s", dataset, res.returncode, res.stderr.strip())
-                return []
-        except OSError, subprocess.SubprocessError:
+                raise RuntimeError(f"ZFS command failed with status {res.returncode}")
+        except (OSError, subprocess.SubprocessError) as exc:
             logger.exception("Subprocess error running ZFS list snapshots for dataset %s", dataset)
-            return []
+            raise RuntimeError("Subprocess error while running ZFS command") from exc
 
         snapshots: list[ZfsSnapshotInfo] = []
         for line in res.stdout.splitlines():

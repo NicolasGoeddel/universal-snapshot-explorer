@@ -84,6 +84,7 @@ class SnapshotStateEntry(SymlinkInfo):
     is_sub_dataset: bool
     is_symlink: bool
     is_accessible: bool
+    is_stat_visible: bool
     icon_name: str
     icon_class: str
     size_human: str

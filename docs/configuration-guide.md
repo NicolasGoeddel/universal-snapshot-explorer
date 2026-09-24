@@ -17,6 +17,7 @@ This guide covers all configuration options in **Universal Snapshot Explorer (US
    - [Global Btrfs Auto-Discovery (`btrfs:`)](#global-btrfs-auto-discovery-btrfs)
 4. [Dynamic UID / GID Resolution](#4-dynamic-uid--gid-resolution)
 5. [Timestamp Parsing Patterns (`snapshot_patterns`)](#5-timestamp-parsing-patterns-snapshot_patterns)
+6. [Authenticated Access & POSIX ACL Enforcement (`security:`)](#6-authenticated-access--posix-acl-enforcement-security)
 
 ---
 
@@ -255,3 +256,68 @@ Supported directives include standard `strftime` formats as well as named placeh
 | **btrbk Standard**   | `home.20260829T140000+0200` | `*.%Y%m%dT%H%M%S*` |
 | **btrbk Date-Only**  | `home.20260829` | `*.%Y%m%d` |
 | **Snapper Timestamp**| `backup-2026-08-29` | `backup-%Y-%m-%d` |
+
+---
+
+## 6. Authenticated Access & POSIX ACL Enforcement (`security:`)
+
+USE has no login page of its own. When `security.enabled` is `true`, it instead trusts a header set by a fronting reverse proxy that has already authenticated the request (e.g. oauth2-proxy's `X-Forwarded-User`, or `Remote-User` from any OIDC-aware proxy).
+It then uses that value as a Unix username to enforce the **real POSIX ACLs already present on the underlying filesystem** for every browse, download, diff, and ZIP-export request.
+
+This is deliberately not a separate permission system: it re-derives the exact same read/traverse decision the filesystem itself would make for that user, using `getfacl` and the container's own NSS configuration to resolve group membership.
+
+> [!TIP]
+> **Container UID/GID Mapping (Local & AD/LDAP)**  
+> Since USE runs isolated in a container, its internal standard library (`libc` NSS) only knows the users defined inside the container itself. If a requested username is not found, USE safely falls back to the "World" (Other) file permissions.
+> 
+> To enable perfect POSIX ACL enforcement for users on your host (e.g., TrueNAS):
+> 
+> **For Local Users only:**
+> You can simply mount your host's local files over the container's databases in your `docker-compose.yaml`:
+> ```yaml
+> volumes:
+>   - /etc/passwd:/etc/passwd:ro
+>   - /etc/group:/etc/group:ro
+> ```
+> 
+> **For LDAP / Active Directory (TrueNAS SCALE):**
+> Network users do not exist in the physical `/etc/passwd` file on the host. Mounting it is not enough. The most stable "Docker-native" workaround (without installing SSSD/Winbind packages into the container) is to create a cronjob on your TrueNAS host that dumps all users (including AD) into a flat text file regularly:
+> ```bash
+> # Run this via Host Cronjob (e.g., every 5 minutes):
+> getent passwd > /mnt/data/app-data/use/passwd
+> getent group > /mnt/data/app-data/use/group
+> ```
+> Then mount these static exports into the container:
+> ```yaml
+> volumes:
+>   - /mnt/data/app-data/use/passwd:/etc/passwd:ro
+>   - /mnt/data/app-data/use/group:/etc/group:ro
+> ```
+> The container's `libc` now reads these flat files natively and instantly knows all your AD users and their correct group memberships!
+
+Restricted entries are displayed as locked, details are hidden, they cannot be downloaded or diffed.
+
+ZIP exports display a warning if they contain files in sub-folders that will be skipped.
+
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | `bool` | `false` | Enables trusted-header authentication and ACL enforcement. Opt-in: existing unauthenticated deployments are unaffected. |
+| `trusted_user_header` | `string` | `"Remote-User"` | The HTTP header name a fronting reverse proxy sets to the authenticated Unix username. USE never terminates authentication itself. |
+| `impersonate_users` | `list[string]` | `[]` | Fallback identities for requests with no `trusted_user_header` value. See below. |
+
+A request that carries no `trusted_user_header` value is, by default, denied outright when `security.enabled` is `true`: there's no identity to check ACLs against. Setting `impersonate_users` changes that: such a request is treated as the **union** of every listed user's permissions: so a path is accessible if *any* of them could reach it as themselves. This is meant for a standalone instance with no fronting auth proxy at all, that should still enforce real ACLs rather than exposing everything.
+
+#### Example Configuration:
+```yaml
+security:
+  enabled: true
+  trusted_user_header: X-Forwarded-User
+  # Optional: unauthenticated requests are treated as this union of users
+  # instead of being denied.
+  impersonate_users:
+    - alice
+    - bob
+```
+
+#### Requirements:
+* The reverse proxy in front of USE **must** strip any incoming client-supplied value of `trusted_user_header` before setting its own, otherwise a client could simply set the header itself and impersonate any user.

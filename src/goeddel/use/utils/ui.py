@@ -193,7 +193,7 @@ def render_error_response(
         context={
             "request": request,
             "status_code": status_code,
-            "title": title or t("error.404_title" if status_code == 404 else "error.500_title"),
+            "title": title or t("error.404_title" if status_code == 404 else ("error.403_title" if status_code == 403 else "error.500_title")),
             "message": message,
             "root_name": root_name,
             "path": path,

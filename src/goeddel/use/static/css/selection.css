@@ -231,3 +231,41 @@ tr.selected-multi.range-preview td {
     margin-left: 2px;
     opacity: 0.85;
 }
+
+/* ZIP export permission-warning modal (see explorer.js's confirmZipPermissionWarning).
+   Independent X/Y overflow, both capped: a long list scrolls vertically without
+   growing the modal, and a single very long path scrolls horizontally within its
+   own row instead of wrapping or stretching the dialog wider. Either way the
+   modal's own size and on-screen position stay fixed regardless of content. */
+.zip-permission-skipped-list {
+    margin: 8px 0 12px 0;
+    padding: 8px 12px;
+    max-height: 220px;
+    max-width: 100%;
+    overflow-y: auto;
+    overflow-x: auto;
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 8.5pt;
+    font-family: monospace;
+    color: var(--text-muted);
+    list-style: none;
+    box-sizing: border-box;
+}
+
+.zip-permission-skipped-list li {
+    padding: 2px 0;
+    white-space: nowrap;
+}
+
+.zip-permission-skipped-list li + li {
+    border-top: 1px dashed var(--border-color-light);
+}
+
+.zip-permission-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+}

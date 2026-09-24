@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from typing import cast
+
 from fastapi import APIRouter, Request
 
 from ..dependencies import get_app_config, render_lucide
 from ..models.types import SnapshotStateResponse
 from ..utils.path_resolver import resolve_root_and_subpath
+from ..zip_streamer import resolve_zip_selection
 
 router = APIRouter()
 
@@ -43,6 +46,25 @@ def get_snapshot_state_api(request: Request, full_path: str = "", snapshot: str 
         # this is a plain render, not a re-decision of which icon to show.
         meta["icon_svg"] = render_lucide(meta["icon_name"], size=16, **{"class": f"file-icon {meta['icon_class']}"})
     return data
+
+
+@router.post("/api/zip-preview/{full_path:path}")
+async def get_zip_preview_api(request: Request, full_path: str = "") -> dict[str, object]:
+    """
+    Reports what a ZIP export of the given selection would skip due to the
+    current user's ACL restrictions, WITHOUT generating the archive: lets the
+    frontend warn the user before committing to a download.
+    """
+    config = get_app_config(request)
+    _, _, root_folder = resolve_root_and_subpath(full_path, config)
+
+    body = cast(dict[str, object], await request.json())
+    raw_paths = body.get("paths", [])
+    paths = [str(p) for p in cast(list[object], raw_paths)] if isinstance(raw_paths, list) else []
+    snapshot = cast(str | None, body.get("snapshot"))
+
+    _included, _empty_dirs, skipped = resolve_zip_selection(root_folder, snapshot, paths)
+    return {"skipped": skipped, "skipped_count": len(skipped)}
 
 
 @router.post("/api/invalidate")

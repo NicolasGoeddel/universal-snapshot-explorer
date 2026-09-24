@@ -55,10 +55,11 @@ class ZfsCliSnapshotProvider:
             logger.info("No ZFS dataset name found for path '%s'. Falling back to FilesystemSnapshotProvider", snapshot_dir)
             return self._fallback.get_snapshots(snapshot_dir, patterns, original_snapshot)
 
-        zfs_snaps = self._zfs_client.list_snapshots(ds_name)
-        if not zfs_snaps:
-            # Fall back to filesystem scan in case dataset has no ZFS CLI snapshots visible or permissions issue
-            logger.info("No snapshots found via ZFS CLI for dataset '%s'. Falling back to FilesystemSnapshotProvider", ds_name)
+        try:
+            zfs_snaps = self._zfs_client.list_snapshots(ds_name)
+        except Exception as e:
+            # Fall back to filesystem scan in case of permissions issue or ZFS CLI failure
+            logger.info("Failed to query ZFS CLI snapshots for dataset '%s': %s. Falling back to FilesystemSnapshotProvider", ds_name, e)
             return self._fallback.get_snapshots(snapshot_dir, patterns, original_snapshot)
 
         discovered: list[Snapshot] = []

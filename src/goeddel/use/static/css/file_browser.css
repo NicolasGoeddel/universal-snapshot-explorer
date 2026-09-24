@@ -58,6 +58,11 @@
 
     & > tbody > tr {
         --row-tint: transparent;
+        position: relative;
+
+        &:is([data-open-url], [data-download-url]) {
+            cursor: pointer;
+        }
         scroll-margin-top: calc(var(--top-header-height, 85px) + var(--header-row-height, 27px) + 32px);
         scroll-margin-bottom: 24px;
 
@@ -119,6 +124,7 @@
 /* Sorting */
 .filebrowser th.sortable {
     position: relative;
+    padding-right: 18px;
     cursor: pointer;
     user-select: none;
 
@@ -126,7 +132,9 @@
         content: " ⇅";
         position: absolute;
         top: 50%;
+        right: 7px;
         transform: translateY(-50%);
+        font-size: 9pt;
         opacity: 0.35;
         font-weight: 400;
         transition: opacity 0.12s;
@@ -155,13 +163,6 @@
             opacity: 1;
             color: var(--primary-accent);
         }
-    }
-
-    padding-right: 18px;
-
-    &::after {
-        right: 7px;
-        font-size: 9pt;
     }
 }
 
@@ -276,23 +277,6 @@ th.sort-flash {
 
 /* Name column */
 .browser-cell-name {
-    & a {
-        display: inline-block;
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        vertical-align: middle;
-        color: var(--text-main);
-        text-decoration: underline transparent;
-        text-underline-offset: 3px;
-        transition: color 0.12s, text-decoration-color 0.12s;
-
-        &:hover {
-            color: var(--primary-accent);
-            text-decoration-color: var(--primary-accent);
-        }
-    }
-
     &.stroke {
         text-decoration: line-through;
         color: var(--text-very-muted);
@@ -300,6 +284,17 @@ th.sort-flash {
 
     &.node-locked {
         color: var(--text-muted);
+    }
+}
+
+/* Covers the whole row for the browser's context menu, but lets every click through */
+.row-link {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+
+    &.is-armed {
+        pointer-events: auto;
     }
 }
 

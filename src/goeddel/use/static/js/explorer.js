@@ -45,6 +45,7 @@ class ExplorerView {
         this.initMultiSelection();
         this.initTypeahead();
         this.initKeyboardNavigation();
+        this.initRowActivation();
         this.initTimelineTooltip();
         this.initSnapshotDropdown();
         this.initSnapshotCriteria();
@@ -247,7 +248,7 @@ class ExplorerView {
                 (td && td.dataset.isSubDataset === 'true') ||
                 (row && row.dataset.isSubDataset === 'true') ||
                 td?._snapshotData?.isSubDataset ||
-                (row && row.querySelector('.sub-dataset-link') !== null) ||
+                (row && row.querySelector('.sub-dataset-name') !== null) ||
                 row?.querySelector('.symlink-target-badge')?.textContent?.includes('Dataset') ||
                 row?.querySelector('.symlink-target-badge')?.textContent?.includes('Mount');
 
@@ -500,33 +501,7 @@ class ExplorerView {
                     ctimeCell.dataset.sort = meta.ctime_iso;
                 }
 
-                // Update links (Folder link, Symlink target link, Download link, Details link)
-                const nameLink = row.querySelector('.browser-cell-name a');
-                if (nameLink) {
-                    try {
-                        const u = new URL(nameLink.href, window.location.origin);
-                        u.searchParams.set('snapshot', targetSnapshotId);
-                        nameLink.href = u.pathname + u.search + u.hash;
-                    } catch (_e) {}
-                }
-
-                const downloadLink = row.querySelector('.action-download') || row.querySelector('.file-download-link');
-                if (downloadLink) {
-                    try {
-                        const u = new URL(downloadLink.href, window.location.origin);
-                        u.searchParams.set('snapshot', targetSnapshotId);
-                        downloadLink.href = u.pathname + u.search + u.hash;
-                    } catch (_e) {}
-                }
-
-                const detailsLink = row.querySelector('.action-details');
-                if (detailsLink) {
-                    try {
-                        const u = new URL(detailsLink.href, window.location.origin);
-                        u.searchParams.set('snapshot', targetSnapshotId);
-                        detailsLink.href = u.pathname + u.search + u.hash;
-                    } catch (_e) {}
-                }
+                this.retargetRowUrls(row, targetSnapshotId);
             });
 
             // Update subfolders if any are expanded
@@ -613,6 +588,8 @@ class ExplorerView {
                                     childCtimeCell.textContent = childMeta.ctime_fmt;
                                     childCtimeCell.dataset.sort = childMeta.ctime_iso;
                                 }
+
+                                this.retargetRowUrls(childRow, targetSnapshotId);
                             });
                         } catch (_e) {}
                     }),
@@ -1168,7 +1145,7 @@ class ExplorerView {
                     const isDirLike = (row) =>
                         row.dataset.isFolder === 'true' ||
                         row.dataset.isSubDataset === 'true' ||
-                        row.querySelector('.sub-dataset-link') !== null ||
+                        row.querySelector('.sub-dataset-name') !== null ||
                         row.querySelector('.folder-toggle') !== null;
                     const isDirA = isDirLike(a);
                     const isDirB = isDirLike(b);
@@ -1245,6 +1222,115 @@ class ExplorerView {
 
     getVisibleRows() {
         return this.filterManager ? this.filterManager.getVisibleRows() : this.treeTable.getVisibleRows();
+    }
+
+    /**
+     * @param {HTMLTableRowElement} row - Table row.
+     * @returns {string|null} Where opening the row navigates (folder, sub-dataset, symlink target).
+     */
+    getRowOpenUrl(row) {
+        return row.dataset.openUrl || null;
+    }
+
+    /**
+     * @param {HTMLTableRowElement} row - Table row.
+     * @returns {string|null} Download URL of a readable file row.
+     */
+    getRowDownloadUrl(row) {
+        return row.dataset.downloadUrl || null;
+    }
+
+    /**
+     * Point every URL of a row (open/download targets, row link, action buttons) at another snapshot.
+     *
+     * @param {HTMLTableRowElement} row - Table row.
+     * @param {string} snapshotId - Target snapshot.
+     */
+    retargetRowUrls(row, snapshotId) {
+        const retarget = (url) => {
+            const u = new URL(url, window.location.origin);
+            u.searchParams.set('snapshot', snapshotId);
+            return u.pathname + u.search + u.hash;
+        };
+        for (const key of ['openUrl', 'downloadUrl']) {
+            if (row.dataset[key]) row.dataset[key] = retarget(row.dataset[key]);
+        }
+        row.querySelectorAll('a[href]').forEach((a) => {
+            a.setAttribute('href', retarget(a.getAttribute('href')));
+        });
+    }
+
+    /**
+     * Open a row: navigate into folders / symlink targets, download files.
+     *
+     * @param {HTMLTableRowElement} row - Table row.
+     */
+    openRow(row) {
+        const url = this.getRowOpenUrl(row) || this.getRowDownloadUrl(row);
+        if (url) {
+            window.location.assign(url);
+            return;
+        }
+        const toggleBtn = row.querySelector('.folder-toggle');
+        if (toggleBtn) this.toggleFolder(toggleBtn);
+    }
+
+    /**
+     * Double-click opens a row; a right-click exposes the row's link to the browser's own
+     * context menu (copy link, open in new tab).
+     */
+    initRowActivation() {
+        const isRowControl = (target) => target.closest('.row-checkbox, .folder-toggle, .action-btn');
+
+        // A double-click that drags before release is a word-by-word text selection, not an open
+        let secondPressAt = null;
+        this.tbody.addEventListener('mousedown', (e) => {
+            secondPressAt = e.detail === 2 ? { x: e.clientX, y: e.clientY } : null;
+        });
+
+        this.tbody.addEventListener('dblclick', (e) => {
+            if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+            const row = e.target.closest('tr');
+            if (!row?.dataset.path || isRowControl(e.target)) return;
+            if (secondPressAt && Math.hypot(e.clientX - secondPressAt.x, e.clientY - secondPressAt.y) > 3) return;
+
+            window.getSelection()?.removeAllRanges();
+            this.openRow(row);
+        });
+
+        // Middle-click and Ctrl+click open folders in a new tab, like they would on a link
+        const newTabUrl = (e) => {
+            const wantsNewTab = e.button === 1 || (e.button === 0 && (e.ctrlKey || e.metaKey));
+            if (!wantsNewTab || isRowControl(e.target)) return null;
+            const row = e.target.closest('tr');
+            return row?.dataset.path ? this.getRowOpenUrl(row) : null;
+        };
+        const openInNewTab = (e) => {
+            const url = newTabUrl(e);
+            if (!url) return;
+            e.preventDefault();
+            window.open(url, '_blank', 'noopener');
+        };
+        this.tbody.addEventListener('mousedown', (e) => {
+            if (e.button === 1 && newTabUrl(e)) e.preventDefault(); // no autoscroll
+        });
+        this.tbody.addEventListener('auxclick', openInNewTab);
+        this.tbody.addEventListener('click', openInNewTab);
+
+        // The row link ignores the pointer so it never gets clicked; it only becomes hit-testable
+        // between a right-button press and the context menu that follows it
+        let armedLink = null;
+        const disarm = () => {
+            armedLink?.classList.remove('is-armed');
+            armedLink = null;
+        };
+        document.addEventListener('mousedown', (e) => {
+            disarm();
+            if (e.button !== 2 || !this.tbody.contains(e.target) || isRowControl(e.target)) return;
+            armedLink = e.target.closest('tr')?.querySelector('.row-link') || null;
+            armedLink?.classList.add('is-armed');
+        });
+        document.addEventListener('contextmenu', () => setTimeout(disarm));
     }
 
     selectRow(row, options = { updateHash: true }) {
@@ -1386,27 +1472,13 @@ class ExplorerView {
 
         // Enter: Open folder / Follow symlink / Download file
         this.keyboard.register('Enter', (row) => {
-            if (!row) return;
-            const isFolder = row.dataset.isFolder === 'true';
-            const toggleBtn = row.querySelector('.folder-toggle');
-            const nameLink = row.querySelector('.browser-cell-name a');
-            if (nameLink) {
-                nameLink.click();
-            } else if (isFolder && toggleBtn) {
-                this.toggleFolder(toggleBtn);
-            } else {
-                const downloadLink = row.querySelector('.action-download') || row.querySelector('.file-download-link');
-                if (downloadLink) downloadLink.click();
-            }
+            if (row) this.openRow(row);
         });
 
-        // Ctrl+Enter: Open focused folder in a new tab
+        // Ctrl+Enter: Open focused folder / symlink target in a new tab
         this.keyboard.register('Ctrl+Enter', (row) => {
-            if (!row) return;
-            const isFolder = row.dataset.isFolder === 'true';
-            const nameLink = row.querySelector('.browser-cell-name a');
-            if (isFolder && nameLink) 
-                window.open(nameLink.href, '_blank', 'noopener');
+            const url = row && this.getRowOpenUrl(row);
+            if (url) window.open(url, '_blank', 'noopener');
         });
 
         // ArrowRight: Expand folder or step into first child

@@ -18,31 +18,26 @@
             {% include 'global_controls.html.j2' %}
         </div>
         {% include 'breadcrumbs.html.j2' %}
-        <div class="explorer-toolbar">
-            <label class="toggle-control" title="{{ t('filter.hidden_files_title') }}">
+        <div class="explorer-toolbar" role="toolbar">
+            <label class="toolbar-item toolbar-toggle" title="{{ t('filter.hidden_files_title') }}">
                 <input type="checkbox" id="toggle-hidden">
-                <span>
-                    {{ lucide('eye-off', size=16, class_='text-muted') }} 
-                    {{ t('filter.hidden_files') }}
-                    <span class="toggle-badge" id="badge-hidden-count" style="display: none;">0</span>
-                </span>
+                {{ lucide('eye-off', size=15, class_='toolbar-toggle-icon') }}
+                <span>{{ t('filter.hidden_files') }}</span>
+                <span class="toggle-badge" id="badge-hidden-count" style="display: none;">0</span>
             </label>
-            <label class="toggle-control" title="{{ t('filter.missing_files_title') }}">
+            <label class="toolbar-item toolbar-toggle" title="{{ t('filter.missing_files_title') }}">
                 <input type="checkbox" id="toggle-missing" checked>
-                <span>
-                    {{ lucide('ghost', size=16, class_='text-muted') }} 
-                    {{ t('filter.missing_files') }}
-                    <span class="toggle-badge" id="badge-missing-count" style="display: none;">0</span>
-                </span>
+                {{ lucide('ghost', size=15, class_='toolbar-toggle-icon') }}
+                <span>{{ t('filter.missing_files') }}</span>
+                <span class="toggle-badge" id="badge-missing-count" style="display: none;">0</span>
             </label>
-            <label class="toggle-control" title="{{ t('filter.changed_only_title') }}">
+            <label class="toolbar-item toolbar-toggle" title="{{ t('filter.changed_only_title') }}">
                 <input type="checkbox" id="toggle-changed">
-                <span>
-                    {{ lucide('history', size=16, class_='text-muted') }} 
-                    {{ t('filter.changed_only') }}
-                    <span class="toggle-badge" id="badge-changed-count" style="display: none;">0</span>
-                </span>
+                {{ lucide('history', size=15, class_='toolbar-toggle-icon') }}
+                <span>{{ t('filter.changed_only') }}</span>
+                <span class="toggle-badge" id="badge-changed-count" style="display: none;">0</span>
             </label>
+            <span class="toolbar-divider" aria-hidden="true"></span>
             {{ snapshot_criteria_dropdown('snapshot', t) }}
             <div class="dropdown col-visibility-dropdown">
                 <button type="button" class="col-visibility-toolbar-btn" id="btn-column-visibility" title="{{ t('columns.toolbar_button') }}">
@@ -52,9 +47,7 @@
                 </button>
                 <div class="dropdown-content col-visibility-menu" id="col-visibility-panel"></div>
             </div>
-            <div style="flex-grow: 1;"></div>
-            <div class="toolbar-stats" id="toolbar-stats" style="font-size: 8.5pt; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;">
-            </div>
+            <div class="toolbar-stats" id="toolbar-stats"></div>
         </div>
     </div>
 

@@ -198,7 +198,18 @@ class ExplorerView {
                 td.innerHTML = '<div class="snapshot-skeleton"></div>';
             }
         });
-        this.loadSnapshotBars(this.tbody, this.table.dataset.subpath || '');
+        // Timelines are fetched per folder: the current one and every loaded subfolder
+        const folders = [this.table.dataset.subpath || '', ...this.getLoadedFolderRows().map((r) => r.dataset.path)];
+        folders.forEach((path) => this.loadSnapshotBars(this.tbody, path));
+    }
+
+    /**
+     * @returns {HTMLTableRowElement[]} Folder rows whose contents have been loaded (expanded or not).
+     */
+    getLoadedFolderRows() {
+        return this.treeTable
+            .getAllRows()
+            .filter((r) => r.dataset.isFolder === 'true' && this.getDirectChildren(r.dataset.path).length > 0);
     }
 
     updateHeaderTimeline(headerBarStr) {
@@ -507,9 +518,7 @@ class ExplorerView {
 
             // Update the rows of every loaded subfolder, collapsed ones included, so they are
             // current when expanded again
-            const loadedFolders = this.treeTable
-                .getAllRows()
-                .filter((r) => r.dataset.isFolder === 'true' && this.getDirectChildren(r.dataset.path).length > 0);
+            const loadedFolders = this.getLoadedFolderRows();
             if (loadedFolders.length > 0) {
                 await Promise.all(
                     loadedFolders.map(async (expRow) => {
@@ -874,14 +883,15 @@ class ExplorerView {
                 this.updateHeaderTimeline(data.header_bar);
             }
 
-            const allRows = this.treeTable.getAllRows();
+            // Bars are keyed by filename, so only this folder's own rows may take them
+            const rows = this.treeTable.getChildrenOfPath(dirPath);
             const chunkSize = 500;
             let index = 0;
 
             const processChunk = () => {
-                const end = Math.min(index + chunkSize, allRows.length);
+                const end = Math.min(index + chunkSize, rows.length);
                 for (; index < end; index++) {
-                    const row = allRows[index];
+                    const row = rows[index];
                     const fn = row.dataset.filename;
                     if (!fn || !bars[fn]) continue;
 
@@ -927,7 +937,7 @@ class ExplorerView {
                     this.snapshotObserver.observe(td);
                 }
 
-                if (index < allRows.length) {
+                if (index < rows.length) {
                     requestAnimationFrame(processChunk);
                 } else {
                     this.updateZebra();

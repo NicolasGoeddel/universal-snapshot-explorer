@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import io
 import os
 import struct
 import tempfile
 import unittest
+import zipfile
 from typing import cast, override
 from unittest.mock import patch
 
@@ -536,6 +538,116 @@ class TestZipSelectionSkipReporting(unittest.TestCase):
 
         self.assertEqual(sorted(body["skipped"]), sorted(expected_skipped))
         self.assertEqual(body["skipped_count"], len(expected_skipped))
+
+
+class TestZipSelectionDirectoryPermissions(unittest.TestCase):
+    """
+    A directory's entries may only be exported when the user can both list
+    ("r") and traverse ("x") it: "r" alone exposes names but not content, and
+    "x" alone allows opening known paths but not discovering them.
+    """
+
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        files = {
+            "no_exec/data.txt": "world-readable",
+            "exec_only_parent/exec_only/hidden.txt": "readable-by-name",
+            "exec_only_parent/exec_only/private.txt": "owner-only",
+            "exec_only_parent/exec_only/sub/inner.txt": "nested",
+            "exec_only_parent/visible.txt": "ok",
+        }
+        for rel, content in files.items():
+            path = os.path.join(self.temp_dir.name, *rel.split("/"))
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as f:
+                _ = f.write(content)
+
+        self.config = AppConfig(
+            roots={"root": RootConfig(root_path=self.temp_dir.name, sub_path="")},
+            security=SecurityConfig(enabled=True, trusted_user_header="Remote-User"),
+        )
+        RootFolder.set_root_configs(self.config.roots)
+
+    @staticmethod
+    def fake_check(real_path: str, username: object, want: str) -> bool:
+        name = os.path.basename(real_path)
+        if name == "no_exec":
+            return want == "r"
+        if name == "exec_only":
+            return want == "x"
+        return name != "private.txt"
+
+    def resolve(self, paths: list[str]) -> tuple[list[tuple[str, str]], list[str], list[str]]:
+        from goeddel.use.zip_streamer import resolve_zip_selection
+
+        token = security.current_username.set("someone")
+        try:
+            with patch.object(security, "_check_permission", side_effect=self.fake_check):
+                return resolve_zip_selection(RootFolder.get(self.config.roots["root"]), None, paths)
+        finally:
+            security.current_username.reset(token)
+
+    def test_listable_but_not_traversable_directory_is_skipped_whole(self) -> None:
+        included, empty_dirs, skipped = self.resolve(["no_exec"])
+        self.assertEqual(included, [])
+        self.assertEqual(empty_dirs, [])
+        self.assertEqual(skipped, ["no_exec"])
+
+    def test_traversable_but_not_listable_directory_is_skipped_without_its_entry_names(self) -> None:
+        included, _empty_dirs, skipped = self.resolve(["exec_only_parent"])
+        self.assertEqual([node_path for node_path, _ in included], ["exec_only_parent/visible.txt"])
+        self.assertEqual(skipped, ["exec_only_parent/exec_only"])
+
+    def test_known_paths_inside_a_traversable_directory_stay_exportable(self) -> None:
+        included, _empty_dirs, skipped = self.resolve(["exec_only_parent/exec_only/hidden.txt", "exec_only_parent/exec_only/sub"])
+        self.assertEqual(
+            sorted(node_path for node_path, _ in included),
+            ["exec_only_parent/exec_only/hidden.txt", "exec_only_parent/exec_only/sub/inner.txt"],
+        )
+        self.assertEqual(skipped, [])
+
+    def test_archive_and_preview_both_exclude_a_non_traversable_directory(self) -> None:
+        from fastapi.testclient import TestClient
+
+        app.state.loaded_config = self.config
+        client = TestClient(app)
+        with patch.object(security, "_check_permission", side_effect=self.fake_check):
+            preview = client.post("/api/zip-preview/root", json={"paths": ["no_exec"], "snapshot": None}, headers={"Remote-User": "someone"})
+            archive = client.post(
+                "/download-zip/root",
+                data={"snapshot": "", "base_path": "", "structure": "relative", "payload": '["no_exec"]'},
+                headers={"Remote-User": "someone"},
+            )
+
+        self.assertEqual(preview.status_code, 200)
+        self.assertEqual(preview.json()["skipped"], ["no_exec"])
+        self.assertEqual(archive.status_code, 200)
+        with zipfile.ZipFile(io.BytesIO(archive.content)) as zf:
+            self.assertEqual(zf.namelist(), [])
+
+    def test_union_does_not_combine_one_members_listing_with_anothers_read(self) -> None:
+        # alice may list and traverse no_exec but not read data.txt; bob may
+        # read data.txt but not traverse no_exec. Neither can reach its content.
+        def fake_check(real_path: str, username: str, want: str) -> bool:
+            name = os.path.basename(real_path)
+            if name == "no_exec":
+                return username == "alice"
+            if name == "data.txt":
+                return username == "bob"
+            return True
+
+        from goeddel.use.zip_streamer import resolve_zip_selection
+
+        token = security.current_username.set(frozenset({"alice", "bob"}))
+        try:
+            with patch.object(security, "_check_permission", side_effect=fake_check):
+                included, _empty_dirs, skipped = resolve_zip_selection(RootFolder.get(self.config.roots["root"]), None, ["no_exec"])
+        finally:
+            security.current_username.reset(token)
+
+        self.assertEqual(included, [])
+        self.assertEqual(skipped, ["no_exec/data.txt"])
 
 
 class TestImpersonationUnion(unittest.TestCase):

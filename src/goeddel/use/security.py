@@ -448,6 +448,17 @@ def can_traverse_real_path(real_path: str, username: UserName | frozenset[UserNa
     return _run_for_each_identity(username, lambda u: _check_permission(real_path, u, "x"))
 
 
+def identities_that_can_list(real_path: str, username: UserName | frozenset[UserName]) -> frozenset[UserName]:
+    """
+    Narrows `username` (a single user or an impersonation union) down to the
+    identities that may both list ("r") and traverse ("x") the directory at
+    `real_path`, the two permissions needed to enumerate and open its entries.
+    Both must hold for the same identity, so the result is meant to be passed
+    on as the `username` of any check made below that directory.
+    """
+    return frozenset(u for u in _normalize_identities(username) if _check_permission(real_path, u, "r") and _check_permission(real_path, u, "x"))
+
+
 def _ancestor_chain(dir_path: FilePath) -> list[str]:
     """Every directory from the share root ("") down to and including `dir_path`."""
     chain = [""]

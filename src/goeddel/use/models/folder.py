@@ -222,7 +222,8 @@ class Folder(FSNode):
     @override
     def size(self) -> int | None:
         """Returns the number of items in this folder (for template compatibility)."""
-        if self.has_independent_snapshots:
+        # Counting entries is listing them: withheld from users who may not list this folder.
+        if self.has_independent_snapshots or not self.is_accessible:
             return None
         return self.item_count
 

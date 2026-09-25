@@ -724,8 +724,11 @@ class RootFolder:
                 mtime_iso = entry.mtime.isoformat() if entry.mtime else ""
                 ctime_fmt = entry.ctime.strftime("%d.%m.%Y %H:%M:%S") if entry.ctime else "–"
                 ctime_iso = entry.ctime.isoformat() if entry.ctime else ""
+                is_accessible = entry.is_accessible
                 if entry.has_independent_snapshots:
                     size_human = "–"
+                elif entry.is_folder and not is_accessible:
+                    size_human = "? files"
                 else:
                     size_human = f"{entry.size} files" if entry.is_folder and entry.size is not None else entry.size_human
 
@@ -746,10 +749,10 @@ class RootFolder:
                     "is_sub_dataset": entry.is_sub_dataset,
                     "has_independent_snapshots": entry.has_independent_snapshots,
                     "is_symlink": entry.is_symlink,
-                    "is_accessible": entry.is_accessible,
+                    "is_accessible": is_accessible,
                     "is_stat_visible": True,
                     "size_human": size_human or "–",
-                    "size": entry.size if entry.size is not None else 0,
+                    "size": -1 if entry.is_folder and not is_accessible else entry.size if entry.size is not None else 0,
                     "owner": f"{entry.owner}:{entry.group}",
                     "group": entry.group,
                     "mode_human": entry.mode_human,

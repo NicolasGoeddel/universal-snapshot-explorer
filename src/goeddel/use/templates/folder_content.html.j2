@@ -84,7 +84,9 @@
                 {%- if entry.has_independent_snapshots -%}
                     —
                 {%- elif entry.is_folder -%}
-                    {%- if entry.size is none -%}
+                    {%- if not entry.is_accessible -%}
+                        ? {{ t('unit.files') }}
+                    {%- elif entry.size is none -%}
                         —
                     {%- elif entry.size == 1 -%}
                         1 {{ t('unit.file') }}

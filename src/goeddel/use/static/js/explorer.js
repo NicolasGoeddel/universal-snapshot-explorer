@@ -560,6 +560,8 @@ class ExplorerView {
                     let displaySize = meta.size_human;
                     if (!statVisible) {
                         displaySize = '?';
+                    } else if (meta.is_folder && !meta.has_independent_snapshots && !meta.is_accessible) {
+                        displaySize = `? ${window.clientI18n?.['unit.files'] || 'files'}`;
                     } else if (
                         meta.is_folder &&
                         !meta.has_independent_snapshots &&
@@ -683,6 +685,8 @@ class ExplorerView {
                                     let displaySize = childMeta.size_human;
                                     if (!childStatVisible) {
                                         displaySize = '?';
+                                    } else if (childMeta.is_folder && !childMeta.has_independent_snapshots && !childMeta.is_accessible) {
+                                        displaySize = `? ${window.clientI18n?.['unit.files'] || 'files'}`;
                                     } else if (
                                         childMeta.is_folder &&
                                         !childMeta.has_independent_snapshots &&

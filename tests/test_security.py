@@ -4,7 +4,7 @@ import os
 import struct
 import tempfile
 import unittest
-from typing import override
+from typing import cast, override
 from unittest.mock import patch
 
 from goeddel.use import security
@@ -428,6 +428,30 @@ class TestFolderListingAccessibility(unittest.TestCase):
                 self.assertFalse(folder["restricted.txt"].is_accessible)
         finally:
             security.current_username.reset(token)
+
+    def test_item_count_of_unlistable_folder_is_withheld(self) -> None:
+        os.makedirs(os.path.join(self.temp_dir.name, "locked", "inner"))
+
+        def fake_can_access_child(root_folder: object, child_path: str, snapshot: object, username: str | None) -> bool:
+            return child_path != "locked"
+
+        token = security.current_username.set("someone")
+        try:
+            with (
+                patch("goeddel.use.security.can_access_child", side_effect=fake_can_access_child),
+                patch("goeddel.use.security.can_view_metadata", return_value=True),
+            ):
+                root_folder = RootFolder.get(self.config.roots["root"])
+                folder = root_folder.get_folder(path="")
+                assert folder is not None
+                self.assertIsNone(folder["locked"].size)
+                state = root_folder.get_snapshot_state("", None)
+        finally:
+            security.current_username.reset(token)
+
+        entries = cast(dict[str, dict[str, object]], state["entries"])
+        self.assertEqual(entries["locked"]["size"], -1)
+        self.assertEqual(entries["locked"]["size_human"], "? files")
 
     def test_no_restriction_when_username_is_none(self) -> None:
         self.assertIsNone(security.get_current_username())

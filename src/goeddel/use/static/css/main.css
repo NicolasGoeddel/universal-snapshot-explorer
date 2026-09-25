@@ -1398,6 +1398,17 @@ kbd {
     outline: none;
     box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--primary-accent);
 }
+
+.custom-checkbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+    background-color: var(--bg-base);
+}
+
+.custom-checkbox:disabled:hover {
+    border-color: var(--border-color);
+    box-shadow: none;
+}
 /* Selection styles extracted to static/css/selection.css */
 
 /* ==========================================================================
@@ -1686,6 +1697,11 @@ table.filebrowser.is-loading-snapshots tbody {
     0% { transform: rotate(0deg); }
     45% { transform: rotate(180deg); }
     50% { transform: rotate(180deg); }
-    95% { transform: rotate(360deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Dynamic Icon toggling for missing/existing rows in Snapshot Explorer */
+tr.row-missing .icon-standard { display: none !important; }
+tr.row-missing .icon-missing { display: inline-block !important; }
+tr:not(.row-missing) .icon-missing { display: none !important; }
+tr:not(.row-missing) .icon-standard { display: inline-block !important; }

@@ -521,12 +521,26 @@ class RootFolder:
         Scans directory entries across all snapshots using fast batch os.scandir
         with LRU-cached read-only snapshots and returns a compact snapshot color map.
         """
+        from ..security import can_traverse_real_path, get_current_username
+
+        username = get_current_username()
+
         snapshots = self.snapshots()
         snapshot_dir_entries: list[dict[str, tuple[int, int, int, int, int, int]] | None] = []
         all_filenames: set[str] = set()
 
         for snapshot in snapshots:
             real_dir = self.real_path(path, snapshot)
+            # The bars encode each child's size/mtime/mode/owner per snapshot --
+            # that's `stat()` data, which needs traverse permission on this
+            # directory in that snapshot, independent of the children's own
+            # bits. Skipping the scan entirely both redacts the bars and avoids
+            # the walk. One check per snapshot, not per child: every child of
+            # this directory shares the exact same answer.
+            if not can_traverse_real_path(real_dir, username):
+                snapshot_dir_entries.append(None)
+                continue
+
             if isinstance(snapshot, OriginalSnapshot):
                 entries_map = self._scan_dir_live(real_dir, self.control_dir_name)
             else:
@@ -681,13 +695,19 @@ class RootFolder:
         entries_data: dict[str, dict[str, object]] = {}
         for filename in folder.content():
             entry = folder[filename]
-            if not entry.does_exist:
+            if not entry.does_exist or not entry.is_stat_visible:
+                # Traverse denied on the parent, or file missing -- stat data
+                # must not be exposed. Redacted here rather than in the frontend, since
+                # this payload is what the browser repaints the table from and
+                # would otherwise overwrite the server-rendered "–" cells with
+                # the real values (see folder_content.html.j2).
                 entries_data[filename] = {
-                    "does_exist": False,
+                    "does_exist": entry.does_exist,
                     "is_folder": entry.is_folder,
                     "is_sub_dataset": entry.is_sub_dataset,
-                    "is_symlink": False,
+                    "is_symlink": entry.is_symlink if entry.does_exist else False,
                     "is_accessible": False,
+                    "is_stat_visible": entry.is_stat_visible,
                     "size_human": "–",
                     "size": -1,
                     "owner": "–",
@@ -727,6 +747,7 @@ class RootFolder:
                     "has_independent_snapshots": entry.has_independent_snapshots,
                     "is_symlink": entry.is_symlink,
                     "is_accessible": entry.is_accessible,
+                    "is_stat_visible": True,
                     "size_human": size_human or "–",
                     "size": entry.size if entry.size is not None else 0,
                     "owner": f"{entry.owner}:{entry.group}",

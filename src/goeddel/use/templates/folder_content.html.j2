@@ -13,15 +13,15 @@
             data-is-accessible="{{ 'true' if entry.is_accessible else 'false' }}"
             data-is-sub-dataset="{{ 'true' if entry.is_sub_dataset else 'false' }}">
             <td class="browser-cell-select" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">
-                <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ entry.name }}">
+                <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ entry.name }}"{% if not entry.is_accessible %} disabled title="{{ t('error.permission_denied') }}"{% endif %}>
             </td>
             <td class="browser-cell-name{{ ' node-locked' if not entry.is_accessible else '' }}" style="padding-left: calc(6px + 20px * {{ level | default(0) }});" data-sort="{{ entry.name }}">
                 {%- if entry.sub_dataset_root_name is not none -%}
-                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class}) }}
+                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class}) }}{{ lucide('folder-x', size=16, **{'class': 'file-icon icon-missing'}) }}
                 <a href="{{ route_url(module, entry.sub_dataset_root_name, '', entry.snapshot.id) }}" class="sub-dataset-link" title="{{ entry.display_type }}">{{ entry.name }}</a>
                 <span class="symlink-target-badge">{{ entry.display_type }}</span>
                 {%- elif entry.is_kernel_fs -%}
-                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class}) }}
+                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class}) }}{{ lucide('folder-x' if entry.is_folder else 'file-x', size=16, **{'class': 'file-icon icon-missing'}) }}
                 <span title="{{ entry.display_type }}">{{ entry.name }} <span class="symlink-target-badge">{{ entry.display_type }}</span></span>
                 {%- elif entry.is_folder -%}
                 {%- if not entry.is_sub_dataset -%}
@@ -30,18 +30,18 @@
                 <span class="folder-spacer"></span>
                 {%- endif -%}
                 {%- if not entry.is_accessible -%}
-                    {{ lucide('folder-lock', size=16, **{'class': 'file-icon icon-folder folder-locked'}) }}
+                    {{ lucide('folder-lock', size=16, **{'class': 'file-icon icon-standard icon-folder folder-locked'}) }}
                 {%- elif entry.is_mount or (entry.display_type and 'Dataset' in entry.display_type) -%}
-                    {{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class}) }}
+                    {{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class}) }}
                 {%- else -%}
-                    {{ lucide('folder', size=16, **{'class': 'file-icon icon-folder'}) }}
-                {%- endif -%}
+                    {{ lucide('folder', size=16, **{'class': 'file-icon icon-standard icon-folder'}) }}
+                {%- endif -%}{{ lucide('folder-x', size=16, **{'class': 'file-icon icon-missing'}) }}
                 <a href="{{ route_url(module, root_name, entry.logical_path, entry.snapshot.id) }}" {%- if not entry.is_accessible %} title="{{ t('error.permission_denied') }}"{%- endif -%}>{{ entry.name }}</a>
                 {%- if entry.is_mount or (entry.display_type and entry.display_type != 'directory') -%}
                 <span class="symlink-target-badge">{{ entry.display_type }}</span>
                 {%- endif -%}
                 {%- elif entry.is_symlink -%}
-                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class}) }}
+                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class}) }}{{ lucide('folder-x' if entry.is_folder else 'file-x', size=16, **{'class': 'file-icon icon-missing'}) }}
                 {%- if entry.symlink_is_broken -%}
                 <span class="symlink-broken" title="{{ t('error.broken_symlink') }}: {{ entry.symlink_target }}">{{ entry.name }} <span class="symlink-target-badge">➔ {{ entry.symlink_target }} ({{ t('badge.missing') }})</span></span>
                 {%- elif entry.symlink_target_is_dir -%}
@@ -58,7 +58,7 @@
                     {%- endif -%}
                 {%- endif -%}
                 {%- else -%}
-                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon ' ~ entry.icon_class ~ (' file-locked' if not entry.is_accessible else '')}) }}
+                <span class="folder-spacer"></span>{{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class ~ (' file-locked' if not entry.is_accessible else '')}) }}{{ lucide('folder-x' if entry.is_folder else 'file-x', size=16, **{'class': 'file-icon icon-missing'}) }}
                 {%- if entry.is_accessible -%}
                 <a href="{{ route_url('download', root_name, entry.logical_path, entry.snapshot.id) }}" class="file-download-link" title="{{ t('action.download') }}">{{ entry.name }}</a>
                 {%- else -%}
@@ -72,6 +72,14 @@
             <td class="browser-cell-snapshots" data-filename="{{ filename }}" data-is-sub-dataset="{{ 'true' if entry.is_sub_dataset else 'false' }}">
                 <div class="snapshot-skeleton"></div>
             </td>
+            {%- if not entry.is_stat_visible -%}
+            <td class="browser-cell-size" data-sort="-1" title="{{ t('error.permission_denied') }}">?</td>
+            <td class="browser-cell-type" data-sort="?" title="{{ t('error.permission_denied') }}">?</td>
+            <td class="browser-cell-owner" data-sort="?:?" title="{{ t('error.permission_denied') }}">?:?</td>
+            <td class="browser-cell-mode" data-sort="0000" title="{{ t('error.permission_denied') }}">?</td>
+            <td class="browser-cell-mtime" data-sort="1970-01-01T00:00:00" title="{{ t('error.permission_denied') }}">?</td>
+            <td class="browser-cell-ctime" data-sort="1970-01-01T00:00:00" title="{{ t('error.permission_denied') }}">?</td>
+            {%- else -%}
             <td class="browser-cell-size" data-sort="{{ -1 if entry.size is none else entry.size }}">
                 {%- if entry.has_independent_snapshots -%}
                     —
@@ -110,6 +118,7 @@
             <td class="browser-cell-ctime" data-sort="{{ entry.ctime.isoformat() if entry.ctime else '' }}">
                 {{- entry.ctime.strftime('%d.%m.%Y %H:%M:%S') if entry.ctime else '' -}}
             </td>
+            {%- endif -%}
             <td class="browser-cell-actions">
                 <div class="browser-cell-actions-wrapper">
                     {%- if not entry.is_folder and not entry.is_symlink and entry.is_accessible -%}
@@ -131,7 +140,8 @@
             </td>
         </tr>
     {%- else -%}
-        <tr data-expanded="false"
+        <tr class="row-missing"
+            data-expanded="false"
             data-level="{{ level | default(0) }}"
             data-path="{{ entry.logical_path }}"
             data-filename="{{ filename }}"
@@ -144,10 +154,10 @@
             </td>
             <td class="browser-cell-name stroke" style="padding-left: calc(6px + 20px * {{ level | default(0) }});" data-sort="{{ filename }}">
                 <span class="folder-spacer"></span>{%- if entry.is_folder -%}
-                {{ lucide('folder-x', size=16, **{'class': 'file-icon icon-missing'}) }}
+                {{ lucide('folder', size=16, **{'class': 'file-icon icon-standard icon-folder'}) }}{{ lucide('folder-x', size=16, **{'class': 'file-icon icon-missing'}) }}
                 <a href="{{ route_url(module, root_name, entry.logical_path, folder.snapshot.id) }}">{{ filename }}</a>
                 {%- else -%}
-                {{ lucide('file-x', size=16, **{'class': 'file-icon icon-missing'}) }}
+                {{ lucide(entry.icon_name, size=16, **{'class': 'file-icon icon-standard ' ~ entry.icon_class}) }}{{ lucide('file-x', size=16, **{'class': 'file-icon icon-missing'}) }}
                 {{ filename }}
                 {%- endif -%}
             </td>

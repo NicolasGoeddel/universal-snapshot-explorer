@@ -42,6 +42,7 @@ Instead of browsing snapshots one by one or mounting snapshot directories manual
 * **🌐 Boundary & Mount Discovery:** Automatically detects nested mount points and sub-datasets via `/proc/mounts`, rendering dedicated per-dataset snapshot timelines in table rows and breadcrumbs.
 * **🤖 ZFS CLI Integration & Auto-Discovery:** Seamlessly discovers all active datasets across your ZFS pools with `/dev/zfs` passthrough and retrieves exact snapshot creation timestamps directly from ZFS metadata.
 * **📦 Checkbox Multi-Selection & Streaming ZIP Download:** Select multiple files or folders across any snapshot and download them instantly as an on-the-fly streaming ZIP archive without creating temporary files on disk.
+* **🛡️ POSIX ACL & Permissions Enforcement:** Fully replicates the kernel's access-control logic. If the user doesn't have read access to a file, they can't see or download it. Operates via HTTP headers (like TrueNAS auth proxies) and correctly evaluates inherited group mask and traversal permissions.
 * **🔍 Instant Audit & Advanced Column Filters:**
   * **Column Filters:** Powerful search strategies per column, including size ranges (`5mb..10mb`), octal mode masks (`700`, `g:x`), relative dates (`today`), and wildcards.
   * **"Changed only"** (`history` icon): Instantly filter out static files to spot what was modified, added, or deleted between snapshots.

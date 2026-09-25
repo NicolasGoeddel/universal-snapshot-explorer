@@ -15,7 +15,7 @@
     --tl-btn-h: calc(24px * var(--tl-scale));
     --tl-axis-h: calc(16px * var(--tl-scale));
     --tl-tick-w: calc(8px * var(--tl-scale));
-    --tl-stack-w: calc(8px * var(--tl-scale));
+    --tl-pin-w: calc(4px * var(--tl-scale));
     --tl-handle-w: calc(8px * var(--tl-scale));
     --tl-handle-min-h: calc(24px * var(--tl-scale));
     --tl-resizer-h: calc(8px * var(--tl-scale));
@@ -455,20 +455,66 @@
     background: var(--primary-hover);
 }
 
-.snapshot-timeline-tick.is-original {
-    background: #10b981;
-    opacity: 0.85;
+/* Snapshots drawn as a span from their date to the next snapshot: left-anchored,
+ * width set inline. A solid "pin" marks the actual capture moment; the lighter
+ * "tail" only fills the time until the next snapshot, so the bar doesn't read as
+ * the snapshot covering a period. */
+.snapshot-timeline-tick.is-range {
+    --tl-entry-color: var(--primary-accent);
+    margin-left: 0;
+    background: color-mix(in srgb, var(--tl-entry-color) 25%, transparent);
 }
 
-/* The currently-active snapshot: a distinct color (not used anywhere else in this
- * component) plus a glow, without resizing the tick - it stays flush with the
- * others so it doesn't touch the track's edges. Wins over .is-original when both apply. */
-.snapshot-timeline-tick.is-current,
-.snapshot-timeline-tick.is-original.is-current {
+/* The live filesystem state, placed at the present like any other entry. */
+.snapshot-timeline-tick.is-range.is-original {
+    --tl-entry-color: #10b981;
+}
+
+.snapshot-timeline-tick.is-range::before,
+.snapshot-timeline-stack.is-range::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--tl-pin-w);
+    border-radius: 999px;
+    background: var(--tl-entry-color, var(--primary-accent));
+}
+
+/* Captured before the visible window: the tail runs off the left edge with no pin,
+ * so the edge isn't mistaken for the capture date. */
+.snapshot-timeline-tick.is-range.is-clipped::before,
+.snapshot-timeline-stack.is-range.is-clipped::before {
+    display: none;
+}
+
+.snapshot-timeline-tick.is-range.is-clipped {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.snapshot-timeline-stack.is-range.is-clipped {
+    padding-left: 0;
+}
+
+.snapshot-timeline-selection .snapshot-timeline-tick.is-range:not(.is-current):hover {
+    background: color-mix(in srgb, var(--tl-entry-color) 40%, transparent);
+}
+
+.snapshot-timeline-selection .snapshot-timeline-tick.is-range:not(.is-current):hover::before {
+    background: color-mix(in srgb, var(--tl-entry-color) 80%, black);
+}
+
+/* The currently-active entry: a distinct color (not used anywhere else in this
+ * component) plus a glow, without resizing it - it stays flush with the others so
+ * it doesn't touch the track's edges. Wins over .is-original when both apply. */
+.snapshot-timeline-tick.is-range.is-current {
+    --tl-entry-color: #f59e0b;
+    background: color-mix(in srgb, var(--tl-entry-color) 35%, transparent);
     opacity: 1;
-    background: #f59e0b;
     z-index: 3;
-    box-shadow: 0 0 0 2px color-mix(in srgb, #f59e0b 35%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tl-entry-color) 35%, transparent);
 }
 
 /* --- Dense clusters: grouped vertical stack in a single time bucket --- */
@@ -476,31 +522,49 @@
     position: absolute;
     top: 3px;
     bottom: 12px;
-    width: var(--tl-stack-w);
-    margin-left: calc(var(--tl-stack-w) / -2);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    /* Column/row counts are set inline (see computeGridShape); filling column by
+     * column keeps the snapshots in chronological order from left to right. */
+    display: grid;
+    grid-auto-flow: column;
     gap: 1px;
+    opacity: 0.55;
     cursor: pointer;
 }
 
-.snapshot-timeline-stack-tick {
-    flex: 1 1 auto;
-    min-height: 2px;
-    border-radius: 1px;
-    background: var(--primary-accent);
-    opacity: 0.6;
+/* Room for the pin at the group's start (its earliest capture) before the grid. */
+.snapshot-timeline-stack.is-range {
+    padding-left: calc(var(--tl-pin-w) + 1px);
 }
 
-.snapshot-timeline-stack:hover .snapshot-timeline-stack-tick {
-    opacity: 0.9;
+/* Same palette as a single snapshot: solid pin at the start, each cell tinted like a tail. */
+.snapshot-timeline-selection .snapshot-timeline-stack {
+    opacity: 0.85;
+}
+
+.snapshot-timeline-selection .snapshot-timeline-stack:hover {
+    opacity: 1;
+}
+
+.snapshot-timeline-stack-tick {
+    min-width: 0;
+    min-height: 0;
+    border-radius: 1px;
+    background: color-mix(in srgb, var(--primary-accent) 25%, transparent);
+}
+
+.snapshot-timeline-selection .snapshot-timeline-stack:hover .snapshot-timeline-stack-tick:not(.is-current) {
+    background: color-mix(in srgb, var(--primary-hover) 40%, transparent);
+}
+
+.snapshot-timeline-selection .snapshot-timeline-stack:hover::before {
+    background: var(--primary-hover);
 }
 
 /* The currently-active snapshot is grouped inside this stack: ring the whole
  * cluster so it's obvious at a glance, and pick out its specific mini-tick too. */
 .snapshot-timeline-stack.is-current {
     z-index: 3;
+    opacity: 1;
 }
 
 .snapshot-timeline-stack.is-current::after {
@@ -513,9 +577,12 @@
     pointer-events: none;
 }
 
+.snapshot-timeline-stack-tick.is-original {
+    background: color-mix(in srgb, #10b981 25%, transparent);
+}
+
 .snapshot-timeline-stack-tick.is-current {
-    background: #f59e0b;
-    opacity: 1;
+    background: color-mix(in srgb, #f59e0b 35%, transparent);
 }
 
 .snapshot-timeline-stack-count {

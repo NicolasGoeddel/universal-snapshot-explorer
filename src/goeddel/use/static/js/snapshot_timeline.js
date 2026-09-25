@@ -22,6 +22,8 @@
 
     const MIN_TICK_SPACING_PX = 6;
     const MIN_AXIS_LABEL_SPACING_PX = 70;
+    const RANGE_GAP_PX = 2;
+    const STACK_CELL_GAP_PX = 1;
 
     const PANEL_MIN_HEIGHT = 80;
     const PANEL_MAX_HEIGHT = 420;
@@ -33,9 +35,10 @@
     const SCALE_STEP = 0.1;
 
     /**
-     * Compute tick/stack placement for a set of chronologically-sorted entries within
-     * [domainStart, domainEnd] across a track of `widthPx` pixels. Pure function of its
-     * inputs so it can be re-run on every resize/zoom/layout change.
+     * Compute range placement for a set of chronologically-sorted entries within
+     * [domainStart, domainEnd] across a track of `widthPx` pixels. Each entry spans
+     * from its `ts` to its `endTs` (the next snapshot); items get a start `x` and end
+     * `x2`. Pure function of its inputs so it can be re-run on every resize/zoom/layout change.
      */
     function computeTickLayout(entries, domainStart, domainEnd, widthPx) {
         if (!entries.length || widthPx <= 0) return [];
@@ -45,18 +48,25 @@
             const clamped = Math.min(Math.max(ts, domainStart), domainEnd);
             return ((clamped - domainStart) / span) * widthPx;
         };
+        // A range that started before the domain is only visible from the domain's start.
+        const visibleStart = (entry) => Math.max(entry.ts, domainStart);
+        const groupExtent = (group) => ({
+            x: toX(Math.min(...group.map(visibleStart))),
+            x2: toX(Math.max(...group.map((e) => e.endTs))),
+            clipped: Math.min(...group.map((e) => e.ts)) < domainStart,
+        });
 
         const minSpacingTs = (MIN_TICK_SPACING_PX / widthPx) * span;
         let needsGrouping = false;
         for (let i = 1; i < entries.length; i++) {
-            if (entries[i].ts - entries[i - 1].ts < minSpacingTs) {
+            if (visibleStart(entries[i]) - visibleStart(entries[i - 1]) < minSpacingTs) {
                 needsGrouping = true;
                 break;
             }
         }
 
         if (!needsGrouping) {
-            return entries.map((entry) => ({ type: 'tick', entry, x: toX(entry.ts) }));
+            return entries.map((entry) => ({ type: 'tick', entry, ...groupExtent([entry]) }));
         }
 
         // Bucket granularity is chosen from the CURRENT domain span (zoom level), not
@@ -67,7 +77,7 @@
 
         const buckets = new Map();
         entries.forEach((entry) => {
-            const key = Math.floor(entry.ts / bucketMs);
+            const key = Math.floor(visibleStart(entry) / bucketMs);
             if (!buckets.has(key)) buckets.set(key, []);
             buckets.get(key).push(entry);
         });
@@ -75,29 +85,47 @@
         const rawItems = Array.from(buckets.values())
             .map((group) => ({
                 entries: group,
-                ts: group.reduce((s, e) => s + e.ts, 0) / group.length,
+                ts: Math.min(...group.map(visibleStart)),
             }))
             .sort((a, b) => a.ts - b.ts);
 
-        // Merge adjacent buckets that still end up closer than MIN_TICK_SPACING_PX apart.
+        // Merge adjacent buckets whose ranges would still be narrower than MIN_TICK_SPACING_PX.
         const merged = [];
         rawItems.forEach((item) => {
             const x = toX(item.ts);
             const last = merged[merged.length - 1];
             if (last && x - last.x < MIN_TICK_SPACING_PX) {
                 last.entries = last.entries.concat(item.entries);
-                last.ts = last.entries.reduce((s, e) => s + e.ts, 0) / last.entries.length;
-                last.x = toX(last.ts);
             } else {
-                merged.push({ entries: item.entries, ts: item.ts, x });
+                merged.push({ entries: item.entries, x });
             }
         });
 
         return merged.map((item) =>
             item.entries.length === 1
-                ? { type: 'tick', entry: item.entries[0], x: item.x }
-                : { type: 'stack', entries: item.entries, x: item.x },
+                ? { type: 'tick', entry: item.entries[0], ...groupExtent(item.entries) }
+                : { type: 'stack', entries: item.entries, ...groupExtent(item.entries) },
         );
+    }
+
+    /**
+     * Pick the column/row count that fits `n` cells into a `widthPx` x `heightPx` box
+     * with the largest cells. Scored on the cell's shorter side (so no layout wins by
+     * producing hairline slivers), then on cell area.
+     */
+    function computeGridShape(n, widthPx, heightPx) {
+        let best = { cols: 1, rows: n, score: -Infinity, area: -Infinity };
+        for (let cols = 1; cols <= n; cols++) {
+            const rows = Math.ceil(n / cols);
+            const cellW = (widthPx - (cols - 1) * STACK_CELL_GAP_PX) / cols;
+            const cellH = (heightPx - (rows - 1) * STACK_CELL_GAP_PX) / rows;
+            const score = Math.min(cellW, cellH);
+            const area = cellW * cellH;
+            if (score > best.score || (score === best.score && area > best.area)) {
+                best = { cols, rows, score, area };
+            }
+        }
+        return { cols: best.cols, rows: best.rows };
     }
 
     /**
@@ -238,11 +266,16 @@
             } catch (e) {
                 raw = [];
             }
-            this.entries = raw.filter((e) => !e.isOriginal && typeof e.ts === 'number').sort((a, b) => a.ts - b.ts);
-            this.original = raw.find((e) => e.isOriginal) || null;
-            // "Original" is the backend's internal name for the live filesystem state;
-            // "Live" reads more clearly on the timeline itself.
-            if (this.original) this.original.name = window.clientI18n?.['badge.live'] || 'Live';
+            this.entries = raw.filter((e) => !e.isOriginal && typeof e.ts === 'number');
+            // The live filesystem state is a regular timeline entry placed at the present.
+            // "Original" is the backend's internal name for it; "Live" reads more clearly here.
+            const original = raw.find((e) => e.isOriginal);
+            if (original) {
+                original.name = window.clientI18n?.['badge.live'] || 'Live';
+                original.ts = Date.now();
+                this.entries.push(original);
+            }
+            this.entries.sort((a, b) => a.ts - b.ts);
 
             if (this.entries.length) {
                 this.domainStart = this.entries[0].ts;
@@ -260,6 +293,11 @@
                 this.domainStart -= pad;
                 this.domainEnd += pad;
             }
+
+            // Each entry spans until the next one; the last runs to the end of the timeline.
+            this.entries.forEach((entry, i) => {
+                entry.endTs = i + 1 < this.entries.length ? this.entries[i + 1].ts : this.domainEnd;
+            });
         }
 
         loadState() {
@@ -834,32 +872,34 @@
             this.renderAxis(this.selectionAxis, this.rangeStart, this.rangeEnd, width);
             if (width <= 0) return;
 
-            // "Live" only makes sense as a marker when the current zoom/pan actually
-            // reaches the newest end of the timeline - not pinned unconditionally.
-            const domainSpan = Math.max(1, this.domainEnd - this.domainStart);
-            const showLive = !!this.original && this.rangeEnd >= this.domainEnd - domainSpan * 0.001;
-
-            const reserveForOriginal = showLive ? 14 : 0;
-            const usableWidth = Math.max(1, width - reserveForOriginal);
-            const filtered = this.entries.filter((e) => e.ts >= this.rangeStart && e.ts <= this.rangeEnd);
+            const filtered = this.entries.filter((e) => e.ts <= this.rangeEnd && e.endTs > this.rangeStart);
             const domainEnd = this.rangeEnd > this.rangeStart ? this.rangeEnd : this.rangeStart + 1;
 
-            const layout = computeTickLayout(filtered, this.rangeStart, domainEnd, usableWidth);
+            const layout = computeTickLayout(filtered, this.rangeStart, domainEnd, width);
             this.renderTicksInto(track, layout, true);
-
-            if (showLive) {
-                const el = this.makeTickElement(this.original, width - 6, true);
-                el.classList.add('is-original');
-                track.appendChild(el);
-            }
         }
 
         renderTicksInto(track, layout, clickable) {
+            // Every stack in a track shares the same height; measured once per render.
+            let stackHeight = null;
             layout.forEach((item) => {
-                if (item.type === 'tick') {
-                    track.appendChild(this.makeTickElement(item.entry, item.x, clickable));
-                } else {
-                    track.appendChild(this.makeStackElement(item.entries, item.x, clickable));
+                const el = item.type === 'tick'
+                    ? this.makeTickElement(item.entry, item.x, clickable)
+                    : this.makeStackElement(item.entries, item.x, clickable);
+                // The gap keeps back-to-back ranges visually distinct.
+                const width = Math.max(2, item.x2 - item.x - RANGE_GAP_PX);
+                el.classList.add('is-range');
+                // Taken before the visible window: no pin, since its date is off-screen.
+                el.classList.toggle('is-clipped', item.clipped);
+                el.style.width = `${width}px`;
+                track.appendChild(el);
+                if (item.type === 'stack') {
+                    if (stackHeight === null) stackHeight = el.clientHeight;
+                    const pinPadding = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+                    const gridWidth = Math.max(1, width - pinPadding);
+                    const { cols, rows } = computeGridShape(item.entries.length, gridWidth, stackHeight);
+                    el.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                    el.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
                 }
             });
         }
@@ -869,6 +909,7 @@
             el.className = 'snapshot-timeline-tick';
             el.style.left = `${x}px`;
             if (entry.id === this.currentSnapshotId) el.classList.add('is-current');
+            if (entry.isOriginal) el.classList.add('is-original');
             const timeStr = entry.ts ? new Date(entry.ts).toLocaleString(appLocale()) : '';
             el.title = timeStr ? `${entry.name} — ${timeStr}` : entry.name;
             if (clickable) {
@@ -883,12 +924,15 @@
             el.className = 'snapshot-timeline-stack' + (isCurrent ? ' is-current' : '');
             el.style.left = `${x}px`;
 
-            const shown = Math.min(entries.length, 6);
-            for (let i = 0; i < shown; i++) {
+            entries.forEach((entry) => {
                 const t = document.createElement('div');
-                t.className = 'snapshot-timeline-stack-tick' + (entries[i].id === this.currentSnapshotId ? ' is-current' : '');
+                t.className = 'snapshot-timeline-stack-tick'
+                    + (entry.id === this.currentSnapshotId ? ' is-current' : '')
+                    + (entry.isOriginal ? ' is-original' : '');
+                const timeStr = entry.ts ? new Date(entry.ts).toLocaleString(appLocale()) : '';
+                t.title = timeStr ? `${entry.name} — ${timeStr}` : entry.name;
                 el.appendChild(t);
-            }
+            });
 
             const countEl = document.createElement('div');
             countEl.className = 'snapshot-timeline-stack-count';
@@ -908,7 +952,7 @@
             this.currentSnapshotId = entry.id;
             if (window.explorerView && typeof window.explorerView.navigateToSnapshot === 'function') {
                 window.explorerView.navigateToSnapshot(entry.id);
-                this.renderSelectionTrack();
+                this.render();
             } else if (entry.url) {
                 window.location.href = entry.url;
             }

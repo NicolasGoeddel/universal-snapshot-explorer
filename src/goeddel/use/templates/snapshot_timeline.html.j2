@@ -21,14 +21,24 @@
     </div>
     <div class="snapshot-timeline-body">
         <div class="snapshot-timeline-track snapshot-timeline-filter" id="snapshot-timeline-filter">
-            <div class="snapshot-timeline-canvas" id="snapshot-timeline-filter-canvas"></div>
+            <div class="snapshot-timeline-canvas" id="snapshot-timeline-filter-canvas">
+                <div class="snapshot-timeline-hover-indicator"></div>
+                <div class="snapshot-timeline-filter-selection"></div>
+                <div class="snapshot-timeline-range-line is-start"></div>
+                <div class="snapshot-timeline-range-line is-end"></div>
+                <div class="snapshot-timeline-handle is-start" data-handle="start"><div class="snapshot-timeline-handle-grip"></div></div>
+                <div class="snapshot-timeline-handle is-end" data-handle="end"><div class="snapshot-timeline-handle-grip"></div></div>
+            </div>
             <div class="snapshot-timeline-axis" id="snapshot-timeline-filter-axis"></div>
         </div>
         <div class="snapshot-timeline-split-resizer" id="snapshot-timeline-split-resizer" title="{{ t('timeline.resize_tooltip') }}"></div>
         <div class="snapshot-timeline-track snapshot-timeline-selection" id="snapshot-timeline-selection">
-            <div class="snapshot-timeline-canvas" id="snapshot-timeline-selection-canvas"></div>
+            <div class="snapshot-timeline-viewport" id="snapshot-timeline-selection-viewport">
+                <div class="snapshot-timeline-canvas snapshot-timeline-content" id="snapshot-timeline-selection-canvas"></div>
+            </div>
             <div class="snapshot-timeline-axis" id="snapshot-timeline-selection-axis"></div>
         </div>
     </div>
 </div>
+<div class="snapshot-timeline-popover" id="snapshot-timeline-popover" popover></div>
 <script type="application/json" id="snapshot-timeline-data" data-root="{{ root_name }}" data-current-snapshot="{{ breadcrumbs.snapshot.id }}">{{ timeline_snapshots_json | safe }}</script>

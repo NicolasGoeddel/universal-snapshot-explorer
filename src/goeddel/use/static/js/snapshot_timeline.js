@@ -4,14 +4,19 @@
  * Sticky bottom panel with two coordinated timelines:
  *  - Filter timeline: the full snapshot history for the current root/file, with two
  *    draggable delimiters marking a date range (Chrome DevTools Network-panel style).
- *  - Selection timeline: only the snapshots inside that filtered range, stretched to
- *    fill the available width (the filter acts as a zoom). Blocks are clickable.
+ *  - Selection timeline: the filtered range, shown through a natively scrolling
+ *    viewport (the filter acts as a zoom). Blocks are clickable.
+ *
+ * Both timelines lay snapshots out once, positioned in percent of the whole history.
+ * Zooming only changes the selection content's width (--tl-zoom) and scroll position,
+ * and panning is native scrolling; markup is rebuilt only when the zoom level changes
+ * how snapshots group, so the browser does the per-frame work.
  *
  * Supports 3 layout variants (side-by-side / stacked / scrollbar-zoom), a draggable
  * height resizer (collapsible down to just the grab handle), density-aware grouping
- * (snapshots too close together at the current zoom level merge into a vertical
- * "stack" bucketed by hour/day/week), smart date axis labels, quick-range presets,
- * and wheel-based zoom (vertical scroll) / pan (horizontal scroll) of the filter window.
+ * (snapshots too close together at the current zoom level merge into a grid "stack"
+ * bucketed by hour/day/week), smart date axis labels, quick-range presets, and
+ * wheel-based zoom (vertical scroll) / pan (horizontal scroll).
  */
 (() => {
     const SECOND = 1000;
@@ -23,7 +28,6 @@
     const MIN_TICK_SPACING_PX = 6;
     const MIN_AXIS_LABEL_SPACING_PX = 70;
     const RANGE_GAP_PX = 2;
-    const STACK_CELL_GAP_PX = 1;
 
     const PANEL_MIN_HEIGHT = 80;
     const PANEL_MAX_HEIGHT = 420;
@@ -38,9 +42,10 @@
      * Compute range placement for a set of chronologically-sorted entries within
      * [domainStart, domainEnd] across a track of `widthPx` pixels. Each entry spans
      * from its `ts` to its `endTs` (the next snapshot); items get a start `x` and end
-     * `x2`. Pure function of its inputs so it can be re-run on every resize/zoom/layout change.
+     * `x2`. `visibleSpan` is the time range actually on screen, which picks the grouping
+     * granularity. Pure function of its inputs, so it can be re-run on every zoom/resize.
      */
-    function computeTickLayout(entries, domainStart, domainEnd, widthPx) {
+    function computeTickLayout(entries, domainStart, domainEnd, widthPx, visibleSpan = domainEnd - domainStart) {
         if (!entries.length || widthPx <= 0) return [];
         const span = Math.max(1, domainEnd - domainStart);
 
@@ -48,18 +53,15 @@
             const clamped = Math.min(Math.max(ts, domainStart), domainEnd);
             return ((clamped - domainStart) / span) * widthPx;
         };
-        // A range that started before the domain is only visible from the domain's start.
-        const visibleStart = (entry) => Math.max(entry.ts, domainStart);
         const groupExtent = (group) => ({
-            x: toX(Math.min(...group.map(visibleStart))),
+            x: toX(Math.min(...group.map((e) => e.ts))),
             x2: toX(Math.max(...group.map((e) => e.endTs))),
-            clipped: Math.min(...group.map((e) => e.ts)) < domainStart,
         });
 
         const minSpacingTs = (MIN_TICK_SPACING_PX / widthPx) * span;
         let needsGrouping = false;
         for (let i = 1; i < entries.length; i++) {
-            if (visibleStart(entries[i]) - visibleStart(entries[i - 1]) < minSpacingTs) {
+            if (entries[i].ts - entries[i - 1].ts < minSpacingTs) {
                 needsGrouping = true;
                 break;
             }
@@ -69,15 +71,15 @@
             return entries.map((entry) => ({ type: 'tick', entry, ...groupExtent([entry]) }));
         }
 
-        // Bucket granularity is chosen from the CURRENT domain span (zoom level), not
-        // total history, so the same dataset groups differently when zoomed in vs out.
+        // Bucket granularity follows the zoom level, not total history, so the same
+        // dataset groups differently when zoomed in vs out.
         let bucketMs = WEEK;
-        if (span <= 2 * DAY) bucketMs = HOUR;
-        else if (span <= 60 * DAY) bucketMs = DAY;
+        if (visibleSpan <= 2 * DAY) bucketMs = HOUR;
+        else if (visibleSpan <= 60 * DAY) bucketMs = DAY;
 
         const buckets = new Map();
         entries.forEach((entry) => {
-            const key = Math.floor(visibleStart(entry) / bucketMs);
+            const key = Math.floor(entry.ts / bucketMs);
             if (!buckets.has(key)) buckets.set(key, []);
             buckets.get(key).push(entry);
         });
@@ -85,7 +87,7 @@
         const rawItems = Array.from(buckets.values())
             .map((group) => ({
                 entries: group,
-                ts: Math.min(...group.map(visibleStart)),
+                ts: Math.min(...group.map((e) => e.ts)),
             }))
             .sort((a, b) => a.ts - b.ts);
 
@@ -109,23 +111,21 @@
     }
 
     /**
-     * Pick the column/row count that fits `n` cells into a `widthPx` x `heightPx` box
-     * with the largest cells. Scored on the cell's shorter side (so no layout wins by
-     * producing hairline slivers), then on cell area.
+     * Drag started by pointer event `e` on `el`: pointer capture keeps pointermove
+     * arriving on `el` even outside it, and browsers already deliver it at most once
+     * per frame, so no document listeners or requestAnimationFrame throttling needed.
      */
-    function computeGridShape(n, widthPx, heightPx) {
-        let best = { cols: 1, rows: n, score: -Infinity, area: -Infinity };
-        for (let cols = 1; cols <= n; cols++) {
-            const rows = Math.ceil(n / cols);
-            const cellW = (widthPx - (cols - 1) * STACK_CELL_GAP_PX) / cols;
-            const cellH = (heightPx - (rows - 1) * STACK_CELL_GAP_PX) / rows;
-            const score = Math.min(cellW, cellH);
-            const area = cellW * cellH;
-            if (score > best.score || (score === best.score && area > best.area)) {
-                best = { cols, rows, score, area };
-            }
-        }
-        return { cols: best.cols, rows: best.rows };
+    function dragPointer(el, e, onMove, onEnd) {
+        el.setPointerCapture(e.pointerId);
+        el.addEventListener('pointermove', onMove);
+        el.addEventListener(
+            'lostpointercapture',
+            () => {
+                el.removeEventListener('pointermove', onMove);
+                onEnd?.();
+            },
+            { once: true },
+        );
     }
 
     /**
@@ -194,23 +194,25 @@
         return document.documentElement.lang || undefined;
     }
 
+    /** Axis labels are redrawn every zoom/scroll frame; creating a formatter is the costly
+     * part of toLocale*String, so each distinct locale + options formatter is kept. */
+    const dateFormatters = new Map();
+    function formatDate(ts, options) {
+        const key = appLocale() + JSON.stringify(options);
+        if (!dateFormatters.has(key)) dateFormatters.set(key, new Intl.DateTimeFormat(appLocale(), options));
+        return dateFormatters.get(key).format(ts);
+    }
+
     /** Minimal-but-understandable label text for an axis tick, adapted to its granularity. */
     function formatAxisLabel(ts, stepMs, domainCrossesYear) {
-        const d = new Date(ts);
-        const locale = appLocale();
+        const year = domainCrossesYear ? 'numeric' : undefined;
         if (stepMs < HOUR) {
-            return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: stepMs < MINUTE ? '2-digit' : undefined });
+            return formatDate(ts, { hour: '2-digit', minute: '2-digit', second: stepMs < MINUTE ? '2-digit' : undefined });
         }
-        if (stepMs < DAY) {
-            return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-        }
-        if (stepMs < 32 * DAY) {
-            return d.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: domainCrossesYear ? 'numeric' : undefined });
-        }
-        if (stepMs < 366 * DAY) {
-            return d.toLocaleDateString(locale, { month: 'short', year: domainCrossesYear ? 'numeric' : undefined });
-        }
-        return d.toLocaleDateString(locale, { year: 'numeric' });
+        if (stepMs < DAY) return formatDate(ts, { hour: '2-digit', minute: '2-digit' });
+        if (stepMs < 32 * DAY) return formatDate(ts, { month: 'short', day: 'numeric', year });
+        if (stepMs < 366 * DAY) return formatDate(ts, { month: 'short', year });
+        return formatDate(ts, { year: 'numeric' });
     }
 
     class SnapshotTimelinePanel {
@@ -220,34 +222,41 @@
             this.rootName = this.dataEl?.dataset.root || '';
             this.currentSnapshotId = this.dataEl?.dataset.currentSnapshot || '';
             this.filterTrack = document.getElementById('snapshot-timeline-filter-canvas');
-            this.selectionTrack = document.getElementById('snapshot-timeline-selection-canvas');
+            this.viewport = document.getElementById('snapshot-timeline-selection-viewport');
+            this.selectionContent = document.getElementById('snapshot-timeline-selection-canvas');
             this.filterAxis = document.getElementById('snapshot-timeline-filter-axis');
             this.selectionAxis = document.getElementById('snapshot-timeline-selection-axis');
             this.resizer = document.getElementById('snapshot-timeline-resizer');
             this.splitResizer = document.getElementById('snapshot-timeline-split-resizer');
-            this.popoverEl = null;
+            this.popoverEl = document.getElementById('snapshot-timeline-popover');
             this._raf = null;
+            this._applyRaf = null;
             this._persistRangeTimeout = null;
             this.lastExpandedHeight = PANEL_DEFAULT_HEIGHT;
             this.scale = 1;
+            // Cached so zoom/scroll never have to measure the DOM; refreshed on resize.
+            this.filterWidth = 0;
+            this.viewportWidth = 0;
+            this._expectedScrollLeft = 0;
 
             this.parseData();
             this.loadState();
+            this.filterBars = this.createBarsLayer(this.filterTrack, false);
+            this.selectionBars = this.createBarsLayer(this.selectionContent, true);
             this.initLayoutToggle();
             this.initQuickActions();
             this.initScaleControl();
             this.initResizer();
             this.initSplitResizer();
-            this.initFilterRangeSelect();
-            this.initFilterHoverPreview();
-            this.initWheelZoom(this.filterTrack, true);
-            this.initWheelZoom(this.selectionTrack, false);
-            this.render();
+            this.initFilterDrag();
+            this.initWheelZoom();
+            this.initViewportScroll();
+            this.refresh();
 
-            window.addEventListener('resize', () => this.scheduleRender());
-            if (typeof ResizeObserver !== 'undefined') {
-                new ResizeObserver(() => this.scheduleRender()).observe(this.panel);
-            }
+            // Covers window resizes, layout switches and split drags alike.
+            const observer = new ResizeObserver(() => this.scheduleRefresh());
+            observer.observe(this.filterTrack);
+            observer.observe(this.viewport);
 
             // Kept in sync with snapshot switches triggered elsewhere (breadcrumb dropdown,
             // per-row snapshot bar clicks), which navigate in-place via explorer.js.
@@ -255,7 +264,7 @@
                 const id = e.detail?.snapshotId;
                 if (!id || id === this.currentSnapshotId) return;
                 this.currentSnapshotId = id;
-                this.render();
+                this.markCurrent();
             });
         }
 
@@ -389,7 +398,6 @@
                 /* ignore */
             }
             this.updatePanelHeightVar();
-            if (!collapsed) this.scheduleRender();
         }
 
         initLayoutToggle() {
@@ -405,7 +413,6 @@
                     } catch (e) {
                         /* ignore */
                     }
-                    this.scheduleRender();
                 });
             });
         }
@@ -430,7 +437,7 @@
                     this.rangeStart = Math.max(this.domainStart, s);
                     this.rangeEnd = e;
                     this.persistRange();
-                    this.render();
+                    this.scheduleApplyRange();
                 });
             });
         }
@@ -482,207 +489,173 @@
                 } catch (err) {
                     /* ignore */
                 }
-                this.scheduleRender();
             });
 
-            this.splitResizer.addEventListener('mousedown', (e) => {
+            this.splitResizer.addEventListener('pointerdown', (e) => {
                 const layout = layoutOf();
                 if (layout !== 'side-by-side' && layout !== 'stacked') return;
                 e.preventDefault();
                 const bodyEl = this.splitResizer.parentElement;
                 const cssVar = varFor(layout);
-                const storageKey = storageKeyFor(layout);
                 this.splitResizer.classList.add('is-resizing');
 
-                let rafPending = false;
-                let pendingCoord = null;
+                // flex-basis percentages resolve against the CONTENT box, not the border
+                // box getBoundingClientRect() returns - subtract the body's own padding or
+                // the split drifts off by exactly that amount.
+                const rect = bodyEl.getBoundingClientRect();
+                const style = getComputedStyle(bodyEl);
                 const move = (ev) => {
-                    pendingCoord = layout === 'side-by-side' ? ev.clientX : ev.clientY;
-                    if (rafPending) return;
-                    rafPending = true;
-                    requestAnimationFrame(() => {
-                        rafPending = false;
-                        // flex-basis percentages resolve against the CONTENT box, not the
-                        // border box getBoundingClientRect() returns - subtract the body's
-                        // own padding or the split drifts off by exactly that amount.
-                        const rect = bodyEl.getBoundingClientRect();
-                        const style = getComputedStyle(bodyEl);
-                        let pct;
-                        if (layout === 'side-by-side') {
-                            const padLeft = parseFloat(style.paddingLeft) || 0;
-                            const padRight = parseFloat(style.paddingRight) || 0;
-                            const contentWidth = rect.width - padLeft - padRight;
-                            pct = ((pendingCoord - (rect.left + padLeft)) / contentWidth) * 100;
-                        } else {
-                            const padTop = parseFloat(style.paddingTop) || 0;
-                            const padBottom = parseFloat(style.paddingBottom) || 0;
-                            const contentHeight = rect.height - padTop - padBottom;
-                            pct = (((rect.bottom - padBottom) - pendingCoord) / contentHeight) * 100;
-                        }
-                        pct = Math.min(75, Math.max(15, pct));
-                        document.documentElement.style.setProperty(cssVar, `${pct}%`);
-                        this.scheduleRender();
-                    });
+                    let pct;
+                    if (layout === 'side-by-side') {
+                        const padLeft = parseFloat(style.paddingLeft) || 0;
+                        const contentWidth = rect.width - padLeft - (parseFloat(style.paddingRight) || 0);
+                        pct = ((ev.clientX - (rect.left + padLeft)) / contentWidth) * 100;
+                    } else {
+                        const padBottom = parseFloat(style.paddingBottom) || 0;
+                        const contentHeight = rect.height - (parseFloat(style.paddingTop) || 0) - padBottom;
+                        pct = ((rect.bottom - padBottom - ev.clientY) / contentHeight) * 100;
+                    }
+                    document.documentElement.style.setProperty(cssVar, `${Math.min(75, Math.max(15, pct))}%`);
                 };
-                const up = () => {
-                    document.removeEventListener('mousemove', move);
-                    document.removeEventListener('mouseup', up);
+                dragPointer(this.splitResizer, e, move, () => {
                     this.splitResizer.classList.remove('is-resizing');
                     try {
-                        localStorage.setItem(storageKey, document.documentElement.style.getPropertyValue(cssVar));
+                        localStorage.setItem(storageKeyFor(layout), document.documentElement.style.getPropertyValue(cssVar));
                     } catch (err) {
                         /* ignore */
                     }
-                };
-                document.addEventListener('mousemove', move);
-                document.addEventListener('mouseup', up);
+                });
             });
         }
 
-        /** DevTools-style click+drag on empty filter-track space defines a brand new range. */
-        initFilterRangeSelect() {
-            const canvas = this.filterTrack;
-            if (!canvas) return;
-            canvas.addEventListener('mousedown', (e) => {
-                if (e.target.closest('.snapshot-timeline-handle')) return;
+        /** Dragging a handle moves that end of the range; dragging anywhere else on the
+         * filter track selects a brand new range (DevTools Network-panel style). The
+         * hover guide line's visibility is pure CSS; this only feeds it the cursor x. */
+        initFilterDrag() {
+            const track = this.filterTrack;
+            track.addEventListener('pointermove', (e) => {
+                track.style.setProperty('--tl-hover-x', `${e.clientX - track.getBoundingClientRect().left}px`);
+            });
+            track.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
-                this._isDraggingFilter = true;
-                this.setFilterHoverVisible(false);
-                const rect = canvas.getBoundingClientRect();
-                const startX = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
-                const startTs = this.xToTs(startX, this.domainStart, this.domainEnd, rect.width);
+                const rect = track.getBoundingClientRect();
+                const tsAt = (clientX) => this.xToTs(clientX - rect.left, this.domainStart, this.domainEnd, rect.width);
+                const anchorTs = tsAt(e.clientX);
+                const minGap = Math.max(1, (this.domainEnd - this.domainStart) * 0.005);
+                const handle = e.target.closest('.snapshot-timeline-handle');
+                handle?.classList.add('is-dragging');
+                this.panel.classList.add('is-dragging-range');
 
-                let rafPending = false;
-                let pendingX = null;
                 const move = (ev) => {
-                    pendingX = ev.clientX;
-                    if (rafPending) return;
-                    rafPending = true;
-                    requestAnimationFrame(() => {
-                        rafPending = false;
-                        const x = Math.min(Math.max(pendingX - rect.left, 0), rect.width);
-                        const curTs = this.xToTs(x, this.domainStart, this.domainEnd, rect.width);
-                        this.rangeStart = Math.max(this.domainStart, Math.min(startTs, curTs));
-                        this.rangeEnd = Math.min(this.domainEnd, Math.max(startTs, curTs, this.rangeStart + 1));
-                        this.renderFilterTrack();
-                        this.renderSelectionTrack();
-                    });
+                    const ts = tsAt(ev.clientX);
+                    if (handle?.dataset.handle === 'start') {
+                        this.rangeStart = Math.min(ts, this.rangeEnd - minGap);
+                    } else if (handle) {
+                        this.rangeEnd = Math.max(ts, this.rangeStart + minGap);
+                    } else {
+                        this.rangeStart = Math.min(anchorTs, ts);
+                        this.rangeEnd = Math.max(anchorTs, ts, this.rangeStart + 1);
+                    }
+                    this.applyRange();
                 };
-                const up = () => {
-                    document.removeEventListener('mousemove', move);
-                    document.removeEventListener('mouseup', up);
-                    this._isDraggingFilter = false;
+                dragPointer(track, e, move, () => {
+                    handle?.classList.remove('is-dragging');
+                    this.panel.classList.remove('is-dragging-range');
                     this.persistRange();
-                };
-                document.addEventListener('mousemove', move);
-                document.addEventListener('mouseup', up);
+                });
             });
-        }
-
-        /** A thin guide line that follows the cursor over the filter track, hinting that
-         * click-dragging anywhere (outside the handles) starts a brand new range selection. */
-        initFilterHoverPreview() {
-            const canvas = this.filterTrack;
-            if (!canvas) return;
-            this.filterHoverEl = document.createElement('div');
-            this.filterHoverEl.className = 'snapshot-timeline-hover-indicator';
-            canvas.appendChild(this.filterHoverEl);
-
-            canvas.addEventListener('mousemove', (e) => {
-                if (this._isDraggingFilter || e.target.closest('.snapshot-timeline-handle')) {
-                    this.setFilterHoverVisible(false);
-                    return;
-                }
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                this.filterHoverEl.style.left = `${x}px`;
-                this.setFilterHoverVisible(true);
-            });
-            canvas.addEventListener('mouseleave', () => this.setFilterHoverVisible(false));
-        }
-
-        setFilterHoverVisible(visible) {
-            this.filterHoverEl?.classList.toggle('visible', visible);
         }
 
         initResizer() {
             if (!this.resizer) return;
-            this.resizer.addEventListener('mousedown', (e) => {
+            this.resizer.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
                 const startY = e.clientY;
                 const wasCollapsed = this.panel.classList.contains('is-collapsed');
                 const startHeight = wasCollapsed ? this.lastExpandedHeight : this.panel.getBoundingClientRect().height;
                 this.resizer.classList.add('is-resizing');
 
-                let rafPending = false;
-                let pendingY = null;
                 let moved = false;
                 const move = (ev) => {
-                    pendingY = ev.clientY;
-                    if (Math.abs(pendingY - startY) > 3) moved = true;
-                    if (rafPending) return;
-                    rafPending = true;
-                    requestAnimationFrame(() => {
-                        rafPending = false;
-                        const rawHeight = startHeight + (startY - pendingY);
-                        if (rawHeight < PANEL_COLLAPSE_THRESHOLD) {
-                            if (!this.panel.classList.contains('is-collapsed')) {
-                                this.panel.classList.add('is-collapsed');
-                            }
-                        } else {
-                            this.panel.classList.remove('is-collapsed');
-                            const newHeight = Math.min(PANEL_MAX_HEIGHT, Math.max(PANEL_MIN_HEIGHT, rawHeight));
-                            this.panel.style.height = `${newHeight}px`;
-                            this.lastExpandedHeight = newHeight;
-                        }
-                        this.updatePanelHeightVar();
-                    });
+                    if (Math.abs(ev.clientY - startY) > 3) moved = true;
+                    const rawHeight = startHeight + (startY - ev.clientY);
+                    if (rawHeight < PANEL_COLLAPSE_THRESHOLD) {
+                        this.panel.classList.add('is-collapsed');
+                    } else {
+                        this.panel.classList.remove('is-collapsed');
+                        const newHeight = Math.min(PANEL_MAX_HEIGHT, Math.max(PANEL_MIN_HEIGHT, rawHeight));
+                        this.panel.style.height = `${newHeight}px`;
+                        this.lastExpandedHeight = newHeight;
+                    }
+                    this.updatePanelHeightVar();
                 };
-                const up = () => {
-                    document.removeEventListener('mousemove', move);
-                    document.removeEventListener('mouseup', up);
+                dragPointer(this.resizer, e, move, () => {
                     this.resizer.classList.remove('is-resizing');
                     if (!moved) {
                         this.setCollapsed(!wasCollapsed, startHeight);
-                    } else {
-                        try {
-                            const collapsed = this.panel.classList.contains('is-collapsed');
-                            localStorage.setItem('use_timeline_collapsed', collapsed ? '1' : '0');
-                            if (!collapsed) localStorage.setItem('use_timeline_panel_height', String(Math.round(this.lastExpandedHeight)));
-                        } catch (err) {
-                            /* ignore */
-                        }
-                        if (!this.panel.classList.contains('is-collapsed')) this.scheduleRender();
+                        return;
                     }
-                };
-                document.addEventListener('mousemove', move);
-                document.addEventListener('mouseup', up);
+                    try {
+                        const collapsed = this.panel.classList.contains('is-collapsed');
+                        localStorage.setItem('use_timeline_collapsed', collapsed ? '1' : '0');
+                        if (!collapsed) localStorage.setItem('use_timeline_panel_height', String(Math.round(this.lastExpandedHeight)));
+                    } catch (err) {
+                        /* ignore */
+                    }
+                });
             });
         }
 
-        /** Vertical wheel = zoom the filter window centered on the cursor; horizontal = pan it. */
-        initWheelZoom(canvasEl, isFilterTrack) {
-            if (!canvasEl) return;
-            canvasEl.addEventListener(
+        /** Vertical wheel = zoom centered on the cursor. Horizontal wheel pans: natively
+         * (it's a scroll container) on the selection timeline, by hand on the filter one. */
+        initWheelZoom() {
+            this.viewport.addEventListener(
+                'wheel',
+                (e) => {
+                    if (e.shiftKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+                    e.preventDefault();
+                    const x = e.clientX - this.viewport.getBoundingClientRect().left;
+                    this.zoomRange(this.xToTs(x, this.rangeStart, this.rangeEnd, this.viewportWidth), e.deltaY);
+                    this.scheduleApplyRange();
+                },
+                { passive: false },
+            );
+            this.filterTrack.addEventListener(
                 'wheel',
                 (e) => {
                     e.preventDefault();
-                    const rect = canvasEl.getBoundingClientRect();
-                    if (rect.width <= 0) return;
-                    const x = e.clientX - rect.left;
-                    const trackDomainStart = isFilterTrack ? this.domainStart : this.rangeStart;
-                    const trackDomainEnd = isFilterTrack ? this.domainEnd : this.rangeEnd;
-                    const anchorTs = this.xToTs(x, trackDomainStart, trackDomainEnd, rect.width);
-
                     if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                         this.panRange(e.deltaX);
                     } else if (e.deltaY !== 0) {
-                        this.zoomRange(anchorTs, e.deltaY);
+                        const x = e.clientX - this.filterTrack.getBoundingClientRect().left;
+                        this.zoomRange(this.xToTs(x, this.domainStart, this.domainEnd, this.filterWidth), e.deltaY);
                     }
-                    this.render();
-                    this.persistRangeDebounced();
+                    this.scheduleApplyRange();
                 },
                 { passive: false },
+            );
+        }
+
+        /** Native scrolling of the selection timeline (trackpad, shift+wheel, touch) pans the range. */
+        initViewportScroll() {
+            this.viewport.addEventListener(
+                'scroll',
+                () => {
+                    const left = this.viewport.scrollLeft;
+                    // Ignore the echo of our own programmatic scroll.
+                    if (this._applyRaf || Math.abs(left - this._expectedScrollLeft) < 1) return;
+                    const domainSpan = this.domainEnd - this.domainStart;
+                    const span = this.rangeEnd - this.rangeStart;
+                    const contentWidth = this.viewportWidth * (domainSpan / span);
+                    if (contentWidth <= 0) return;
+                    this.rangeStart = this.domainStart + (left / contentWidth) * domainSpan;
+                    this.rangeEnd = this.rangeStart + span;
+                    this._expectedScrollLeft = left;
+                    this.updateFilterWindow();
+                    this.renderAxis(this.selectionAxis, this.rangeStart, this.rangeEnd, this.viewportWidth);
+                    this.persistRangeDebounced();
+                },
+                { passive: true },
             );
         }
 
@@ -728,17 +701,87 @@
             this.rangeEnd = Math.min(this.domainEnd, newEnd);
         }
 
-        scheduleRender() {
+        scheduleRefresh() {
             if (this._raf) return;
             this._raf = requestAnimationFrame(() => {
                 this._raf = null;
-                this.render();
+                this.refresh();
             });
         }
 
-        render() {
-            this.renderFilterTrack();
-            this.renderSelectionTrack();
+        /** Coalesces the several wheel events a single frame can receive into one DOM update. */
+        scheduleApplyRange() {
+            if (this._applyRaf) return;
+            this._applyRaf = requestAnimationFrame(() => {
+                this._applyRaf = null;
+                this.applyRange();
+            });
+        }
+
+        /** Re-measure after anything that changes the timelines' size (window/panel resize,
+         * layout switch, split drag, element scale), then re-apply the range. */
+        refresh() {
+            this.filterWidth = this.filterTrack.clientWidth;
+            this.viewportWidth = this.viewport.clientWidth;
+            this.syncBars(this.filterBars, this.filterWidth, this.domainEnd - this.domainStart);
+            this.renderAxis(this.filterAxis, this.domainStart, this.domainEnd, this.filterWidth);
+            this.applyRange();
+        }
+
+        /** Push the current range to the DOM: the selection content's zoom and scroll
+         * position, the filter window and the date axis. Snapshot markup is only
+         * touched when the new zoom level changes how snapshots group. */
+        applyRange() {
+            const domainSpan = this.domainEnd - this.domainStart;
+            const span = Math.max(1, this.rangeEnd - this.rangeStart);
+            const zoom = domainSpan / span;
+            const contentWidth = this.viewportWidth * zoom;
+            this.selectionContent.style.setProperty('--tl-zoom', zoom);
+            this.syncBars(this.selectionBars, contentWidth, span);
+            this._expectedScrollLeft = ((this.rangeStart - this.domainStart) / domainSpan) * contentWidth;
+            this.viewport.scrollLeft = this._expectedScrollLeft;
+            this.updateFilterWindow();
+            this.renderAxis(this.selectionAxis, this.rangeStart, this.rangeEnd, this.viewportWidth);
+            this.persistRangeDebounced();
+        }
+
+        /** Snapshot bars go under the filter window's markup, so they stay beneath it. */
+        createBarsLayer(container, clickable) {
+            const el = document.createElement('div');
+            el.className = 'snapshot-timeline-bars';
+            container.prepend(el);
+            return { el, clickable, key: null };
+        }
+
+        /** Lay a timeline's snapshots out on content `widthPx` wide. Bars are positioned in
+         * percent of the whole history, so zooming and resizing move them without any
+         * markup change; the markup is only rebuilt when the grouping itself changes. */
+        syncBars(bars, widthPx, visibleSpan) {
+            if (widthPx <= 0) return;
+            const layout = computeTickLayout(this.entries, this.domainStart, this.domainEnd, widthPx, visibleSpan);
+            const key = layout
+                .map((item) => (item.type === 'tick' ? item.entry.id : item.entries.map((e) => e.id).join(',')))
+                .join('|');
+            if (key === bars.key) return;
+            bars.key = key;
+            bars.el.replaceChildren(
+                ...layout.map((item) => {
+                    const el = item.type === 'tick'
+                        ? this.makeTickElement(item.entry, bars.clickable)
+                        : this.makeStackElement(item.entries, bars.clickable);
+                    el.style.left = `${(item.x / widthPx) * 100}%`;
+                    // The gap keeps back-to-back ranges visually distinct.
+                    el.style.width = `max(2px, calc(${((item.x2 - item.x) / widthPx) * 100}% - ${RANGE_GAP_PX}px))`;
+                    return el;
+                }),
+            );
+        }
+
+        /** The filter window's markup lives in the template and is placed by CSS from these two vars. */
+        updateFilterWindow() {
+            const pct = (ts) => `${((ts - this.domainStart) / (this.domainEnd - this.domainStart)) * 100}%`;
+            this.filterTrack.style.setProperty('--tl-range-start', pct(this.rangeStart));
+            this.filterTrack.style.setProperty('--tl-range-end', pct(this.rangeEnd));
         }
 
         tsToX(ts, domainStart, domainEnd, widthPx) {
@@ -773,166 +816,30 @@
             });
         }
 
-        renderFilterTrack() {
-            const track = this.filterTrack;
-            if (!track) return;
-            track.innerHTML = '';
-            const width = track.getBoundingClientRect().width;
-            this.renderAxis(this.filterAxis, this.domainStart, this.domainEnd, width);
-            if (width <= 0) return;
-
-            const layout = computeTickLayout(this.entries, this.domainStart, this.domainEnd, width);
-            this.renderTicksInto(track, layout, false);
-
-            const x1 = this.tsToX(this.rangeStart, this.domainStart, this.domainEnd, width);
-            const x2 = this.tsToX(this.rangeEnd, this.domainStart, this.domainEnd, width);
-
-            const selEl = document.createElement('div');
-            selEl.className = 'snapshot-timeline-filter-selection';
-            selEl.style.left = `${x1}px`;
-            selEl.style.width = `${Math.max(2, x2 - x1)}px`;
-            track.appendChild(selEl);
-
-            // Full-height boundary lines, independent of the (shorter) handle hit-areas
-            // below, so the line is one continuous element top-to-bottom instead of being
-            // stitched together from the handle's own line plus the selection rect's border
-            // (which never aligned pixel-for-pixel with it).
-            const startLine = document.createElement('div');
-            startLine.className = 'snapshot-timeline-range-line';
-            startLine.style.left = `${x1}px`;
-            track.appendChild(startLine);
-
-            const endLine = document.createElement('div');
-            endLine.className = 'snapshot-timeline-range-line';
-            endLine.style.left = `${x2}px`;
-            track.appendChild(endLine);
-
-            const startHandle = document.createElement('div');
-            startHandle.className = 'snapshot-timeline-handle';
-            startHandle.style.left = `${x1}px`;
-            startHandle.appendChild(document.createElement('div')).className = 'snapshot-timeline-handle-grip';
-            startHandle.addEventListener('mousedown', (e) => this.onHandleMouseDown(e, startHandle, 'start'));
-            track.appendChild(startHandle);
-
-            const endHandle = document.createElement('div');
-            endHandle.className = 'snapshot-timeline-handle';
-            endHandle.style.left = `${x2}px`;
-            endHandle.appendChild(document.createElement('div')).className = 'snapshot-timeline-handle-grip';
-            endHandle.addEventListener('mousedown', (e) => this.onHandleMouseDown(e, endHandle, 'end'));
-            track.appendChild(endHandle);
-
-            if (this.filterHoverEl) track.appendChild(this.filterHoverEl);
-        }
-
-        onHandleMouseDown(e, handleEl, which) {
-            e.preventDefault();
-            e.stopPropagation();
-            const track = this.filterTrack;
-            handleEl.classList.add('is-dragging');
-            this._isDraggingFilter = true;
-            this.setFilterHoverVisible(false);
-
-            let rafPending = false;
-            let pendingX = null;
-            const move = (ev) => {
-                pendingX = ev.clientX;
-                if (rafPending) return;
-                rafPending = true;
-                requestAnimationFrame(() => {
-                    rafPending = false;
-                    const rect = track.getBoundingClientRect();
-                    const x = pendingX - rect.left;
-                    const ts = this.xToTs(x, this.domainStart, this.domainEnd, rect.width);
-                    const minGap = Math.max(1, (this.domainEnd - this.domainStart) * 0.005);
-                    if (which === 'start') {
-                        this.rangeStart = Math.min(Math.max(this.domainStart, ts), this.rangeEnd - minGap);
-                    } else {
-                        this.rangeEnd = Math.max(Math.min(this.domainEnd, ts), this.rangeStart + minGap);
-                    }
-                    this.renderFilterTrack();
-                    this.renderSelectionTrack();
-                });
-            };
-            const up = () => {
-                document.removeEventListener('mousemove', move);
-                document.removeEventListener('mouseup', up);
-                handleEl.classList.remove('is-dragging');
-                this._isDraggingFilter = false;
-                this.persistRange();
-            };
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', up);
-        }
-
-        renderSelectionTrack() {
-            const track = this.selectionTrack;
-            if (!track) return;
-            track.innerHTML = '';
-            const width = track.getBoundingClientRect().width;
-            this.renderAxis(this.selectionAxis, this.rangeStart, this.rangeEnd, width);
-            if (width <= 0) return;
-
-            const filtered = this.entries.filter((e) => e.ts <= this.rangeEnd && e.endTs > this.rangeStart);
-            const domainEnd = this.rangeEnd > this.rangeStart ? this.rangeEnd : this.rangeStart + 1;
-
-            const layout = computeTickLayout(filtered, this.rangeStart, domainEnd, width);
-            this.renderTicksInto(track, layout, true);
-        }
-
-        renderTicksInto(track, layout, clickable) {
-            // Every stack in a track shares the same height; measured once per render.
-            let stackHeight = null;
-            layout.forEach((item) => {
-                const el = item.type === 'tick'
-                    ? this.makeTickElement(item.entry, item.x, clickable)
-                    : this.makeStackElement(item.entries, item.x, clickable);
-                // The gap keeps back-to-back ranges visually distinct.
-                const width = Math.max(2, item.x2 - item.x - RANGE_GAP_PX);
-                el.classList.add('is-range');
-                // Taken before the visible window: no pin, since its date is off-screen.
-                el.classList.toggle('is-clipped', item.clipped);
-                el.style.width = `${width}px`;
-                track.appendChild(el);
-                if (item.type === 'stack') {
-                    if (stackHeight === null) stackHeight = el.clientHeight;
-                    const pinPadding = parseFloat(getComputedStyle(el).paddingLeft) || 0;
-                    const gridWidth = Math.max(1, width - pinPadding);
-                    const { cols, rows } = computeGridShape(item.entries.length, gridWidth, stackHeight);
-                    el.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-                    el.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-                }
-            });
-        }
-
-        makeTickElement(entry, x, clickable) {
+        /** One snapshot's element (a bar, or a cell inside a group), tagged for markCurrent. */
+        makeEntryElement(entry, className) {
             const el = document.createElement('div');
-            el.className = 'snapshot-timeline-tick';
-            el.style.left = `${x}px`;
-            if (entry.id === this.currentSnapshotId) el.classList.add('is-current');
-            if (entry.isOriginal) el.classList.add('is-original');
-            const timeStr = entry.ts ? new Date(entry.ts).toLocaleString(appLocale()) : '';
-            el.title = timeStr ? `${entry.name} — ${timeStr}` : entry.name;
-            if (clickable) {
-                el.addEventListener('click', () => this.navigateTo(entry));
-            }
+            el.className = className;
+            el.dataset.id = entry.id;
+            el.classList.toggle('is-current', entry.id === this.currentSnapshotId);
+            el.classList.toggle('is-original', !!entry.isOriginal);
+            el.title = `${entry.name} — ${new Date(entry.ts).toLocaleString(appLocale())}`;
             return el;
         }
 
-        makeStackElement(entries, x, clickable) {
-            const el = document.createElement('div');
-            const isCurrent = entries.some((e) => e.id === this.currentSnapshotId);
-            el.className = 'snapshot-timeline-stack' + (isCurrent ? ' is-current' : '');
-            el.style.left = `${x}px`;
+        makeTickElement(entry, clickable) {
+            const el = this.makeEntryElement(entry, 'snapshot-timeline-tick');
+            if (clickable) el.addEventListener('click', () => this.navigateTo(entry));
+            return el;
+        }
 
-            entries.forEach((entry) => {
-                const t = document.createElement('div');
-                t.className = 'snapshot-timeline-stack-tick'
-                    + (entry.id === this.currentSnapshotId ? ' is-current' : '')
-                    + (entry.isOriginal ? ' is-original' : '');
-                const timeStr = entry.ts ? new Date(entry.ts).toLocaleString(appLocale()) : '';
-                t.title = timeStr ? `${entry.name} — ${timeStr}` : entry.name;
-                el.appendChild(t);
-            });
+        makeStackElement(entries, clickable) {
+            const el = document.createElement('div');
+            el.className = 'snapshot-timeline-stack';
+            const grid = el.appendChild(document.createElement('div'));
+            grid.className = 'snapshot-timeline-stack-grid';
+            grid.style.setProperty('--n', entries.length);
+            grid.append(...entries.map((entry) => this.makeEntryElement(entry, 'snapshot-timeline-stack-tick')));
 
             const countEl = document.createElement('div');
             countEl.className = 'snapshot-timeline-stack-count';
@@ -952,54 +859,40 @@
             this.currentSnapshotId = entry.id;
             if (window.explorerView && typeof window.explorerView.navigateToSnapshot === 'function') {
                 window.explorerView.navigateToSnapshot(entry.id);
-                this.render();
+                this.markCurrent();
             } else if (entry.url) {
                 window.location.href = entry.url;
             }
         }
 
-        showStackPopover(e, entries) {
-            e.stopPropagation();
-            this.hidePopover();
+        /** Move the current-snapshot highlight in both timelines without rebuilding anything
+         * (a group rings itself via CSS :has() when one of its cells is current). */
+        markCurrent() {
+            this.panel.querySelectorAll('[data-id]').forEach((el) => {
+                el.classList.toggle('is-current', el.dataset.id === this.currentSnapshotId);
+            });
+        }
 
-            const pop = document.createElement('div');
-            pop.className = 'snapshot-timeline-popover visible';
-            entries
-                .slice()
-                .sort((a, b) => a.ts - b.ts)
-                .forEach((entry) => {
+        /** Native popover: the browser handles top-layer display and closing on an outside click. */
+        showStackPopover(e, entries) {
+            const pop = this.popoverEl;
+            pop.replaceChildren(
+                ...entries.map((entry) => {
                     const item = document.createElement('div');
                     item.className = 'snapshot-timeline-popover-item' + (entry.id === this.currentSnapshotId ? ' is-current' : '');
-                    const timeStr = entry.ts ? new Date(entry.ts).toLocaleString(appLocale()) : '';
-                    item.textContent = timeStr ? `${timeStr} — ${entry.name}` : entry.name;
+                    item.textContent = `${new Date(entry.ts).toLocaleString(appLocale())} — ${entry.name}`;
                     item.addEventListener('click', () => {
+                        pop.hidePopover();
                         this.navigateTo(entry);
-                        this.hidePopover();
                     });
-                    pop.appendChild(item);
-                });
-
-            document.body.appendChild(pop);
+                    return item;
+                }),
+            );
+            pop.showPopover();
             const rect = e.currentTarget.getBoundingClientRect();
             const popRect = pop.getBoundingClientRect();
             pop.style.left = `${Math.min(rect.left, window.innerWidth - popRect.width - 8)}px`;
             pop.style.top = `${Math.max(8, rect.top - popRect.height - 6)}px`;
-            this.popoverEl = pop;
-
-            const onDocClick = (ev) => {
-                if (!pop.contains(ev.target)) {
-                    this.hidePopover();
-                    document.removeEventListener('click', onDocClick);
-                }
-            };
-            setTimeout(() => document.addEventListener('click', onDocClick), 0);
-        }
-
-        hidePopover() {
-            if (this.popoverEl) {
-                this.popoverEl.remove();
-                this.popoverEl = null;
-            }
         }
     }
 

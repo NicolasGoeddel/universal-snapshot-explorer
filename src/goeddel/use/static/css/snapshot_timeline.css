@@ -14,7 +14,6 @@
     --tl-axis-font-size: calc(10px * var(--tl-scale));
     --tl-btn-h: calc(24px * var(--tl-scale));
     --tl-axis-h: calc(16px * var(--tl-scale));
-    --tl-tick-w: calc(8px * var(--tl-scale));
     --tl-pin-w: calc(4px * var(--tl-scale));
     --tl-handle-w: calc(8px * var(--tl-scale));
     --tl-handle-min-h: calc(24px * var(--tl-scale));
@@ -34,6 +33,8 @@
     min-height: 80px;
     max-height: 420px;
     font-size: var(--tl-btn-font-size);
+    /* A drag-driven widget: dragging shouldn't select text. */
+    user-select: none;
 }
 
 .snapshot-timeline-resizer {
@@ -42,6 +43,7 @@
     cursor: row-resize;
     background: transparent;
     position: relative;
+    touch-action: none;
 }
 
 .snapshot-timeline-resizer::after {
@@ -179,6 +181,34 @@
     min-height: 0;
 }
 
+/* Selection timeline: the content is the whole history, --tl-zoom times wider than
+ * the viewport (set by JS from the filter range); the viewport scrolls natively to
+ * the range's start. The scrollbar is hidden since the filter timeline shows the range. */
+.snapshot-timeline-viewport {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.snapshot-timeline-viewport::-webkit-scrollbar {
+    display: none;
+}
+
+.snapshot-timeline-content {
+    flex: 0 0 auto;
+    width: calc(var(--tl-zoom, 1) * 100%);
+}
+
+/* Holds a timeline's snapshot bars, positioned in percent of the content's width. */
+.snapshot-timeline-bars {
+    position: absolute;
+    inset: 0;
+}
+
 .snapshot-timeline-axis {
     position: relative;
     flex: 0 0 var(--tl-axis-h);
@@ -210,6 +240,7 @@
     display: none;
     flex: 0 0 10px;
     position: relative;
+    touch-action: none;
 }
 
 .snapshot-timeline-split-resizer::after {
@@ -300,13 +331,32 @@
     border-radius: 8px;
 }
 
-/* --- Filter timeline: range handles + shaded selection window --- */
+/* --- Filter timeline: range handles + shaded selection window ---
+ * Static markup, placed from --tl-range-start / --tl-range-end (percent of the
+ * track) which JS sets on the track. Full-height boundary lines are separate from
+ * the (shorter) handle hit-areas so each line is one continuous element. */
+.snapshot-timeline-filter .snapshot-timeline-canvas {
+    touch-action: none;
+}
+
 .snapshot-timeline-filter-selection {
     position: absolute;
     top: 0;
     bottom: 0;
+    left: var(--tl-range-start, 0%);
+    width: max(2px, calc(var(--tl-range-end, 100%) - var(--tl-range-start, 0%)));
     background: color-mix(in srgb, var(--primary-accent) 16%, transparent);
     pointer-events: none;
+}
+
+.snapshot-timeline-range-line.is-start,
+.snapshot-timeline-handle.is-start {
+    left: var(--tl-range-start, 0%);
+}
+
+.snapshot-timeline-range-line.is-end,
+.snapshot-timeline-handle.is-end {
+    left: var(--tl-range-end, 100%);
 }
 
 .snapshot-timeline-range-line {
@@ -408,12 +458,14 @@
     background: var(--primary-hover);
 }
 
-/* Follows the cursor over the filter track's free (non-handle) area, hinting
- * that a click-drag there starts a brand new range selection. */
+/* Follows the cursor (--tl-hover-x, set by JS) over the filter track's free
+ * (non-handle) area, hinting that a click-drag there starts a new range selection.
+ * Hidden over a handle and while any range drag is in progress. */
 .snapshot-timeline-hover-indicator {
     position: absolute;
     top: 0;
     bottom: 0;
+    left: var(--tl-hover-x, 0px);
     width: 2px;
     margin-left: -1px;
     background: var(--primary-accent);
@@ -423,24 +475,31 @@
     transition: opacity 0.1s ease;
 }
 
-.snapshot-timeline-hover-indicator.visible {
+.snapshot-timeline-filter .snapshot-timeline-canvas:hover .snapshot-timeline-hover-indicator {
     opacity: 0.45;
+}
+
+.snapshot-timeline-canvas:has(.snapshot-timeline-handle:hover) .snapshot-timeline-hover-indicator,
+.snapshot-timeline-panel.is-dragging-range .snapshot-timeline-canvas .snapshot-timeline-hover-indicator {
+    opacity: 0;
 }
 
 .snapshot-timeline-panel[data-layout='scrollbar-zoom'] .snapshot-timeline-hover-indicator {
     display: none;
 }
 
-/* --- Ticks / pills (both tracks share this) --- */
+/* --- Snapshot bars (both tracks share this) ---
+ * Each spans from its date to the next snapshot (left and width set inline). A solid
+ * "pin" marks the actual capture moment; the lighter "tail" only fills the time until
+ * the next snapshot, so the bar doesn't read as the snapshot covering a period. */
 .snapshot-timeline-tick {
+    --tl-entry-color: var(--primary-accent);
     position: absolute;
     top: 3px;
     bottom: 3px;
-    width: var(--tl-tick-w);
     z-index: 1;
-    margin-left: calc(var(--tl-tick-w) / -2);
     border-radius: 2px;
-    background: var(--primary-accent);
+    background: color-mix(in srgb, var(--tl-entry-color) 25%, transparent);
     opacity: 0.55;
     cursor: default;
 }
@@ -452,26 +511,15 @@
 
 .snapshot-timeline-selection .snapshot-timeline-tick:hover {
     opacity: 1;
-    background: var(--primary-hover);
-}
-
-/* Snapshots drawn as a span from their date to the next snapshot: left-anchored,
- * width set inline. A solid "pin" marks the actual capture moment; the lighter
- * "tail" only fills the time until the next snapshot, so the bar doesn't read as
- * the snapshot covering a period. */
-.snapshot-timeline-tick.is-range {
-    --tl-entry-color: var(--primary-accent);
-    margin-left: 0;
-    background: color-mix(in srgb, var(--tl-entry-color) 25%, transparent);
 }
 
 /* The live filesystem state, placed at the present like any other entry. */
-.snapshot-timeline-tick.is-range.is-original {
+.snapshot-timeline-tick.is-original {
     --tl-entry-color: #10b981;
 }
 
-.snapshot-timeline-tick.is-range::before,
-.snapshot-timeline-stack.is-range::before {
+.snapshot-timeline-tick::before,
+.snapshot-timeline-stack::before {
     content: '';
     position: absolute;
     top: 0;
@@ -482,34 +530,18 @@
     background: var(--tl-entry-color, var(--primary-accent));
 }
 
-/* Captured before the visible window: the tail runs off the left edge with no pin,
- * so the edge isn't mistaken for the capture date. */
-.snapshot-timeline-tick.is-range.is-clipped::before,
-.snapshot-timeline-stack.is-range.is-clipped::before {
-    display: none;
-}
-
-.snapshot-timeline-tick.is-range.is-clipped {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-}
-
-.snapshot-timeline-stack.is-range.is-clipped {
-    padding-left: 0;
-}
-
-.snapshot-timeline-selection .snapshot-timeline-tick.is-range:not(.is-current):hover {
+.snapshot-timeline-selection .snapshot-timeline-tick:not(.is-current):hover {
     background: color-mix(in srgb, var(--tl-entry-color) 40%, transparent);
 }
 
-.snapshot-timeline-selection .snapshot-timeline-tick.is-range:not(.is-current):hover::before {
+.snapshot-timeline-selection .snapshot-timeline-tick:not(.is-current):hover::before {
     background: color-mix(in srgb, var(--tl-entry-color) 80%, black);
 }
 
 /* The currently-active entry: a distinct color (not used anywhere else in this
  * component) plus a glow, without resizing it - it stays flush with the others so
  * it doesn't touch the track's edges. Wins over .is-original when both apply. */
-.snapshot-timeline-tick.is-range.is-current {
+.snapshot-timeline-tick.is-current {
     --tl-entry-color: #f59e0b;
     background: color-mix(in srgb, var(--tl-entry-color) 35%, transparent);
     opacity: 1;
@@ -522,18 +554,25 @@
     position: absolute;
     top: 3px;
     bottom: 12px;
-    /* Column/row counts are set inline (see computeGridShape); filling column by
-     * column keeps the snapshots in chronological order from left to right. */
-    display: grid;
-    grid-auto-flow: column;
-    gap: 1px;
+    /* Room on the left for the group's pin; a size container for its grid. */
+    padding-left: calc(var(--tl-pin-w) + 1px);
+    container-type: size;
     opacity: 0.55;
     cursor: pointer;
 }
 
-/* Room for the pin at the group's start (its earliest capture) before the grid. */
-.snapshot-timeline-stack.is-range {
-    padding-left: calc(var(--tl-pin-w) + 1px);
+/* Fits all --n cells (set by JS) as large and square as it can: a k x k grid with
+ * k = ceil(sqrt(n)) always has room for them, so cells get at least 1/k of the
+ * group's shorter side. auto-fit on both axes then collapses the tracks left empty
+ * and stretches the rest, e.g. a single row of wide cells when the group is wide. */
+.snapshot-timeline-stack-grid {
+    --k: round(up, sqrt(var(--n)), 1);
+    --cell: calc((min(100cqw, 100cqh) - (var(--k) - 1) * 1px) / var(--k) - 0.01px);
+    display: grid;
+    height: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(var(--cell), 1fr));
+    grid-template-rows: repeat(auto-fit, minmax(var(--cell), 1fr));
+    gap: 1px;
 }
 
 /* Same palette as a single snapshot: solid pin at the start, each cell tinted like a tail. */
@@ -562,12 +601,12 @@
 
 /* The currently-active snapshot is grouped inside this stack: ring the whole
  * cluster so it's obvious at a glance, and pick out its specific mini-tick too. */
-.snapshot-timeline-stack.is-current {
+.snapshot-timeline-stack:has(.is-current) {
     z-index: 3;
     opacity: 1;
 }
 
-.snapshot-timeline-stack.is-current::after {
+.snapshot-timeline-stack:has(.is-current)::after {
     content: '';
     position: absolute;
     inset: -3px -3px -12px -3px;
@@ -595,11 +634,15 @@
     white-space: nowrap;
 }
 
-/* --- Popover listing grouped snapshots in a stack --- */
+/* --- Popover listing grouped snapshots in a stack ---
+ * A native [popover] (top layer, light dismiss); JS sets left/top next to the group,
+ * so the user-agent's centered placement is reset. */
 .snapshot-timeline-popover {
     position: fixed;
-    z-index: 1000;
+    inset: auto;
+    margin: 0;
     background: var(--bg-surface);
+    color: var(--text-main);
     border: 1px solid var(--border-color);
     border-radius: 6px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
@@ -608,11 +651,6 @@
     max-height: 260px;
     overflow-y: auto;
     padding: 4px 0;
-    display: none;
-}
-
-.snapshot-timeline-popover.visible {
-    display: block;
 }
 
 .snapshot-timeline-popover-item {

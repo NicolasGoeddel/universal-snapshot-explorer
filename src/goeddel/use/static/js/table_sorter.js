@@ -352,9 +352,19 @@ class TableSorter {
             return false;
         }
 
-        // Handle Alt+1 .. Alt+9 column sorting
-        if (e.altKey && !e.ctrlKey && !e.metaKey && e.key >= '1' && e.key <= '9') {
-            const colNum = parseInt(e.key, 10);
+        // Handle Alt+1 .. Alt+9 column sorting. Uses the physical key code (Digit1..Digit9)
+        // rather than e.key, since on AZERTY (and other) layouts the top-row digits sit
+        // on the shifted position and e.key would report the unshifted symbol instead.
+        // Numpad1..Numpad9 are also honored (matching the old e.key-based check, which
+        // browsers normalize to "1".."9" for numpad presses too) - but only when NumLock
+        // is actually producing a digit: with NumLock off those same physical keys send
+        // navigation (End, ArrowDown, ...) via e.key, which we don't want to hijack.
+        const digitMatch = e.code.match(/^Digit([1-9])$/);
+        const numpadMatch = !digitMatch && e.key >= '1' && e.key <= '9' ? e.code.match(/^Numpad([1-9])$/) : null;
+        const match = digitMatch || numpadMatch;
+
+        if (e.altKey && !e.ctrlKey && !e.metaKey && match) {
+            const colNum = parseInt(match[1], 10);
             const sortableIndices = this.getSortableColumnIndices();
             if (colNum >= 1 && colNum <= sortableIndices.length) {
                 e.preventDefault();

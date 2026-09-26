@@ -165,7 +165,17 @@ class DetailTable {
             this.columnResizer = new TableColumnResizer(this.table);
         }
         this.initSorting();
+        this.initColumnVisibility();
         this.initKeyboard();
+    }
+
+    initColumnVisibility() {
+        if (typeof ColumnVisibilityManager === 'undefined') return;
+        this.columnVisibility = new ColumnVisibilityManager(this.table, {
+            sorter: this.sorter,
+            resizer: this.columnResizer,
+            toolbarButton: 'btn-column-visibility',
+        });
     }
 
     initSorting() {

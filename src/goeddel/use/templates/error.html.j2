@@ -9,31 +9,7 @@
         <a href="{{ base_url }}/" class="root-link" style="font-size: 1.1rem; font-weight: 700; text-decoration: none; color: var(--text-main);">
             {{ lucide('hard-drive', size=20) }} Universal Snapshot Explorer
         </a>
-        <div class="nav-controls" style="display: flex; align-items: center; gap: 8px;">
-            <!-- Language Dropdown -->
-            <div class="dropdown">
-                <div class="breadcrumb" style="cursor: pointer;">
-                    {{ lucide('globe', size=14) }} <span style="margin-left: 4px;">{{ languages.get(lang, lang) }}</span>
-                </div>
-                <div class="dropdown-content">
-                    {% for code, name in languages.items() %}
-                    <a href="/set-language/{{ code }}">{{ name }}</a>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Theme Dropdown -->
-            <div class="dropdown">
-                <div class="breadcrumb" id="theme-selector" style="cursor: pointer;">
-                    <span id="theme-icon">{{ lucide('sun', size=14) }}</span> <span style="margin-left: 4px;">Theme</span>
-                </div>
-                <div class="dropdown-content">
-                    <a href="#" onclick="setTheme('light'); return false;">{{ lucide('sun', size=14) }} <span style="margin-left: 4px;">{{ t('theme.light') }}</span></a>
-                    <a href="#" onclick="setTheme('dark'); return false;">{{ lucide('moon', size=14) }} <span style="margin-left: 4px;">{{ t('theme.dark') }}</span></a>
-                    <a href="#" onclick="setTheme('system'); return false;">{{ lucide('monitor', size=14) }} <span style="margin-left: 4px;">{{ t('theme.system') }}</span></a>
-                </div>
-            </div>
-        </div>
+        {% include 'global_controls.html.j2' %}
     </header>
 
     <main class="error-content-container">
@@ -83,7 +59,7 @@
                 </h4>
                 <div class="error-timeline-wrapper">
                     <div class="snapshots-header-timeline error-timeline-bar">
-                        {{ render_snapshot_bar(snapshots_bar, current_snapshot_id=snapshot.id if snapshot else 'Original', is_header=false, with_links=true, root_name=root_name, path=path, module='list') }}
+                        {{ render_snapshot_bar(snapshots_bar, current_snapshot_id=snapshot.id if snapshot else 'Original', is_header=false, with_links=true, root_name=root_name, path=path, module='list', t=t) }}
                     </div>
                 </div>
             </div>

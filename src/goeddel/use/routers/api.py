@@ -4,7 +4,8 @@ from typing import cast
 
 from fastapi import APIRouter, Request
 
-from ..dependencies import get_app_config
+from ..dependencies import get_app_config, render_lucide
+from ..models.types import SnapshotStateResponse
 from ..utils.path_resolver import resolve_root_and_subpath
 from ..zip_streamer import resolve_zip_selection
 
@@ -34,11 +35,17 @@ def get_file_mimetypes_api(request: Request, full_path: str = "", snapshot: str 
 
 
 @router.get("/api/snapshot-state/{full_path:path}")
-def get_snapshot_state_api(request: Request, full_path: str = "", snapshot: str | None = None) -> dict[str, object]:
+def get_snapshot_state_api(request: Request, full_path: str = "", snapshot: str | None = None) -> SnapshotStateResponse:
     _ = request
     config = get_app_config(request)
     _, directory_path, root_folder = resolve_root_and_subpath(full_path, config)
-    return root_folder.get_snapshot_state(directory_path, snapshot)
+    data = root_folder.get_snapshot_state(directory_path, snapshot)
+    for meta in data["entries"].values():
+        # icon_name/icon_class are already the final, access-aware selection
+        # (FSNode.effective_icon_name/_class - see models/nodes/base.py), so
+        # this is a plain render, not a re-decision of which icon to show.
+        meta["icon_svg"] = render_lucide(meta["icon_name"], size=16, **{"class": f"file-icon {meta['icon_class']}"})
+    return data
 
 
 @router.post("/api/zip-preview/{full_path:path}")

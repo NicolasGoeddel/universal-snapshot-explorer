@@ -248,6 +248,29 @@ class TestAppRoutes(unittest.TestCase):
         self.assertEqual(resp_detail.status_code, 200)
         self.assertIn('href="/diff/mock-root/-/file1.txt', resp_detail.text)
 
+    def test_diff_timeline_criteria_route(self) -> None:
+        # file1.txt has identical size across all 3 versions but different timestamps,
+        # so size-only criteria collapse every pill to one color while mtime splits them.
+        # Pin distinct mtimes: the fixture writes all versions within the same second.
+        for i, directory in enumerate((self.snap1_dir, self.snap2_dir, self.root_path)):
+            mtime = 1_700_000_000 + i * 100
+            _ = os.utime(os.path.join(directory, "file1.txt"), (mtime, mtime))
+
+        resp_size = self.client.get("/api/diff-timeline/mock-root/-/file1.txt?attributes=size")
+        self.assertEqual(resp_size.status_code, 200)
+        self.assertEqual(resp_size.text.count('class="timeline-segment"'), 3)
+        self.assertEqual(resp_size.text.count('data-color="1"'), 3)
+
+        resp_mtime = self.client.get("/api/diff-timeline/mock-root/-/file1.txt?attributes=mtime")
+        self.assertEqual(resp_mtime.status_code, 200)
+        for color in ("1", "2", "3"):
+            self.assertIn(f'data-color="{color}"', resp_mtime.text)
+
+        # The full page renders the segments inline, inside the group the client swaps.
+        resp_page = self.client.get("/diff/mock-root/-/file1.txt")
+        self.assertIn('id="diff-timeline-segments"', resp_page.text)
+        self.assertEqual(resp_page.text.count('class="timeline-segment"'), 3)
+
     def test_diff_api_route(self) -> None:
         # Test diff API between snapshot 1 ("v1") and live root ("v3")
         resp = self.client.get("/api/diff/mock-root/-/file1.txt?snapshots=auto-2026-08-01-120000,Original")

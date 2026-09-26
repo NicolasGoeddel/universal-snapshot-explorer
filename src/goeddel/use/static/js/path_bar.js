@@ -82,9 +82,7 @@ class PathBar {
     }
 
     async open(chevron, focusMenu) {
-        const template = chevron.dataset.menuTemplate
-            ? document.getElementById(chevron.dataset.menuTemplate)
-            : null;
+        const template = chevron.dataset.menuTemplate ? document.getElementById(chevron.dataset.menuTemplate) : null;
         const segUrl = template ? null : this.segmentUrl(chevron);
         if (!template && !segUrl) return;
 

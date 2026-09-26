@@ -1,22 +1,22 @@
 # File: src/goeddel/use/logger.py Line: 10
 def setup_logging(level: ?) -> ?:
 
-# File: src/goeddel/use/dependencies.py Line: 20
+# File: src/goeddel/use/dependencies.py Line: 21
 def get_base_url(request: Request) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 28
+# File: src/goeddel/use/dependencies.py Line: 29
 def quote_path_filter(path: str) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 32
+# File: src/goeddel/use/dependencies.py Line: 33
 def render_lucide(name: str, **kwargs) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 39
+# File: src/goeddel/use/dependencies.py Line: 40
 def static_url(path: str) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 48
+# File: src/goeddel/use/dependencies.py Line: 49
 def make_route_url(module: str, root_name: str, sub_path: str="", snapshot: ?) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 70
+# File: src/goeddel/use/dependencies.py Line: 72
 def get_app_config(request: Request) -> AppConfig:
 
 # File: src/goeddel/use/enums.py Line: 6
@@ -43,7 +43,7 @@ class LogLevel(StrEnum):
 # File: src/goeddel/use/enums.py Line: 70
 class Language(StrEnum):
 
-# File: src/goeddel/use/enums.py Line: 77
+# File: src/goeddel/use/enums.py Line: 78
 class DiffLineType(StrEnum):
 
 # File: src/goeddel/use/zip_streamer.py Line: 17
@@ -82,13 +82,16 @@ def parse_args() -> ServerArgs:
 # File: src/goeddel/use/server.py Line: 28
 def start() -> ?:
 
-# File: src/goeddel/use/i18n.py Line: 333
+# File: src/goeddel/use/i18n.py Line: 549
+def _parse_accept_language(accept_language: str) -> list[str]:
+
+# File: src/goeddel/use/i18n.py Line: 580
 def get_language(request: Request) -> str:
 
-# File: src/goeddel/use/i18n.py Line: 352
+# File: src/goeddel/use/i18n.py Line: 599
 def get_translator(lang: str) -> Callable[(?, str)]:
 
-# File: src/goeddel/use/i18n.py Line: 368
+# File: src/goeddel/use/i18n.py Line: 615
 def get_client_translations(lang: str) -> str:
 
 # File: src/goeddel/use/config.py Line: 19
@@ -196,25 +199,28 @@ def render_error_response(request: Request, status_code: int, message: ?, root_n
 # File: src/goeddel/use/utils/ui.py Line: 212
 def find_nearest_existing_parent(root_folder: RootFolder, path: str, snapshot: ?) -> ?:
 
-# File: src/goeddel/use/routers/api.py Line: 15
+# File: src/goeddel/use/routers/api.py Line: 16
 def get_snapshot_bars_api(request: Request, full_path: str="", snapshot: ?, attributes: ?) -> dict[(str, object)]:
 
-# File: src/goeddel/use/routers/api.py Line: 29
+# File: src/goeddel/use/routers/api.py Line: 30
 def get_file_mimetypes_api(request: Request, full_path: str="", snapshot: ?) -> dict[(str, str)]:
 
-# File: src/goeddel/use/routers/api.py Line: 37
-def get_snapshot_state_api(request: Request, full_path: str="", snapshot: ?) -> dict[(str, object)]:
+# File: src/goeddel/use/routers/api.py Line: 38
+def get_snapshot_state_api(request: Request, full_path: str="", snapshot: ?) -> SnapshotStateResponse:
 
-# File: src/goeddel/use/routers/api.py Line: 45
+# File: src/goeddel/use/routers/api.py Line: 52
 async def get_zip_preview_api(request: Request, full_path: str="") -> dict[(str, object)]:
 
-# File: src/goeddel/use/routers/api.py Line: 65
+# File: src/goeddel/use/routers/api.py Line: 72
 def invalidate_cache_api() -> dict[(str, object)]:
 
-# File: src/goeddel/use/routers/differ.py Line: 20
+# File: src/goeddel/use/routers/differ.py Line: 21
 def get_diff_content(request: Request, full_path: str="", snapshots: ?) -> HTMLResponse:
 
-# File: src/goeddel/use/routers/differ.py Line: 87
+# File: src/goeddel/use/routers/differ.py Line: 88
+def get_diff_timeline_segments(request: Request, full_path: str="", attributes: ?) -> HTMLResponse:
+
+# File: src/goeddel/use/routers/differ.py Line: 116
 def get_diff_api(request: Request, full_path: str="", snapshots: str="", plugin: str="text-differ") -> dict[(str, object)]:
 
 # File: src/goeddel/use/routers/explorer.py Line: 24
@@ -299,6 +305,18 @@ class BreadcrumbPath(TypedDict):
 class BreadcrumbsData(TypedDict):
 
 # File: src/goeddel/use/models/types.py Line: 58
+class SnapshotStateInfo(TypedDict):
+
+# File: src/goeddel/use/models/types.py Line: 65
+class SymlinkInfo(TypedDict, total=...):
+
+# File: src/goeddel/use/models/types.py Line: 78
+class SnapshotStateEntry(SymlinkInfo):
+
+# File: src/goeddel/use/models/types.py Line: 105
+class SnapshotStateResponse(TypedDict):
+
+# File: src/goeddel/use/models/types.py Line: 111
 class RootViewItem(TypedDict):
 
 # File: src/goeddel/use/models/diff.py Line: 13
@@ -322,7 +340,7 @@ class FilesystemSnapshotProvider:
 # File: src/goeddel/use/models/file.py Line: 14
 class File(FSNode):
 
-# File: src/goeddel/use/models/root_folder.py Line: 35
+# File: src/goeddel/use/models/root_folder.py Line: 37
 class RootFolder:
 
 # File: src/goeddel/use/models/nodes/utils.py Line: 88
@@ -331,13 +349,13 @@ def guess_filetype(name: str, mode: ?) -> str:
 # File: src/goeddel/use/models/nodes/utils.py Line: 108
 def get_icon_info(name: str, is_folder: bool, does_exist: bool, is_symlink: bool, symlink_is_broken: bool, symlink_target_is_dir: bool, filetype: ?, mode: ?) -> tuple[(str, str)]:
 
-# File: src/goeddel/use/models/nodes/base.py Line: 25
+# File: src/goeddel/use/models/nodes/base.py Line: 26
 class SnapshotVersionDetail:
 
-# File: src/goeddel/use/models/nodes/base.py Line: 37
+# File: src/goeddel/use/models/nodes/base.py Line: 38
 class RootFolderProtocol(Protocol):
 
-# File: src/goeddel/use/models/nodes/base.py Line: 79
+# File: src/goeddel/use/models/nodes/base.py Line: 80
 class FSNode:
 
 # File: src/goeddel/use/models/nodes/missing.py Line: 14

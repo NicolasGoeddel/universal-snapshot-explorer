@@ -1,5 +1,10 @@
 # Frontend JavaScript Architecture Map
 
+## File: `goeddel/use/static/js/path_bar.js`
+```javascript
+class PathBar { { ... }
+```
+
 ## File: `goeddel/use/static/js/filter_strategies.js`
 ```javascript
 class TextFilterStrategy { { ... }
@@ -69,6 +74,11 @@ function refreshMimeDiffs() { ... }
 function encodePath(p) { ... }
 async function loadMimeTypes() { ... }
 class DetailTable { { ... }
+```
+
+## File: `goeddel/use/static/js/column_visibility.js`
+```javascript
+class ColumnVisibilityManager { { ... }
 ```
 
 ## File: `goeddel/use/static/js/differ.js`

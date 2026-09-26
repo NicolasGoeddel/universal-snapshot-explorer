@@ -540,7 +540,7 @@
             });
 
             // 4. Compare against the space the visible flexible columns actually share
-            let sumTargetFlexible = flexibleIndices.reduce((sum, idx) => sum + targetWidths[idx], 0);
+            const sumTargetFlexible = flexibleIndices.reduce((sum, idx) => sum + targetWidths[idx], 0);
 
             if (sumTargetFlexible <= available) {
                 // Surplus table space: distribute to Elastic column

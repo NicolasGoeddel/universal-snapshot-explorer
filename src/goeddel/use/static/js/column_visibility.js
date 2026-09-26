@@ -51,7 +51,8 @@ class ColumnVisibilityManager {
         this.resizer = options.resizer || null;
         this.i18n = window.clientI18n || {};
 
-        this.headerRow = this.table.querySelector('thead tr.header-row') || this.table.querySelector('thead tr:first-child');
+        this.headerRow =
+            this.table.querySelector('thead tr.header-row') || this.table.querySelector('thead tr:first-child');
         if (!this.headerRow) {
             console.warn('[ColumnVisibilityManager] Table has no header row.', this.table);
             return;
@@ -68,7 +69,10 @@ class ColumnVisibilityManager {
         this.hiddenKeys = new Set(this.loadFromStorage().filter((k) => k !== this.lockedKey));
 
         this.toolbarPanels = this.normalizeButtons(options.toolbarButton)
-            .map((button) => ({ button, content: button.closest('.dropdown')?.querySelector(':scope > .dropdown-content') }))
+            .map((button) => ({
+                button,
+                content: button.closest('.dropdown')?.querySelector(':scope > .dropdown-content'),
+            }))
             .filter((p) => p.content);
 
         this.contextMenu = null;

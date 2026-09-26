@@ -1,22 +1,22 @@
 # File: src/goeddel/use/logger.py Line: 10
 def setup_logging(level: ?) -> ?:
 
-# File: src/goeddel/use/dependencies.py Line: 20
+# File: src/goeddel/use/dependencies.py Line: 21
 def get_base_url(request: Request) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 28
+# File: src/goeddel/use/dependencies.py Line: 29
 def quote_path_filter(path: str) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 32
+# File: src/goeddel/use/dependencies.py Line: 33
 def render_lucide(name: str, **kwargs) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 39
+# File: src/goeddel/use/dependencies.py Line: 40
 def static_url(path: str) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 48
+# File: src/goeddel/use/dependencies.py Line: 49
 def make_route_url(module: str, root_name: str, sub_path: str="", snapshot: ?) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 70
+# File: src/goeddel/use/dependencies.py Line: 72
 def get_app_config(request: Request) -> AppConfig:
 
 # File: src/goeddel/use/enums.py Line: 6
@@ -43,19 +43,19 @@ class LogLevel(StrEnum):
 # File: src/goeddel/use/enums.py Line: 70
 class Language(StrEnum):
 
-# File: src/goeddel/use/enums.py Line: 77
+# File: src/goeddel/use/enums.py Line: 78
 class DiffLineType(StrEnum):
 
-# File: src/goeddel/use/zip_streamer.py Line: 17
+# File: src/goeddel/use/zip_streamer.py Line: 18
 class ChunkedZipStreamer:
 
-# File: src/goeddel/use/zip_streamer.py Line: 53
+# File: src/goeddel/use/zip_streamer.py Line: 54
 def deduplicate_paths(paths: list[str]) -> list[str]:
 
-# File: src/goeddel/use/zip_streamer.py Line: 73
+# File: src/goeddel/use/zip_streamer.py Line: 74
 def resolve_zip_selection(root_folder: RootFolder, snapshot: ?, paths: list[str]) -> tuple[(list[tuple[(str, str)]], list[str], list[str])]:
 
-# File: src/goeddel/use/zip_streamer.py Line: 153
+# File: src/goeddel/use/zip_streamer.py Line: 169
 def stream_zip_archive(root_folder: RootFolder, snapshot: ?, paths: list[str], base_folder_path: str="", structure_mode: StructureMode=..., compression: CompressionMode=...) -> Generator[(bytes, ?, ?)]:
 
 # File: src/goeddel/use/differ.py Line: 21
@@ -82,13 +82,16 @@ def parse_args() -> ServerArgs:
 # File: src/goeddel/use/server.py Line: 28
 def start() -> ?:
 
-# File: src/goeddel/use/i18n.py Line: 333
+# File: src/goeddel/use/i18n.py Line: 515
+def _parse_accept_language(accept_language: str) -> list[str]:
+
+# File: src/goeddel/use/i18n.py Line: 546
 def get_language(request: Request) -> str:
 
-# File: src/goeddel/use/i18n.py Line: 352
+# File: src/goeddel/use/i18n.py Line: 565
 def get_translator(lang: str) -> Callable[(?, str)]:
 
-# File: src/goeddel/use/i18n.py Line: 368
+# File: src/goeddel/use/i18n.py Line: 581
 def get_client_translations(lang: str) -> str:
 
 # File: src/goeddel/use/config.py Line: 19
@@ -164,18 +167,21 @@ def can_read_real_path(real_path: str, username: ?) -> bool:
 def can_traverse_real_path(real_path: str, username: ?) -> bool:
 
 # File: src/goeddel/use/security.py Line: 451
+def identities_that_can_list(real_path: str, username: ?) -> frozenset[UserName]:
+
+# File: src/goeddel/use/security.py Line: 462
 def _ancestor_chain(dir_path: FilePath) -> list[str]:
 
-# File: src/goeddel/use/security.py Line: 463
+# File: src/goeddel/use/security.py Line: 474
 def _can_traverse_chain(root_folder: _RootFolderLike, dir_path: FilePath, snapshot: Snapshot, username: UserName) -> bool:
 
-# File: src/goeddel/use/security.py Line: 533
+# File: src/goeddel/use/security.py Line: 544
 def can_view_metadata(root_folder: _RootFolderLike, child_path: FilePath, snapshot: Snapshot, username: ?) -> bool:
 
-# File: src/goeddel/use/security.py Line: 549
+# File: src/goeddel/use/security.py Line: 560
 def can_access_child(root_folder: _RootFolderLike, child_path: FilePath, snapshot: Snapshot, username: ?) -> bool:
 
-# File: src/goeddel/use/security.py Line: 587
+# File: src/goeddel/use/security.py Line: 598
 def can_access(root_folder: _RootFolderLike, path: FilePath, snapshot: Snapshot, username: ?) -> bool:
 
 # File: src/goeddel/use/utils/path_resolver.py Line: 12

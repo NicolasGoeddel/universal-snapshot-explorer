@@ -685,7 +685,11 @@ class ExplorerView {
                                     let displaySize = childMeta.size_human;
                                     if (!childStatVisible) {
                                         displaySize = '?';
-                                    } else if (childMeta.is_folder && !childMeta.has_independent_snapshots && !childMeta.is_accessible) {
+                                    } else if (
+                                        childMeta.is_folder &&
+                                        !childMeta.has_independent_snapshots &&
+                                        !childMeta.is_accessible
+                                    ) {
                                         displaySize = `? ${window.clientI18n?.['unit.files'] || 'files'}`;
                                     } else if (
                                         childMeta.is_folder &&

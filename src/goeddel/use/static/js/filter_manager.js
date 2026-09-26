@@ -535,7 +535,10 @@ class FilterManager {
                 badgeChanged.style.display = 'inline-block';
                 badgeChanged.classList.toggle('is-filtering', hideUnchanged && unchangedCount > 0);
                 badgeChanged.title = hideUnchanged
-                    ? (i18n['filter.changed_files_hidden_status'] || '{unchanged} static files hidden ({changed} visible)')
+                    ? (
+                          i18n['filter.changed_files_hidden_status'] ||
+                          '{unchanged} static files hidden ({changed} visible)'
+                      )
                           .replace('{unchanged}', String(unchangedCount))
                           .replace('{changed}', String(changedCount))
                     : (i18n['filter.changed_files_shown_status'] || '{changed} changed of {total}')

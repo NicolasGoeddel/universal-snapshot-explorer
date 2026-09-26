@@ -746,8 +746,7 @@ class SelectionManager {
             if (breakdown) {
                 if (hiddenCount > 0) {
                     breakdown.style.display = 'inline';
-                    const revealTitle =
-                        i18n['selection.reveal_hidden'] || 'Click to reveal hidden files';
+                    const revealTitle = i18n['selection.reveal_hidden'] || 'Click to reveal hidden files';
                     const hiddenLabel = i18n['filter.stats_hidden'] || 'hidden';
                     const revealBtnHtml = `<button type="button" class="action-bar-reveal-btn" id="btn-reveal-hidden" title="${revealTitle}">${hiddenCount} ${hiddenLabel}</button>`;
                     const pattern = i18n['selection.filter_breakdown'] || '({visible} visible, {hidden} hidden)';

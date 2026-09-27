@@ -1,0 +1,236 @@
+/* Column Visibility: right-click on a column header, or a dedicated toolbar button */
+
+.col-visibility-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.col-visibility-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-main);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    user-select: none;
+}
+
+.col-visibility-toolbar-btn:hover {
+    background-color: var(--row-hover);
+    border-color: var(--primary-accent);
+}
+
+.col-visibility-toolbar-btn.has-hidden-columns {
+    border-color: var(--primary-accent);
+    color: var(--primary-accent);
+    font-weight: 600;
+}
+
+/*
+ * Visual chrome shared by both the toolbar's `.dropdown-content` panel (positioned and
+ * shown/hidden entirely by the generic `.dropdown:hover .dropdown-content` CSS rule -
+ * no JS involved, same mechanism as the language/theme switcher) and the floating
+ * right-click context menu below (which - unlike the toolbar panel - has no header
+ * element to CSS-hover into, so it's positioned and toggled via JS instead).
+ */
+.col-visibility-menu {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    min-width: 220px;
+    max-width: 280px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+    padding: 6px 0;
+    max-height: min(70vh, 420px);
+    overflow-y: auto;
+}
+
+.col-visibility-context-menu {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+}
+
+.col-visibility-context-menu.open {
+    display: block;
+}
+
+.col-visibility-hide-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    padding: 7px 12px;
+    background: none;
+    border: none;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.col-visibility-hide-action svg {
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+
+.col-visibility-hide-action:hover {
+    background-color: var(--row-hover);
+}
+
+.col-visibility-separator {
+    height: 1px;
+    background-color: var(--border-color-light);
+    margin: 4px 0;
+}
+
+.col-visibility-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 12px 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.col-visibility-reset-btn {
+    background: none;
+    border: none;
+    color: var(--primary-accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.col-visibility-reset-btn:hover {
+    text-decoration: underline;
+}
+
+.col-visibility-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.12s ease;
+}
+
+.col-visibility-item:hover {
+    background-color: var(--row-hover);
+}
+
+.col-visibility-item.locked {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.col-visibility-item.locked:hover {
+    background-color: transparent;
+}
+
+.col-visibility-item input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.col-visibility-item.locked input[type="checkbox"] {
+    cursor: not-allowed;
+}
+
+/*
+ * Generic index-based column hiding. Applying `hide-col-<N>` to a <table> hides the
+ * Nth child (1-indexed via nth-child) across every row in <thead> and <tbody> alike,
+ * whatever that column happens to be for that particular table - this is what keeps
+ * column indices stable for TableSorter/TableColumnResizer instead of touching the DOM.
+ */
+
+table.hide-col-0 thead tr > *:nth-child(1),
+table.hide-col-0 tbody tr > *:nth-child(1) {
+    display: none !important;
+}
+
+table.hide-col-1 thead tr > *:nth-child(2),
+table.hide-col-1 tbody tr > *:nth-child(2) {
+    display: none !important;
+}
+
+table.hide-col-2 thead tr > *:nth-child(3),
+table.hide-col-2 tbody tr > *:nth-child(3) {
+    display: none !important;
+}
+
+table.hide-col-3 thead tr > *:nth-child(4),
+table.hide-col-3 tbody tr > *:nth-child(4) {
+    display: none !important;
+}
+
+table.hide-col-4 thead tr > *:nth-child(5),
+table.hide-col-4 tbody tr > *:nth-child(5) {
+    display: none !important;
+}
+
+table.hide-col-5 thead tr > *:nth-child(6),
+table.hide-col-5 tbody tr > *:nth-child(6) {
+    display: none !important;
+}
+
+table.hide-col-6 thead tr > *:nth-child(7),
+table.hide-col-6 tbody tr > *:nth-child(7) {
+    display: none !important;
+}
+
+table.hide-col-7 thead tr > *:nth-child(8),
+table.hide-col-7 tbody tr > *:nth-child(8) {
+    display: none !important;
+}
+
+table.hide-col-8 thead tr > *:nth-child(9),
+table.hide-col-8 tbody tr > *:nth-child(9) {
+    display: none !important;
+}
+
+table.hide-col-9 thead tr > *:nth-child(10),
+table.hide-col-9 tbody tr > *:nth-child(10) {
+    display: none !important;
+}
+
+table.hide-col-10 thead tr > *:nth-child(11),
+table.hide-col-10 tbody tr > *:nth-child(11) {
+    display: none !important;
+}
+
+table.hide-col-11 thead tr > *:nth-child(12),
+table.hide-col-11 tbody tr > *:nth-child(12) {
+    display: none !important;
+}
+
+table.hide-col-12 thead tr > *:nth-child(13),
+table.hide-col-12 tbody tr > *:nth-child(13) {
+    display: none !important;
+}
+
+table.hide-col-13 thead tr > *:nth-child(14),
+table.hide-col-13 tbody tr > *:nth-child(14) {
+    display: none !important;
+}
+
+table.hide-col-14 thead tr > *:nth-child(15),
+table.hide-col-14 tbody tr > *:nth-child(15) {
+    display: none !important;
+}

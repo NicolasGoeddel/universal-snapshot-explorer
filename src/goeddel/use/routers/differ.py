@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 
 from ..dependencies import get_app_config, templates
 from ..differ import DiffEngine
+from ..i18n import get_language, get_translator
 from ..models.nodes.utils import guess_filetype
 from ..models.snapshot import Snapshot
 from ..utils.path_resolver import resolve_root_and_subpath
@@ -79,6 +80,34 @@ def get_diff_content(
             "snapshots_chronological": chronological,
             "snapshots_bar": bar,
             "initial_snapshots": ",".join(resolved_snapshots),
+        },
+    )
+
+
+@router.get("/api/diff-timeline/{full_path:path}", response_class=HTMLResponse)
+def get_diff_timeline_segments(
+    request: Request,
+    full_path: str = "",
+    attributes: str | None = None,
+) -> HTMLResponse:
+    """Render only the diff timeline's segments, colored for the given criteria.
+
+    Lets the differ page apply a criteria change in place (like the file browser
+    refetching its snapshot bars) instead of reloading the whole page.
+    """
+    config = get_app_config(request)
+    _, file_path, root_folder = resolve_root_and_subpath(full_path, config)
+    active_attributes = [a.strip() for a in attributes.split(",") if a.strip()] if attributes else None
+    # The bar walks every snapshot's sibling, so which snapshot the node comes from doesn't matter.
+    bar = root_folder.get_file(path=file_path).get_snapshots_bar(attributes=active_attributes)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="diff_timeline_segments.html.j2",
+        context={
+            "request": request,
+            "snapshots_bar": bar,
+            "t": get_translator(get_language(request)),
         },
     )
 

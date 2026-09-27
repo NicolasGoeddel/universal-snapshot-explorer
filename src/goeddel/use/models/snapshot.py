@@ -62,5 +62,9 @@ class OriginalSnapshot(Snapshot):
 
     @property
     @override
-    def timestamp_formatted(self) -> str:
-        return "Live (Aktuell)"
+    def timestamp_formatted(self) -> str | None:
+        # No display text here: OriginalSnapshot has no real timestamp, and this is a
+        # domain model with no access to the request's language. Callers must check
+        # is_original (or has_timestamp, which is already False here) and use the
+        # translated badge.live string instead, as templates/breadcrumbs.html.j2 does.
+        return None

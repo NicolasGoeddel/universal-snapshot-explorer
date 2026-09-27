@@ -1,0 +1,438 @@
+/* Universal Snapshot Explorer - Path bar Styling
+   Markup: breadcrumbs.html.j2, nav_controls.html.j2 - Behaviour: static/js/path_bar.js */
+
+:root {
+    /* Windows 11 (WinUI) text box: ControlFillColor{Default,Secondary,InputActive},
+       ControlStrokeColorDefault for the hairline border and ControlStrokeColorSecondary
+       for the action divider. */
+    --pathbar-bg: #f6f6f6;
+    --pathbar-bg-hover: #f1f1f1;
+    --pathbar-bg-focus: #ffffff;
+    --pathbar-border: rgba(0, 0, 0, 0.0803);
+    --pathbar-divider: rgba(0, 0, 0, 0.2);
+    --pathbar-icon-home: #64748b;
+    --pathbar-icon-root: #3e8100;
+    --pathbar-icon-snapshot: #0284c7;
+    /* Snapshot selector while a past snapshot is shown */
+    --pathbar-past-bg: #fef3c7;
+    --pathbar-past-bg-hover: #fde68a;
+    --pathbar-past-ring: #fbbf24;
+    --pathbar-past-text: #92400e;
+    --pathbar-past-icon: #d97706;
+}
+
+[data-theme="dark"] {
+    --pathbar-bg: rgba(255, 255, 255, 0.0605);
+    --pathbar-bg-hover: rgba(255, 255, 255, 0.0837);
+    --pathbar-bg-focus: rgba(0, 0, 0, 0.3);
+    --pathbar-border: rgba(255, 255, 255, 0.0698);
+    --pathbar-divider: rgba(255, 255, 255, 0.1395);
+    --pathbar-icon-home: #94a3b8;
+    --pathbar-icon-root: #84cc16;
+    --pathbar-icon-snapshot: #38bdf8;
+    --pathbar-past-bg: rgba(245, 158, 11, 0.16);
+    --pathbar-past-bg-hover: rgba(245, 158, 11, 0.26);
+    --pathbar-past-ring: rgba(251, 191, 36, 0.45);
+    --pathbar-past-text: #fcd34d;
+    --pathbar-past-icon: #fbbf24;
+}
+
+/* One strip styled after the Windows 11 Explorer address bar: flat segments, chevrons
+   that open subfolder menus, and actions at the end. */
+.pathbar {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    min-height: 38px;
+    margin: 6px 0 2px;
+    padding: 4px 4px 4px 5px;
+    background: var(--pathbar-bg);
+    border: 1px solid var(--pathbar-border);
+    border-radius: 4px;
+    font-size: 10pt;
+    transition: background-color 0.1s;
+}
+
+.pathbar:hover {
+    background: var(--pathbar-bg-hover);
+}
+
+/* Editing the path: solid fill plus the WinUI accent underline (2px: border + inset shadow) */
+.pathbar:has(.breadcrumb-path-input:focus) {
+    background: var(--pathbar-bg-focus);
+    border-bottom-color: var(--primary-accent);
+    box-shadow: inset 0 -1px 0 var(--primary-accent);
+}
+
+/* Path segments and the snapshot indicator are .toolbar-item (main.css) plus
+   the coloring/weight below - the path bar's own domain-specific styling. */
+.toolbar-item.home .pathbar-icon {
+    color: var(--pathbar-icon-home);
+}
+
+.toolbar-item.root .pathbar-icon {
+    color: var(--pathbar-icon-root);
+}
+
+.toolbar-item.snapshot .pathbar-icon {
+    color: var(--pathbar-icon-snapshot);
+}
+
+.toolbar-item.root {
+    font-weight: 650;
+}
+
+.toolbar-item.snapshot.static {
+    cursor: default;
+}
+
+.toolbar-item.snapshot.static:hover {
+    background: none;
+}
+
+/* Lit up while browsing a past snapshot, so it's obvious you're not looking at "Now" */
+.toolbar-item.snapshot.in-past,
+.toolbar-item.snapshot.in-past:hover {
+    background: var(--pathbar-past-bg);
+    color: var(--pathbar-past-text);
+    box-shadow: inset 0 0 0 1px var(--pathbar-past-ring);
+}
+
+.toolbar-item.snapshot.dropdown.in-past:hover {
+    background: var(--pathbar-past-bg-hover);
+}
+
+.toolbar-item.snapshot.in-past .pathbar-icon {
+    color: var(--pathbar-past-icon);
+}
+
+.toolbar-item.snapshot.in-past .breadcrumb-snapshot-time {
+    color: inherit;
+    opacity: 0.8;
+}
+
+.breadcrumb-snapshot-time {
+    color: var(--text-muted);
+    font-size: 8.5pt;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The snapshot hover dropdown opens a little below its segment */
+.pathbar .dropdown-content {
+    margin-top: 4px;
+    border-radius: 8px;
+}
+
+/* The snapshot dropdown sits at the right end of the bar: open it leftwards */
+.pathbar-actions .dropdown-content {
+    left: auto;
+    right: 0;
+}
+
+.pathbar .dropdown::after {
+    /* Invisible bridge over that gap so :hover survives the trip into the dropdown */
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 6px;
+}
+
+/* Path segments: name + chevron form a split button, like the Windows address bar */
+.path-seg {
+    display: inline-flex;
+    align-items: center;
+}
+
+.path-crumb {
+    padding: 0 7px;
+}
+
+.path-seg:has(.path-chevron) .path-crumb {
+    border-radius: 4px 0 0 4px;
+}
+
+.path-seg:hover .path-crumb,
+.path-seg:hover .path-chevron {
+    background: color-mix(in srgb, var(--primary-accent) 6%, transparent);
+}
+
+.path-seg .path-crumb:hover,
+.path-seg .path-chevron:hover {
+    background: var(--toolbar-hover);
+}
+
+.path-crumb.current {
+    font-weight: 650;
+}
+
+span.path-crumb.current,
+span.path-crumb.current:hover {
+    cursor: default;
+    background: none;
+}
+
+.path-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 0 4px 4px 0;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background-color 0.12s, color 0.12s;
+}
+
+.path-chevron svg {
+    transition: transform 0.15s ease;
+}
+
+.path-chevron:hover {
+    color: var(--text-main);
+}
+
+.path-seg .path-chevron.open {
+    background: var(--toolbar-pressed);
+    color: var(--primary-accent);
+}
+
+.path-chevron.open svg {
+    transform: rotate(90deg);
+}
+
+.path-chevron:focus-visible {
+    outline: 2px solid var(--primary-accent);
+    outline-offset: -2px;
+}
+
+/* Trailing actions (snapshot selector, refresh), set apart by a short divider */
+.pathbar-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 4px;
+    flex-shrink: 0;
+}
+
+.pathbar-actions::before {
+    content: '';
+    width: 1px;
+    height: 18px;
+    margin-right: 4px;
+    background: var(--pathbar-divider);
+}
+
+.nav-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Refresh button is a plain .toolbar-btn (main.css) */
+.refresh-btn svg {
+    transition: transform 0.35s ease;
+}
+
+.refresh-btn:hover svg:not(.spinning) {
+    transform: rotate(60deg);
+}
+
+/* Subfolder menu opened from a path chevron (appended to <body>, position: fixed) */
+.path-menu {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    min-width: 220px;
+    max-width: 420px;
+    overflow-y: auto;
+    padding: 4px;
+    background: var(--bg-surface);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.28), 0 4px 10px -4px rgba(15, 23, 42, 0.12);
+    font-size: 10pt;
+}
+
+.path-menu.visible {
+    display: block;
+    animation: path-menu-in 0.12s ease-out;
+}
+
+@keyframes path-menu-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+.path-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px 5px 8px;
+    border-radius: 5px;
+    color: var(--text-main);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.path-menu-item svg {
+    flex-shrink: 0;
+    color: #d97706;
+}
+
+.path-menu-item.is-root svg {
+    color: var(--pathbar-icon-root);
+}
+
+.path-menu-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.path-menu-item:hover,
+.path-menu-item:focus {
+    background: var(--row-hover);
+    color: var(--primary-accent);
+    outline: none;
+}
+
+.path-menu-item.active {
+    font-weight: 650;
+    background: color-mix(in srgb, var(--primary-accent) 9%, transparent);
+}
+
+.path-menu-item.is-hidden {
+    opacity: 0.6;
+}
+
+/* Listed but not readable (OS permissions, or ACLs once security is enabled) */
+.path-menu-item.is-denied {
+    opacity: 0.5;
+    font-style: italic;
+}
+
+.path-menu-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 6px 12px;
+    color: var(--text-muted);
+    font-size: 9pt;
+}
+
+.path-menu-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--primary-accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+/* Editable Breadcrumbs Path */
+.breadcrumbs-path-container {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    align-self: stretch;
+    min-width: 0;
+    position: relative;
+}
+
+/* Clicking the blank part of the path line switches to the path input (path_bar.js) */
+.pathbar:has(#breadcrumbs-path-edit) .breadcrumbs-path-container {
+    cursor: text;
+}
+
+/* Ctrl+L hint in the blank part of the path line, shown only when it fits, in pure CSS:
+   - the slot only receives the width the segments leave free (flex-basis 0), so it never
+     makes the path wrap earlier;
+   - inside it, the hint follows a zero-width ::before on a wrapping row that is exactly
+     one line tall: when the hint doesn't fit next to it, it wraps onto the second line,
+     which overflow: hidden clips away. Otherwise justify-content pushes it to the right. */
+.path-edit-hint-slot {
+    flex: 1 1 0;
+    min-width: 0;
+    align-self: center;
+    height: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-content: flex-start;
+    overflow: hidden;
+    pointer-events: none; /* clicks fall through to the container: blank area -> edit mode */
+}
+
+.path-edit-hint-slot::before {
+    content: '';
+    width: 0;
+    height: 100%; /* makes line 1 a full slot high even when the hint has wrapped away */
+}
+
+.path-edit-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 100%;
+    padding: 0 2px 0 16px; /* the free room required around the hint */
+    opacity: 0.8;
+    transition: opacity 0.15s;
+}
+
+.pathbar:hover .path-edit-hint {
+    opacity: 1;
+}
+
+.breadcrumbs-path-container:has(.breadcrumb-path-input:focus) .path-edit-hint-slot {
+    display: none;
+}
+
+.path-edit-hint kbd {
+    margin: 0;
+    padding: 1px 5px;
+    font-size: 7.5pt;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: transparent;
+    border-color: var(--pathbar-divider);
+    box-shadow: none;
+}
+
+.breadcrumbs-path-view {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.breadcrumbs-path-edit {
+    display: inline-flex;
+    align-items: center;
+    flex-grow: 1;
+    gap: 6px;
+    height: 28px;
+    padding: 0 8px;
+    color: var(--text-muted);
+}
+
+.breadcrumb-path-input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    font-size: 9.5pt;
+    font-family: ui-monospace, monospace, sans-serif;
+    color: var(--text-main);
+    background: transparent;
+    border: 0;
+    outline: none;
+}

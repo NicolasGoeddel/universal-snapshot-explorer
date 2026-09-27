@@ -7,11 +7,12 @@ from collections.abc import Generator
 from typing import TYPE_CHECKING
 
 from .enums import CompressionMode, StructureMode
-from .security import can_access, can_read_real_path, can_traverse_real_path, get_current_username
+from .security import can_access, can_read_real_path, get_current_username, identities_that_can_list
 
 if TYPE_CHECKING:
     from .models.root_folder import RootFolder
     from .models.snapshot import Snapshot
+    from .models.types import UserName
 
 
 class ChunkedZipStreamer:
@@ -115,16 +116,31 @@ def resolve_zip_selection(
             continue
 
         if stat.S_ISDIR(st.st_mode):
+            # A directory's entries are only exported to the identities that may
+            # both list and traverse it (and every directory above it), so each
+            # walked directory records who can still reach inside it.
+            reachable_by: dict[str, frozenset[UserName] | None] = {real_path: None}
+            if username is not None:
+                listers = identities_that_can_list(real_path, username)
+                reachable_by[real_path] = frozenset(u for u in listers if can_access(root_folder, p, target_snapshot, u))
+                if not reachable_by[real_path]:
+                    skipped.append(p)
+                    continue
+
             for dirpath, dirnames, filenames in os.walk(real_path, followlinks=False):
                 rel_from_dir = os.path.relpath(dirpath, real_path).replace("\\", "/")
                 current_node_path = p if rel_from_dir == "." else f"{p.rstrip('/')}/{rel_from_dir}"
+                reachers = reachable_by[dirpath]
 
-                # Prune subdirectories the current user can't even traverse,
-                # BEFORE os.walk descends into them, each entry
-                # is checked independently to avoid unnecessary processing.
+                # Prune subdirectories the current user can't both list and
+                # traverse, BEFORE os.walk descends into them: a denied one is
+                # reported once as a whole, without revealing what it contains.
                 kept_dirnames: list[str] = []
                 for d in sorted(dirnames):
-                    if can_traverse_real_path(os.path.join(dirpath, d), username):
+                    sub_real_path = os.path.join(dirpath, d)
+                    sub_reachers = None if reachers is None else identities_that_can_list(sub_real_path, reachers)
+                    if sub_reachers is None or sub_reachers:
+                        reachable_by[sub_real_path] = sub_reachers
                         kept_dirnames.append(d)
                     else:
                         skipped.append(f"{current_node_path.rstrip('/')}/{d}")
@@ -136,7 +152,7 @@ def resolve_zip_selection(
                 for fname in sorted(filenames):
                     file_real_path = os.path.join(dirpath, fname)
                     file_node_path = f"{current_node_path.rstrip('/')}/{fname}"
-                    if can_read_real_path(file_real_path, username):
+                    if can_read_real_path(file_real_path, reachers):
                         included.append((file_node_path, file_real_path))
                         kept_filenames.append(fname)
                     else:

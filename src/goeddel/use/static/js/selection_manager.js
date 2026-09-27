@@ -305,6 +305,11 @@ class SelectionManager {
             checkbox.blur();
         });
 
+        document.getElementById('btn-invert-selection')?.addEventListener('click', (e) => {
+            this.invertVisible();
+            e.currentTarget.blur();
+        });
+
         // Ensure checkboxes never retain browser focus and steal keyboard navigation
         this.table.addEventListener('focusin', (e) => {
             if (e.target.matches?.('input.row-checkbox') || e.target.id === 'master-select-checkbox') {
@@ -389,6 +394,27 @@ class SelectionManager {
                 visibleRows[i].classList.add('range-preview');
             }
         }
+    }
+
+    /**
+     * @param {HTMLTableRowElement} row - Table row.
+     * @returns {boolean} Whether the row is (fully) selected.
+     */
+    isRowSelected(row) {
+        return this.selectedPaths.has(row.dataset.path || row.dataset.filename);
+    }
+
+    /**
+     * Invert the selection of the visible rows. Expanded folders are skipped: their state
+     * follows from their children, which are inverted individually.
+     */
+    invertVisible() {
+        const targets = this.getVisibleRows()
+            .filter((r) => !(r.dataset.isFolder === 'true' && r.dataset.expanded === 'true'))
+            .map((r) => [r, !this.isRowSelected(r)]);
+        const allRows = this.treeTable.getAllRows();
+        targets.forEach(([r, select]) => this.setRowSelected(r, select, allRows));
+        this.updateUI();
     }
 
     /**
@@ -746,8 +772,7 @@ class SelectionManager {
             if (breakdown) {
                 if (hiddenCount > 0) {
                     breakdown.style.display = 'inline';
-                    const revealTitle =
-                        i18n['selection.reveal_hidden'] || 'Click to reveal hidden files';
+                    const revealTitle = i18n['selection.reveal_hidden'] || 'Click to reveal hidden files';
                     const hiddenLabel = i18n['filter.stats_hidden'] || 'hidden';
                     const revealBtnHtml = `<button type="button" class="action-bar-reveal-btn" id="btn-reveal-hidden" title="${revealTitle}">${hiddenCount} ${hiddenLabel}</button>`;
                     const pattern = i18n['selection.filter_breakdown'] || '({visible} visible, {hidden} hidden)';

@@ -6,6 +6,31 @@ This project adheres to [Semantic Versioning (SemVer)](https://semver.org/).
 
 ---
 
+## [2.3.0] - 2026-09-28
+
+> **Minor Release: Interactive Snapshot Timeline, Major UI Redesign & ACL Permission Support**
+
+### 🚀 Highlights & New Features
+
+* **Interactive Snapshot Timeline:**
+  * Added a sticky dual-timeline panel for visual snapshot navigation with dynamic zooming and density-aware grouping.
+  * Supports full mouse/trackpad interaction to easily pan and zoom across the snapshot history.
+* **Comprehensive UI Redesign:**
+  * Introduced a cleaner, flat design for the file browser and a new breadcrumb path bar with subfolder dropdowns.
+  * Implemented column visibility toggles (with browser storage) and streamlined right-click row actions.
+  * Changed snapshot sorting to right-to-left (recent to old) for more intuitive time-series navigation.
+* **Full ACL Permission & Impersonation Support:**
+  * The backend can now fully respect filesystem Access Control Lists (ACLs) to securely restrict access to files and folders based on user permissions.
+  * This feature is completely **optional and backwards-compatible**.
+  * It can be enabled in the configuration and verifies access rights via a statically configured user list or dynamically via HTTP headers (e.g., `Remote-User` passed from an authentication proxy).
+
+### 🌍 Localization & Improvements
+
+* **Translation System Overhaul:**
+  * Refactored the internal localization system and added complete French localization (`fr`).
+
+---
+
 ## [2.2.0] - 2026-09-07
 
 > **Minor Release: Advanced Filtering, N-Way Differ Engine, Configurable Criteria & UI Enhancements**

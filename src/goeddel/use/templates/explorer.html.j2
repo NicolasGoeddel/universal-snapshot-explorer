@@ -6,11 +6,13 @@
     {% include 'header.html.j2' %}
     <link rel="stylesheet" href="{{ static_url('css/file_browser.css') }}">
     <link rel="stylesheet" href="{{ static_url('css/criteria_manager.css') }}">
+    <link rel="stylesheet" href="{{ static_url('css/snapshot_timeline.css') }}">
     <link rel="stylesheet" href="{{ static_url('css/column_visibility.css') }}">
     <script src="{{ static_url('js/criteria_manager.js') }}" defer></script>
     <script src="{{ static_url('js/filter_strategies.js') }}" defer></script>
     <script src="{{ static_url('js/column_visibility.js') }}" defer></script>
     <script src="{{ static_url('js/explorer.js') }}" defer></script>
+    <script src="{{ static_url('js/snapshot_timeline.js') }}" defer></script>
 </head>
 <body>
     <div class="sticky-header-container">
@@ -179,6 +181,8 @@
             </div>
         </div>
     </div>
+
+    {% include 'snapshot_timeline.html.j2' %}
     <template id="folder-toggle-template"><span class="folder-toggle icon" title="Toggle folder">{{ lucide('chevron-right', size=14) }}</span></template>
 </body>
 </html>

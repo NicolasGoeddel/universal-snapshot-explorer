@@ -82,16 +82,16 @@ def parse_args() -> ServerArgs:
 # File: src/goeddel/use/server.py Line: 28
 def start() -> ?:
 
-# File: src/goeddel/use/i18n.py Line: 549
+# File: src/goeddel/use/i18n.py Line: 591
 def _parse_accept_language(accept_language: str) -> list[str]:
 
-# File: src/goeddel/use/i18n.py Line: 580
+# File: src/goeddel/use/i18n.py Line: 622
 def get_language(request: Request) -> str:
 
-# File: src/goeddel/use/i18n.py Line: 599
+# File: src/goeddel/use/i18n.py Line: 641
 def get_translator(lang: str) -> Callable[(?, str)]:
 
-# File: src/goeddel/use/i18n.py Line: 615
+# File: src/goeddel/use/i18n.py Line: 657
 def get_client_translations(lang: str) -> str:
 
 # File: src/goeddel/use/config.py Line: 19
@@ -190,16 +190,16 @@ def resolve_root_and_subpath(full_path: str, config: AppConfig) -> tuple[(str, s
 # File: src/goeddel/use/utils/roots_hierarchy.py Line: 13
 def build_root_hierarchy(roots_or_configs: ?, root_configs: ?) -> list[RootViewItem]:
 
-# File: src/goeddel/use/utils/ui.py Line: 23
+# File: src/goeddel/use/utils/ui.py Line: 24
 def get_base_template_context(request: Request, root_folder: RootFolder, root_name: RootName, node: FSNode, module: str, path: str="", all_roots: ?, snapshots: ?) -> dict[(str, object)]:
 
-# File: src/goeddel/use/utils/ui.py Line: 71
+# File: src/goeddel/use/utils/ui.py Line: 86
 def get_breadcrumbs(root_folder: RootFolder, root_name: RootName, file: FSNode, snapshots: list[Snapshot], all_roots: list[RootName]) -> BreadcrumbsData:
 
-# File: src/goeddel/use/utils/ui.py Line: 142
+# File: src/goeddel/use/utils/ui.py Line: 157
 def render_error_response(request: Request, status_code: int, message: ?, root_name: ?, path: str="", snapshot_id: ?, is_folder_error: bool, title: ?) -> HTMLResponse:
 
-# File: src/goeddel/use/utils/ui.py Line: 212
+# File: src/goeddel/use/utils/ui.py Line: 227
 def find_nearest_existing_parent(root_folder: RootFolder, path: str, snapshot: ?) -> ?:
 
 # File: src/goeddel/use/routers/api.py Line: 16

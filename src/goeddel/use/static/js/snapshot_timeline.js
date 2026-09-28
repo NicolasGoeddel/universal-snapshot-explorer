@@ -141,10 +141,21 @@
         const maxTicks = Math.max(2, Math.floor(widthPx / MIN_AXIS_LABEL_SPACING_PX));
 
         const fixedSteps = [
-            SECOND, 5 * SECOND, 15 * SECOND, 30 * SECOND,
-            MINUTE, 5 * MINUTE, 15 * MINUTE, 30 * MINUTE,
-            HOUR, 3 * HOUR, 6 * HOUR, 12 * HOUR,
-            DAY, 2 * DAY, WEEK,
+            SECOND,
+            5 * SECOND,
+            15 * SECOND,
+            30 * SECOND,
+            MINUTE,
+            5 * MINUTE,
+            15 * MINUTE,
+            30 * MINUTE,
+            HOUR,
+            3 * HOUR,
+            6 * HOUR,
+            12 * HOUR,
+            DAY,
+            2 * DAY,
+            WEEK,
         ];
         for (const step of fixedSteps) {
             if (span / step <= maxTicks) {
@@ -207,7 +218,11 @@
     function formatAxisLabel(ts, stepMs, domainCrossesYear) {
         const year = domainCrossesYear ? 'numeric' : undefined;
         if (stepMs < HOUR) {
-            return formatDate(ts, { hour: '2-digit', minute: '2-digit', second: stepMs < MINUTE ? '2-digit' : undefined });
+            return formatDate(ts, {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: stepMs < MINUTE ? '2-digit' : undefined,
+            });
         }
         if (stepMs < DAY) return formatDate(ts, { hour: '2-digit', minute: '2-digit' });
         if (stepMs < 32 * DAY) return formatDate(ts, { month: 'short', day: 'numeric', year });
@@ -329,7 +344,8 @@
                 const splitPct = localStorage.getItem('use_timeline_split_pct');
                 if (splitPct) document.documentElement.style.setProperty('--timeline-split-pct', splitPct);
                 const stackSplitPct = localStorage.getItem('use_timeline_stack_split_pct');
-                if (stackSplitPct) document.documentElement.style.setProperty('--timeline-stack-split-pct', stackSplitPct);
+                if (stackSplitPct)
+                    document.documentElement.style.setProperty('--timeline-stack-split-pct', stackSplitPct);
             } catch (e) {
                 /* ignore */
             }
@@ -365,7 +381,10 @@
 
         persistRange() {
             try {
-                localStorage.setItem(`use_timeline_range_${this.rootName}`, JSON.stringify([this.rangeStart, this.rangeEnd]));
+                localStorage.setItem(
+                    `use_timeline_range_${this.rootName}`,
+                    JSON.stringify([this.rangeStart, this.rangeEnd]),
+                );
             } catch (e) {
                 /* ignore */
             }
@@ -385,7 +404,9 @@
             const wasCollapsed = this.panel.classList.contains('is-collapsed');
             if (collapsed === wasCollapsed) return;
             if (collapsed) {
-                this.lastExpandedHeight = Math.round(expandedHeightHint || this.panel.getBoundingClientRect().height || this.lastExpandedHeight);
+                this.lastExpandedHeight = Math.round(
+                    expandedHeightHint || this.panel.getBoundingClientRect().height || this.lastExpandedHeight,
+                );
                 this.panel.classList.add('is-collapsed');
             } else {
                 this.panel.classList.remove('is-collapsed');
@@ -476,8 +497,10 @@
             if (!this.splitResizer) return;
 
             const layoutOf = () => this.panel.dataset.layout;
-            const varFor = (layout) => (layout === 'side-by-side' ? '--timeline-split-pct' : '--timeline-stack-split-pct');
-            const storageKeyFor = (layout) => (layout === 'side-by-side' ? 'use_timeline_split_pct' : 'use_timeline_stack_split_pct');
+            const varFor = (layout) =>
+                layout === 'side-by-side' ? '--timeline-split-pct' : '--timeline-stack-split-pct';
+            const storageKeyFor = (layout) =>
+                layout === 'side-by-side' ? 'use_timeline_split_pct' : 'use_timeline_stack_split_pct';
 
             this.splitResizer.addEventListener('dblclick', (e) => {
                 const layout = layoutOf();
@@ -520,7 +543,10 @@
                 dragPointer(this.splitResizer, e, move, () => {
                     this.splitResizer.classList.remove('is-resizing');
                     try {
-                        localStorage.setItem(storageKeyFor(layout), document.documentElement.style.getPropertyValue(cssVar));
+                        localStorage.setItem(
+                            storageKeyFor(layout),
+                            document.documentElement.style.getPropertyValue(cssVar),
+                        );
                     } catch (err) {
                         /* ignore */
                     }
@@ -598,7 +624,11 @@
                     try {
                         const collapsed = this.panel.classList.contains('is-collapsed');
                         localStorage.setItem('use_timeline_collapsed', collapsed ? '1' : '0');
-                        if (!collapsed) localStorage.setItem('use_timeline_panel_height', String(Math.round(this.lastExpandedHeight)));
+                        if (!collapsed)
+                            localStorage.setItem(
+                                'use_timeline_panel_height',
+                                String(Math.round(this.lastExpandedHeight)),
+                            );
                     } catch (err) {
                         /* ignore */
                     }
@@ -766,9 +796,10 @@
             bars.key = key;
             bars.el.replaceChildren(
                 ...layout.map((item) => {
-                    const el = item.type === 'tick'
-                        ? this.makeTickElement(item.entry, bars.clickable)
-                        : this.makeStackElement(item.entries, bars.clickable);
+                    const el =
+                        item.type === 'tick'
+                            ? this.makeTickElement(item.entry, bars.clickable)
+                            : this.makeStackElement(item.entries, bars.clickable);
                     el.style.left = `${(item.x / widthPx) * 100}%`;
                     // The gap keeps back-to-back ranges visually distinct.
                     el.style.width = `max(2px, calc(${((item.x2 - item.x) / widthPx) * 100}% - ${RANGE_GAP_PX}px))`;
@@ -879,7 +910,8 @@
             pop.replaceChildren(
                 ...entries.map((entry) => {
                     const item = document.createElement('div');
-                    item.className = 'snapshot-timeline-popover-item' + (entry.id === this.currentSnapshotId ? ' is-current' : '');
+                    item.className =
+                        'snapshot-timeline-popover-item' + (entry.id === this.currentSnapshotId ? ' is-current' : '');
                     item.textContent = `${new Date(entry.ts).toLocaleString(appLocale())} — ${entry.name}`;
                     item.addEventListener('click', () => {
                         pop.hidePopover();

@@ -598,7 +598,8 @@ class ExplorerView {
         }
 
         const baseSubpath = this.table.dataset.subpath || '';
-        document.querySelectorAll('.breadcrumbs a[href*="snapshot="]').forEach((a) => {
+        const snapshotLinks = '.breadcrumbs a[href*="snapshot="], [data-nav-slot="folder-actions"] a';
+        document.querySelectorAll(snapshotLinks).forEach((a) => {
             try {
                 const u = new URL(a.href, window.location.origin);
                 u.searchParams.set('snapshot', targetSnapshotId);

@@ -1,16 +1,44 @@
-{% from 'explorer_parts.html.j2' import folder_actions, header_timeline with context %}
+{% from 'explorer_parts.html.j2' import folder_actions with context %}
 {% from 'criteria_dropdown.html.j2' import snapshot_criteria_dropdown %}
+{% from 'snapshots_bar.svg.j2' import snapshots_bar_skeleton %}
+{#- The page is a skeleton: the rows and the snapshot bars are requested as soon as the head is parsed,
+    and only the styles of what is visible before they arrive block the first paint -#}
+{% set deferred_styles = ['css/typeahead.css', 'css/snapshot_timeline.css'] %}
+{% set blocking_scripts = ['js/table_resizer.js', 'js/column_visibility.js', 'js/table_sort_order.js'] %}
+{#- Imported after the lists above, which it only sees if they already exist -#}
+{% from 'assets.html.j2' import stylesheet, script with context %}
+{% set head_preloads %}
+<link rel="preload" id="folder-preload" href="{{ route_url('list', root_name, directory_path, folder.snapshot.id) ~ '&partial=1' }}" as="fetch" crossorigin>
+<script>
+    (function() {
+        // Custom snapshot comparison criteria change the bars URL: those bars are only requested with the rows
+        try {
+            var criteria = JSON.parse(localStorage.getItem('use-snapshot-criteria') || 'null');
+            if (Array.isArray(criteria) && criteria.length > 0 && criteria.length < 5) return;
+        } catch (e) {}
+        var link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'fetch';
+        link.crossOrigin = 'anonymous';
+        link.id = 'bars-preload';
+        link.href = {{ route_url('api/snapshot-bars', root_name, directory_path, folder.snapshot.id) | tojson }};
+        document.head.appendChild(link);
+    })();
+</script>
+{% endset %}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2' %}
-    <link rel="stylesheet" href="{{ static_url('css/file_browser.css') }}">
-    <link rel="stylesheet" href="{{ static_url('css/criteria_manager.css') }}">
-    <link rel="stylesheet" href="{{ static_url('css/snapshot_timeline.css') }}">
-    <link rel="stylesheet" href="{{ static_url('css/column_visibility.css') }}">
+    {{ stylesheet('css/file_browser.css') }}
+    {{ stylesheet('css/criteria_manager.css') }}
+    {{ stylesheet('css/column_visibility.css') }}
+    {{ stylesheet('css/skeleton.css') }}
+    {{ stylesheet('css/snapshot_timeline.css') }}
     <script src="{{ static_url('js/criteria_manager.js') }}" defer></script>
     <script src="{{ static_url('js/filter_strategies.js') }}" defer></script>
-    <script src="{{ static_url('js/column_visibility.js') }}" defer></script>
+    {{ script('js/column_visibility.js') }}
+    {{ inline_js('js/explorer_boot.js') }}
     <script src="{{ static_url('js/explorer.js') }}" defer></script>
     <script src="{{ static_url('js/snapshot_timeline.js') }}" defer></script>
 </head>
@@ -87,7 +115,7 @@
                     </div>
                 </td>
                 <td class="browser-filter-snapshots">
-                    <div class="snapshots-header-timeline" data-nav-slot="header-timeline">{{ header_timeline() }}</div>
+                    <div class="snapshots-header-timeline" data-nav-slot="header-timeline">{{ snapshots_bar_skeleton(breadcrumbs.snapshots | length, is_header=true) }}</div>
                 </td>
                 <td>
                     <div class="filter-input-wrapper">
@@ -134,10 +162,15 @@
                 <td></td>
             </tr>
         </thead>
-        <tbody data-nav-slot="rows">
-            {% include 'folder_content.html.j2' %}
+        <script>ExplorerBoot.initColumns(document.currentScript.closest('table'));</script>
+        <tbody data-nav-slot="rows"></tbody>
+        <tbody class="rows-skeleton" aria-hidden="true">
+            {%- for i in range(6) %}
+            <tr><td></td><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td><td></td></tr>
+            {%- endfor %}
         </tbody>
     </table>
+    <script>ExplorerBoot.showFirstFolder(document.getElementById('filebrowser'), document.getElementById('folder-preload').href);</script>
 
     <!-- Floating Action Bar for Multi-Selection & ZIP Batch-Download -->
     <div id="floating-action-bar" class="floating-action-bar" style="display: none;">

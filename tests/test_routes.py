@@ -81,12 +81,19 @@ class TestAppRoutes(unittest.TestCase):
         self.assertIn("data-level=", response.text)
 
     def test_explorer_view(self) -> None:
+        # The page is a skeleton: its rows come from the partial listing it preloads
         response = self.client.get("/list/mock-root")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("file1.txt", response.text)
-        self.assertIn("folder1", response.text)
+        self.assertNotIn("file1.txt", response.text)
+        self.assertIn('rel="preload" id="folder-preload" href="/list/mock-root?snapshot=Original&amp;partial=1"', response.text)
+        self.assertIn('class="rows-skeleton"', response.text)
+
+        partial = self.client.get("/list/mock-root?snapshot=Original&partial=1")
+        self.assertEqual(partial.status_code, 200)
+        self.assertIn("file1.txt", partial.text)
+        self.assertIn("folder1", partial.text)
         # Ensure hidden .zfs folder is not rendered in HTML
-        self.assertNotIn('href="/list/mock-root/.zfs"', response.text)
+        self.assertNotIn('href="/list/mock-root/.zfs"', partial.text)
 
     def test_explorer_partial(self) -> None:
         page = self.client.get("/list/mock-root/-/folder1")
@@ -216,8 +223,8 @@ class TestAppRoutes(unittest.TestCase):
         for h_item, b_item in zip(history, bar_items, strict=True):
             self.assertEqual(h_item.color, b_item["color"])
 
-        # 3. Verify explorer view template renders generic snapshot bar macro with pills
-        resp_explorer = self.client.get("/list/mock-root")
+        # 3. Verify the explorer's folder content renders the generic snapshot bar macro with pills
+        resp_explorer = self.client.get("/list/mock-root?partial=1")
         self.assertEqual(resp_explorer.status_code, 200)
         self.assertIn('class="snapshotbar header-snapshotbar"', resp_explorer.text)
         self.assertIn('class="header-snap-rect', resp_explorer.text)
@@ -261,7 +268,7 @@ class TestAppRoutes(unittest.TestCase):
         self.assertIn("text_differ.js", resp.text)
 
         # Verify entry point button in list view
-        resp_list = self.client.get("/list/mock-root")
+        resp_list = self.client.get("/list/mock-root?partial=1")
         self.assertEqual(resp_list.status_code, 200)
         self.assertIn('href="/diff/mock-root/-/file1.txt', resp_list.text)
 

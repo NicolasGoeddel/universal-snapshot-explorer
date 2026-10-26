@@ -1,0 +1,61 @@
+/* Universal Snapshot Explorer - Loading placeholders shown until a folder's content arrives */
+
+:root {
+    --skeleton-base: color-mix(in srgb, var(--text-main) 7%, transparent);
+    --skeleton-shine: color-mix(in srgb, var(--text-main) 13%, transparent);
+}
+
+/* The page can be painted between its header row arriving and the script sizing its columns */
+.filebrowser:not(.is-sized) {
+    visibility: hidden;
+}
+
+.rows-skeleton > tr > td > i {
+    display: block;
+    height: 0.75em;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-shine) 50%, var(--skeleton-base) 75%);
+    background-size: 200% 100%;
+    background-attachment: fixed;
+    animation: skeleton-shimmer 1.5s linear infinite;
+}
+
+/* Real rows are as tall as their action buttons */
+.rows-skeleton > tr > td:last-child::before {
+    content: '';
+    display: block;
+    height: 24px;
+}
+
+/* Uneven widths read as text rather than as a grid */
+.rows-skeleton > tr > td:nth-child(2) > i {
+    width: 55%;
+}
+
+.rows-skeleton > tr:nth-child(3n + 1) > td:nth-child(2) > i {
+    width: 72%;
+}
+
+.rows-skeleton > tr:nth-child(4n + 2) > td:nth-child(2) > i {
+    width: 40%;
+}
+
+.rows-skeleton > tr > td:nth-child(n + 4) > i {
+    width: 65%;
+}
+
+.skeleton-rect {
+    fill: var(--skeleton-base);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+    50% {
+        fill: var(--skeleton-shine);
+    }
+}
+
+/* Revealed by its own deferred stylesheet, so it never shows unstyled */
+.snapshot-timeline-panel {
+    display: none;
+}

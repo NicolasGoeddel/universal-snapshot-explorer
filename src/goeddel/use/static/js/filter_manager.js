@@ -466,8 +466,8 @@ class FilterManager {
      * Update count badges and toolbar status indicators based on active filters and hierarchy.
      */
     updateToggleCounts() {
+        if (this.table.classList.contains('is-loading-rows')) return;
         const allRows = this.treeTable.getAllRows().filter((r) => this.treeTable.isRowInExpandedHierarchy(r));
-        if (allRows.length === 0) return;
 
         const hideHidden = this.table.classList.contains('hide-hidden');
         const hideMissing = this.table.classList.contains('hide-missing');
@@ -505,7 +505,6 @@ class FilterManager {
         const badgeHidden = document.getElementById('badge-hidden-count');
         if (badgeHidden) {
             badgeHidden.textContent = String(hiddenCount);
-            badgeHidden.style.display = hiddenCount > 0 ? 'inline-block' : 'none';
             badgeHidden.classList.toggle('is-filtering', hideHidden && hiddenCount > 0);
             const hiddenPattern = hideHidden
                 ? i18n['filter.hidden_files_hidden_status'] || '{count} hidden files hidden'
@@ -516,7 +515,6 @@ class FilterManager {
         const badgeMissing = document.getElementById('badge-missing-count');
         if (badgeMissing) {
             badgeMissing.textContent = String(missingCount);
-            badgeMissing.style.display = missingCount > 0 ? 'inline-block' : 'none';
             badgeMissing.classList.toggle('is-filtering', hideMissing && missingCount > 0);
             const missingPattern = hideMissing
                 ? i18n['filter.missing_files_hidden_status'] || '{count} missing files hidden'
@@ -526,9 +524,10 @@ class FilterManager {
 
         const badgeChanged = document.getElementById('badge-changed-count');
         if (badgeChanged) {
-            if (unchangedCount + changedCount > 0) {
+            // Left blank while no row's changes are known, rather than counting them as unchanged
+            if (unchangedCount + changedCount > 0 || totalRows === 0) {
                 badgeChanged.textContent = `${changedCount}/${totalRows}`;
-                badgeChanged.style.display = 'inline-block';
+                badgeChanged.classList.remove('is-empty');
                 badgeChanged.classList.toggle('is-filtering', hideUnchanged && unchangedCount > 0);
                 badgeChanged.title = hideUnchanged
                     ? (
@@ -541,7 +540,8 @@ class FilterManager {
                           .replace('{changed}', String(changedCount))
                           .replace('{total}', String(totalRows));
             } else {
-                badgeChanged.style.display = 'none';
+                badgeChanged.textContent = '';
+                badgeChanged.classList.add('is-empty');
             }
         }
 

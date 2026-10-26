@@ -44,6 +44,20 @@
     width: 65%;
 }
 
+.toggle-badge.is-loading {
+    visibility: visible;
+    color: transparent;
+    background: linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-shine) 50%, var(--skeleton-base) 75%);
+    background-size: 200% 100%;
+    background-attachment: fixed;
+    animation: skeleton-shimmer 1.5s linear infinite;
+
+    /* An empty badge has no line box, so it would be shorter than one holding a count */
+    &:empty::before {
+        content: '\200b';
+    }
+}
+
 .skeleton-rect {
     fill: var(--skeleton-base);
     animation: skeleton-pulse 1.5s ease-in-out infinite;

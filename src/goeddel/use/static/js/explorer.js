@@ -386,6 +386,7 @@ class ExplorerView {
             row.appendChild(cell);
             this.tbody.replaceChildren(row);
             this.setRowsLoading(false);
+            this.updateToggleCounts();
             return;
         }
         this.selectRowFromHash();
@@ -417,8 +418,19 @@ class ExplorerView {
      */
     setRowsLoading(loading) {
         if (!loading) clearTimeout(this.skeletonTimer);
+        this.table.classList.toggle('is-loading-rows', loading);
         this.tbody.hidden = loading;
         if (this.rowsSkeleton) this.rowsSkeleton.hidden = !loading;
+        for (const id of ['badge-hidden-count', 'badge-missing-count', 'badge-changed-count']) {
+            document.getElementById(id)?.classList.toggle('is-loading', loading);
+        }
+    }
+
+    /**
+     * @param {boolean} loading - Whether the "changed" count waits for the snapshot bars it is computed from.
+     */
+    setChangedCountLoading(loading) {
+        document.getElementById('badge-changed-count')?.classList.toggle('is-loading', loading);
     }
 
     initSnapshotCriteria() {
@@ -1102,6 +1114,8 @@ class ExplorerView {
         if (skeletons.length === 0) return;
 
         this.initSnapshotObserver();
+        const isShownFolder = dirPath === (this.table.dataset.subpath || '');
+        if (isShownFolder) this.setChangedCountLoading(true);
 
         try {
             const queryParams = { snapshot: this.snapshot };
@@ -1118,7 +1132,10 @@ class ExplorerView {
                 }
             }
             const res = await fetch(url);
-            if (!res.ok) return;
+            if (!res.ok) {
+                if (isShownFolder) this.setChangedCountLoading(false);
+                return;
+            }
             const data = await res.json();
             const snapshots = data.snapshots || [];
             const bars = data.bars || {};
@@ -1184,6 +1201,7 @@ class ExplorerView {
                 if (index < rows.length) {
                     requestAnimationFrame(processChunk);
                 } else {
+                    if (isShownFolder) this.setChangedCountLoading(false);
                     this.updateZebra();
                     this.updateToggleCounts();
                     this.filterManager?.applyFilter();
@@ -1193,6 +1211,7 @@ class ExplorerView {
             processChunk();
         } catch (err) {
             console.error('Failed to load snapshot bars:', err);
+            if (isShownFolder) this.setChangedCountLoading(false);
         }
     }
 

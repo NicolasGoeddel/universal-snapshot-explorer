@@ -54,19 +54,19 @@
                 <input type="checkbox" id="toggle-hidden">
                 {{ lucide('eye-off', size=15, class_='toolbar-toggle-icon') }}
                 <span>{{ t('filter.hidden_files') }}</span>
-                <span class="toggle-badge" id="badge-hidden-count" style="display: none;">0</span>
+                <span class="toggle-badge is-loading" id="badge-hidden-count"></span>
             </label>
             <label class="toolbar-item toolbar-toggle" title="{{ t('filter.missing_files_title') }}">
                 <input type="checkbox" id="toggle-missing" checked>
                 {{ lucide('ghost', size=15, class_='toolbar-toggle-icon') }}
                 <span>{{ t('filter.missing_files') }}</span>
-                <span class="toggle-badge" id="badge-missing-count" style="display: none;">0</span>
+                <span class="toggle-badge is-loading" id="badge-missing-count"></span>
             </label>
             <label class="toolbar-item toolbar-toggle" title="{{ t('filter.changed_only_title') }}">
                 <input type="checkbox" id="toggle-changed">
                 {{ lucide('history', size=15, class_='toolbar-toggle-icon') }}
                 <span>{{ t('filter.changed_only') }}</span>
-                <span class="toggle-badge" id="badge-changed-count" style="display: none;">0</span>
+                <span class="toggle-badge is-loading" id="badge-changed-count"></span>
             </label>
             <span class="toolbar-divider" aria-hidden="true"></span>
             {{ snapshot_criteria_dropdown('snapshot', t) }}
@@ -82,7 +82,7 @@
         </div>
     </div>
 
-    <table id="filebrowser" class="filebrowser" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}" data-dataset="{{ dataset }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}">
+    <table id="filebrowser" class="filebrowser is-loading-rows" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}" data-dataset="{{ dataset }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}">
         <thead>
             <tr class="header-row">
                 <th class="browser-header-select" data-fixed-width="32" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">

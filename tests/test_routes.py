@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 import unittest
 from typing import override
@@ -81,6 +82,22 @@ class TestAppRoutes(unittest.TestCase):
         self.assertIn("folder1", response.text)
         # Ensure hidden .zfs folder is not rendered in HTML
         self.assertNotIn('href="/list/mock-root/.zfs"', response.text)
+
+    def test_explorer_partial(self) -> None:
+        page = self.client.get("/list/mock-root/-/folder1")
+        partial = self.client.get("/list/mock-root/-/folder1?partial=1")
+        self.assertEqual(partial.status_code, 200)
+        self.assertNotIn("<html", partial.text)
+        self.assertIn("file2.txt", partial.text)
+        self.assertIn('data-nav-state data-subpath="folder1"', partial.text)
+
+        slots = re.findall(r'<template data-nav-slot="([^"]+)"', partial.text)
+        self.assertIn("rows", slots)
+        for slot in slots:
+            self.assertIn(f'data-nav-slot="{slot}"', page.text)
+
+        missing = self.client.get("/list/mock-root/-/nonexistent?partial=1")
+        self.assertEqual(missing.status_code, 404)
 
     def test_snapshot_state_api(self) -> None:
         response = self.client.get("/api/snapshot-state/mock-root")

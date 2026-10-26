@@ -18,26 +18,30 @@ class PathBar {
         this.cache = new Map();
         this.requestSeq = 0;
 
-        nav.querySelectorAll('.path-chevron').forEach((chevron) => {
-            chevron.addEventListener('click', (e) => {
+        // Delegated, so chevrons swapped in by in-place folder navigation work too
+        const chevronOf = (e) => e.target.closest?.('.path-chevron');
+        nav.addEventListener('click', (e) => {
+            const chevron = chevronOf(e);
+            if (!chevron) return;
+            e.preventDefault();
+            if (this.openChevron === chevron) {
+                this.close();
+            } else {
+                // e.detail === 0 means keyboard activation (Enter/Space): move focus into the menu.
+                this.open(chevron, e.detail === 0);
+            }
+        });
+        nav.addEventListener('mouseover', (e) => {
+            const chevron = chevronOf(e);
+            if (chevron && this.openChevron && this.openChevron !== chevron) this.open(chevron, false);
+        });
+        nav.addEventListener('keydown', (e) => {
+            const chevron = chevronOf(e);
+            if (chevron && e.key === 'ArrowDown') {
                 e.preventDefault();
-                if (this.openChevron === chevron) {
-                    this.close();
-                } else {
-                    // e.detail === 0 means keyboard activation (Enter/Space): move focus into the menu.
-                    this.open(chevron, e.detail === 0);
-                }
-            });
-            chevron.addEventListener('mouseenter', () => {
-                if (this.openChevron && this.openChevron !== chevron) this.open(chevron, false);
-            });
-            chevron.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.open(chevron, true);
-                }
-            });
+                e.stopPropagation();
+                this.open(chevron, true);
+            }
         });
 
         const container = nav.querySelector('#breadcrumbs-path-container');

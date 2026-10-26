@@ -1,0 +1,11 @@
+{% from 'breadcrumbs_parts.html.j2' import share_crumb, path_crumbs, path_edit, snapshot_menu with context %}
+{% from 'explorer_parts.html.j2' import folder_actions, header_timeline with context %}
+{#- Each slot replaces the children of the page element carrying the same data-nav-slot -#}
+<template data-nav-state data-subpath="{{ directory_path }}" data-snapshot="{{ folder.snapshot.id }}" data-dataset="{{ dataset }}"></template>
+<template data-nav-slot="share-crumb">{{ share_crumb() }}</template>
+<template data-nav-slot="path-crumbs">{{ path_crumbs() }}</template>
+<template data-nav-slot="path-edit">{{ path_edit() }}</template>
+<template data-nav-slot="snapshot-menu">{{ snapshot_menu() }}</template>
+<template data-nav-slot="folder-actions">{{ folder_actions() }}</template>
+<template data-nav-slot="header-timeline">{{ header_timeline() }}</template>
+<template data-nav-slot="rows">{% include 'folder_content.html.j2' %}</template>

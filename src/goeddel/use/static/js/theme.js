@@ -111,13 +111,22 @@ document.addEventListener('DOMContentLoaded', () => {
         editBtn.addEventListener('click', enableBreadcrumbPathEdit);
     }
 
-    const pathInput = document.getElementById('breadcrumb-path-input');
-    if (pathInput) {
-        pathInput.addEventListener('keydown', (e) => {
+    // Bound on the container since the input itself is replaced on in-place folder navigation
+    const pathEdit = document.getElementById('breadcrumbs-path-edit');
+    if (pathEdit) {
+        pathEdit.addEventListener('keydown', (e) => {
+            const pathInput = e.target.closest('#breadcrumb-path-input');
+            if (!pathInput) return;
             if (e.key === 'Enter') {
                 e.preventDefault();
-                const val = pathInput.value.trim().replace(/^\/+|\/+$/g, '');
+                const val = pathInput.value.trim().split('/').filter(Boolean).join('/');
                 const rootName = pathInput.dataset.root || '';
+                const explorer = window.explorerView;
+                if (explorer && explorer.rootName === rootName) {
+                    disableBreadcrumbPathEdit();
+                    explorer.navigateToFolder(val);
+                    return;
+                }
                 const snapshot = pathInput.dataset.snapshot || '';
                 const encodedPath = val ? val.split('/').map(encodeURIComponent).join('/') : '';
                 const targetUrl = `/list/${encodeURIComponent(rootName)}/${encodedPath}?snapshot=${encodeURIComponent(snapshot)}`;
@@ -128,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        pathInput.addEventListener('blur', () => {
+        pathEdit.addEventListener('focusout', () => {
             setTimeout(disableBreadcrumbPathEdit, 150);
         });
     }

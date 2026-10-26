@@ -1131,7 +1131,8 @@ class ExplorerView {
                     url = preload.href;
                 }
             }
-            const res = await fetch(url);
+            // Less important than everything else on the page
+            const res = await fetch(url, { priority: 'low' });
             if (!res.ok) {
                 if (isShownFolder) this.setChangedCountLoading(false);
                 return;

@@ -20,6 +20,7 @@
         link.rel = 'preload';
         link.as = 'fetch';
         link.crossOrigin = 'anonymous';
+        link.fetchPriority = 'low';
         link.id = 'bars-preload';
         link.href = {{ route_url('api/snapshot-bars', root_name, directory_path, folder.snapshot.id) | tojson }};
         document.head.appendChild(link);

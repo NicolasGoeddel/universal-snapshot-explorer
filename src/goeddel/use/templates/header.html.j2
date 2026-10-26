@@ -6,6 +6,7 @@
     (function() {
         try {
             var theme = localStorage.getItem('theme');
+            document.documentElement.setAttribute('data-theme-choice', theme || 'system');
             if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.setAttribute('data-theme', 'dark');
             } else {

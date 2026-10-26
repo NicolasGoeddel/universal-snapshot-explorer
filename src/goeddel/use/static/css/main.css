@@ -524,6 +524,19 @@ body {
     color: var(--primary-accent);
 }
 
+/* Only the icon of the chosen theme, which the page head stores on the root element */
+:is(.icon-light-theme, .icon-dark-theme, .icon-system-theme) {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+:root[data-theme-choice='light'] .icon-light-theme,
+:root[data-theme-choice='dark'] .icon-dark-theme,
+:root[data-theme-choice='system'] .icon-system-theme {
+    display: inline-flex;
+}
+
 .icon-symlink-broken {
     color: #ef4444 !important;
 }

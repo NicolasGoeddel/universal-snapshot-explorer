@@ -100,13 +100,6 @@
             color: var(--text-very-muted);
         }
     }
-
-    &.is-loading-snapshots > tbody {
-        filter: blur(1.5px);
-        opacity: 0.75;
-        pointer-events: none;
-        transition: filter 0.3s ease, opacity 0.3s ease;
-    }
 }
 
 /* Zebra stripes. Zero specificity so any row state wins over them. Once rows are

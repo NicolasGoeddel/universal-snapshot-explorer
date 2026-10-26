@@ -1059,41 +1059,11 @@ class ExplorerView {
         );
     }
 
-    showSnapshotLoadingOverlay() {
-        const overlay = document.getElementById('snapshot-loading-overlay');
-        if (overlay) {
-            overlay.style.display = 'flex';
-            // Trigger reflow for clean CSS transition
-            void overlay.offsetHeight;
-            overlay.classList.remove('fade-out');
-            overlay.classList.add('is-visible');
-        }
-        this.table?.classList.add('is-loading-snapshots');
-    }
-
-    hideSnapshotLoadingOverlay() {
-        const overlay = document.getElementById('snapshot-loading-overlay');
-        if (overlay) {
-            overlay.classList.remove('is-visible');
-            overlay.classList.add('fade-out');
-            setTimeout(() => {
-                if (overlay.classList.contains('fade-out')) {
-                    overlay.style.display = 'none';
-                    overlay.classList.remove('fade-out');
-                }
-            }, 300);
-        }
-        this.table?.classList.remove('is-loading-snapshots');
-    }
-
     async loadSnapshotBars(container, dirPath) {
         const skeletons = container.querySelectorAll(
             '.browser-cell-snapshots[data-filename] .snapshot-skeleton, .browser-cell-snapshots[data-filename] .snapshot-skeleton-svg',
         );
-        if (skeletons.length === 0) {
-            this.hideSnapshotLoadingOverlay();
-            return;
-        }
+        if (skeletons.length === 0) return;
 
         this.initSnapshotObserver();
 
@@ -1104,10 +1074,7 @@ class ExplorerView {
             }
             const url = buildRouteUrl('', 'api/snapshot-bars', this.rootName, dirPath, queryParams);
             const res = await fetch(url);
-            if (!res.ok) {
-                this.hideSnapshotLoadingOverlay();
-                return;
-            }
+            if (!res.ok) return;
             const data = await res.json();
             const snapshots = data.snapshots || [];
             const bars = data.bars || {};
@@ -1175,7 +1142,6 @@ class ExplorerView {
                 } else {
                     this.updateZebra();
                     this.updateToggleCounts();
-                    this.hideSnapshotLoadingOverlay();
                     this.filterManager?.applyFilter();
                 }
             };
@@ -1183,7 +1149,6 @@ class ExplorerView {
             processChunk();
         } catch (err) {
             console.error('Failed to load snapshot bars:', err);
-            this.hideSnapshotLoadingOverlay();
         }
     }
 

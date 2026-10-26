@@ -54,19 +54,7 @@
         </div>
     </div>
 
-    <div id="snapshot-loading-overlay" class="snapshot-loading-overlay is-visible" aria-live="polite">
-        <div class="snapshot-loading-card">
-            <div class="snapshot-loading-spinner-wrapper">
-                <div class="snapshot-loading-conic-ring"></div>
-                <div class="snapshot-loading-inner-icon">
-                    {{ lucide('hourglass', size=18) }}
-                </div>
-            </div>
-            <span class="snapshot-loading-text">{{ t('loading.snapshots') }}</span>
-        </div>
-    </div>
-
-    <table id="filebrowser" class="filebrowser is-loading-snapshots" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}" data-dataset="{{ dataset }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}" data-loading-text="{{ t('loading.snapshots') }}">
+    <table id="filebrowser" class="filebrowser" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}" data-dataset="{{ dataset }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}">
         <thead>
             <tr class="header-row">
                 <th class="browser-header-select" data-fixed-width="32" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">

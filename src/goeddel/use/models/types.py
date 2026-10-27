@@ -98,8 +98,6 @@ class SnapshotStateEntry(SymlinkInfo):
     ctime_fmt: str
     ctime_iso: str
     has_independent_snapshots: NotRequired[bool]
-    # Filled in by the /api/snapshot-state route, not by get_snapshot_state() itself.
-    icon_svg: NotRequired[str]
 
 
 class SnapshotStateResponse(TypedDict):

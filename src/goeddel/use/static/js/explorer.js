@@ -699,8 +699,8 @@ class ExplorerView {
                     nameCell.classList.toggle('stroke', !doesExist);
                     nameCell.classList.toggle('node-locked', !meta.is_accessible);
 
-                    const iconEl = nameCell.querySelector('svg.file-icon');
-                    if (iconEl && meta.icon_svg) iconEl.outerHTML = meta.icon_svg;
+                    const iconEl = nameCell.querySelector('.file-icon');
+                    if (iconEl) iconEl.outerHTML = lucideIcon(meta.icon_name, 16, `file-icon ${meta.icon_class}`);
                 }
 
                 // Update lock indicator
@@ -712,7 +712,7 @@ class ExplorerView {
                         lockIndicator.title =
                             window.clientI18n?.['error.permission_denied'] || 'Keine Leseberechtigung';
                         lockIndicator.innerHTML =
-                            '<svg class="lucide lucide-lock" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+                            lucideIcon('lock', 12);
                         nameCell.appendChild(lockIndicator);
                     }
                     if (lockIndicator) lockIndicator.style.display = 'inline-block';
@@ -825,8 +825,8 @@ class ExplorerView {
                                     childNameCell.classList.toggle('stroke', !childExists);
                                     childNameCell.classList.toggle('node-locked', !childMeta.is_accessible);
 
-                                    const childIconEl = childNameCell.querySelector('svg.file-icon');
-                                    if (childIconEl && childMeta.icon_svg) childIconEl.outerHTML = childMeta.icon_svg;
+                                    const childIconEl = childNameCell.querySelector('.file-icon');
+                                    if (childIconEl) childIconEl.outerHTML = lucideIcon(childMeta.icon_name, 16, `file-icon ${childMeta.icon_class}`);
                                 }
 
                                 const childStatVisible = childMeta.is_stat_visible !== false;

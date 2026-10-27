@@ -312,11 +312,11 @@ th.sort-flash {
     }
 
     /* The icon rotates, the box is what spins while loading */
-    & svg {
+    & .ico {
         transition: transform 0.15s ease;
     }
 
-    &.opened svg {
+    &.opened .ico {
         transform: rotate(90deg);
     }
 

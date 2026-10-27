@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ t('page.title') }}</title>
 <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+<link rel="stylesheet" href="{{ icon_stylesheet_url() }}">
 {{ head_preloads | default('') }}
 <script>
     (function() {
@@ -28,6 +29,7 @@
 {{ stylesheet('css/typeahead.css') }}
 {{ stylesheet('css/selection.css') }}
 {{ stylesheet('css/filter.css') }}
+{{ script('js/icons.js') }}
 {{ script('js/theme.js') }}
 {{ script('js/path_bar.js') }}
 {{ script('js/table_resizer.js') }}

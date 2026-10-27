@@ -290,7 +290,7 @@
                     const resizer = clone.querySelector('.col-resizer');
                     if (resizer) resizer.remove();
                     // Ignore elastic elements like the snapshot SVG timeline during measurement
-                    const elasticElements = clone.querySelectorAll('svg');
+                    const elasticElements = clone.querySelectorAll('svg, .ico');
                     elasticElements.forEach((el) => el.remove());
                     dummyHeaderRow.appendChild(clone);
                     let width = clone.getBoundingClientRect().width;

@@ -16,6 +16,7 @@ from ..i18n import get_client_translations, get_language, get_translator
 from ..logger import logger
 from ..models.folder import Folder
 from ..security import current_username
+from ..utils.icons import icon_stylesheet
 from ..utils.path_resolver import resolve_root_and_subpath
 from ..utils.render_handoff import hand_off, start_render, take_over
 from ..utils.roots_hierarchy import build_root_hierarchy
@@ -35,6 +36,13 @@ def get_favicon() -> FileResponse:
     import os
 
     return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "favicon.svg"))
+
+
+@router.get("/icons.css", include_in_schema=False)
+def get_icons(request: Request) -> Response:
+    """The icon stylesheet; its URL carries the stylesheet's version, so browsers may keep it."""
+    headers = {"Cache-Control": "public, max-age=31536000, immutable"} if "v" in request.query_params else {}
+    return Response(icon_stylesheet().css, media_type="text/css", headers=headers)
 
 
 @router.get("/", response_class=HTMLResponse)

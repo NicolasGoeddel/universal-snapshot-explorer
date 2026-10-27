@@ -24,7 +24,7 @@ class TableSorter extends TableSortOrder {
             el.setAttribute('role', 'button');
 
             el.addEventListener('click', (e) => {
-                if (e.target.closest('a') || e.target.closest('svg') || e.target.closest('.col-resizer')) {
+                if (e.target.closest('a') || e.target.closest('svg, .ico') || e.target.closest('.col-resizer')) {
                     return;
                 }
                 const th = el.closest('th');

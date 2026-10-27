@@ -189,7 +189,7 @@ span.path-crumb.current:hover {
     transition: background-color 0.12s, color 0.12s;
 }
 
-.path-chevron svg {
+.path-chevron .ico {
     transition: transform 0.15s ease;
 }
 
@@ -202,7 +202,7 @@ span.path-crumb.current:hover {
     color: var(--primary-accent);
 }
 
-.path-chevron.open svg {
+.path-chevron.open .ico {
     transform: rotate(90deg);
 }
 
@@ -235,11 +235,11 @@ span.path-crumb.current:hover {
 }
 
 /* Refresh button is a plain .toolbar-btn (main.css) */
-.refresh-btn svg {
+.refresh-btn .ico {
     transition: transform 0.35s ease;
 }
 
-.refresh-btn:hover svg:not(.spinning) {
+.refresh-btn:hover .ico:not(.spinning) {
     transform: rotate(60deg);
 }
 
@@ -283,12 +283,12 @@ span.path-crumb.current:hover {
     white-space: nowrap;
 }
 
-.path-menu-item svg {
+.path-menu-item .ico {
     flex-shrink: 0;
     color: #d97706;
 }
 
-.path-menu-item.is-root svg {
+.path-menu-item.is-root .ico {
     color: var(--pathbar-icon-root);
 }
 

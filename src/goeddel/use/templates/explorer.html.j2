@@ -36,12 +36,12 @@
     {{ stylesheet('css/column_visibility.css') }}
     {{ stylesheet('css/skeleton.css') }}
     {{ stylesheet('css/snapshot_timeline.css') }}
-    <script src="{{ static_url('js/criteria_manager.js') }}" defer></script>
-    <script src="{{ static_url('js/filter_strategies.js') }}" defer></script>
+    {{ script('js/criteria_manager.js') }}
+    {{ script('js/filter_strategies.js') }}
     {{ script('js/column_visibility.js') }}
     {{ inline_js('js/explorer_boot.js') }}
-    <script src="{{ static_url('js/explorer.js') }}" defer></script>
-    <script src="{{ static_url('js/snapshot_timeline.js') }}" defer></script>
+    {{ script('js/explorer.js') }}
+    {{ script('js/snapshot_timeline.js') }}
 </head>
 <body>
     <div class="sticky-header-container">

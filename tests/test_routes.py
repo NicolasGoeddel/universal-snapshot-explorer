@@ -53,6 +53,11 @@ class TestAppRoutes(unittest.TestCase):
         with open(os.path.join(self.snap2_dir, "file1.txt"), "w") as f:
             f.write("v2")
 
+        # Files written within the same kernel clock tick share their timestamps
+        for i, directory in enumerate((self.snap1_dir, self.snap2_dir, self.root_path)):
+            mtime = 1_780_000_000 + i * 3600
+            os.utime(os.path.join(directory, "file1.txt"), (mtime, mtime))
+
         # Setup mock app config
         self.config = AppConfig(roots={"mock-root": RootConfig(root_path=self.root_path, sub_path="")}, loglevel="info")
         app.state.loaded_config = self.config

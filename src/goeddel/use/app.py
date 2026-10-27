@@ -14,7 +14,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.types import Scope
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from .config import AppConfig, load_config
 from .logger import logger, setup_logging
@@ -180,3 +181,25 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
 app.include_router(explorer.router)
 app.include_router(differ.router)
 app.include_router(api.router)
+
+# Files downloaded from the roots are sent as they are: they are often compressed already, and
+# compressing them would drop their size from the response, so browsers couldn't show progress
+_DOWNLOAD_PREFIXES = ("/download/", "/download-zip/")
+
+
+class PagesGZipMiddleware:
+    """Compresses the app's own responses: its pages, partial listings, scripts, styles and data."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app: ASGIApp = app
+        self.gzip: ASGIApp = GZipMiddleware(app, minimum_size=1024, compresslevel=6)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = cast(str, scope.get("path", ""))
+        if scope["type"] == "http" and not path.startswith(_DOWNLOAD_PREFIXES):
+            await self.gzip(scope, receive, send)
+        else:
+            await self.app(scope, receive, send)
+
+
+app.add_middleware(PagesGZipMiddleware)

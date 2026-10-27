@@ -136,6 +136,17 @@ class TestAppRoutes(unittest.TestCase):
         self.assertNotIn("handed over", again.text)
         self.assertIn("file1.txt", again.text)
 
+    def test_gzip_pages_not_downloads(self) -> None:
+        with open(os.path.join(self.root_path, "big.txt"), "w") as f:
+            f.write("compressible " * 1000)
+        headers = {"Accept-Encoding": "gzip"}
+        self.assertEqual(self.client.get("/list/mock-root", headers=headers).headers.get("content-encoding"), "gzip")
+        self.assertEqual(self.client.get("/static/css/main.css", headers=headers).headers.get("content-encoding"), "gzip")
+        download = self.client.get("/download/mock-root/-/big.txt", headers=headers)
+        self.assertEqual(download.status_code, 200)
+        self.assertNotIn("content-encoding", download.headers)
+        self.assertEqual(download.headers.get("content-length"), str(len("compressible " * 1000)))
+
     def test_snapshot_state_api(self) -> None:
         response = self.client.get("/api/snapshot-state/mock-root")
         self.assertEqual(response.status_code, 200)

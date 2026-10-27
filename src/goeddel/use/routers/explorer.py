@@ -1,23 +1,33 @@
 from __future__ import annotations
 
 import os
+import time
+from collections.abc import Iterator
 from typing import cast
 from urllib.parse import parse_qs, quote, quote_plus
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
+from markupsafe import Markup
 
-from ..dependencies import get_app_config, get_base_url, templates
+from ..dependencies import get_app_config, get_base_url, make_route_url, templates
 from ..enums import CompressionMode, StructureMode
 from ..i18n import get_client_translations, get_language, get_translator
 from ..logger import logger
 from ..models.folder import Folder
+from ..security import current_username
 from ..utils.path_resolver import resolve_root_and_subpath
+from ..utils.render_handoff import hand_off, start_render, take_over
 from ..utils.roots_hierarchy import build_root_hierarchy
 from ..utils.ui import get_base_template_context, render_error_response
 from ..zip_streamer import stream_zip_archive
 
 router = APIRouter()
+
+# How long a listing page waits for its rows before leaving them to a follow-up request
+ROWS_BUDGET_SECONDS = 0.1
+# Where the rows go in the rendered page, which is sent in two parts around them
+_ROWS_MARKER = "<!--first-folder-->"
 
 
 @router.get("/favicon.ico", include_in_schema=False)
@@ -47,11 +57,18 @@ def read_root(request: Request) -> HTMLResponse:
 
 
 @router.get("/list/{full_path:path}", response_class=HTMLResponse)
-def get_list_content(request: Request, full_path: str = "", snapshot: str | None = None, partial: bool = False) -> HTMLResponse:
+def get_list_content(
+    request: Request, full_path: str = "", snapshot: str | None = None, partial: bool = False, handoff: str | None = None
+) -> Response:
     """
     Renders a folder's listing page. With `partial`, renders only the regions that change from
     one folder to another, so the client can navigate between folders without reloading the page.
+
+    The page is streamed: everything but the rows is sent first, and the rows follow if they are
+    rendered within `ROWS_BUDGET_SECONDS` of the request. Otherwise the page ends with a request for
+    the partial listing, which `handoff` lets take over the render still running.
     """
+    started_at = time.monotonic()
     config = get_app_config(request)
     decoded_root_name, directory_path, root_folder = resolve_root_and_subpath(full_path, config)
     folder = root_folder.get_file(path=directory_path, snapshot=snapshot)
@@ -77,19 +94,44 @@ def get_list_content(request: Request, full_path: str = "", snapshot: str | None
         all_roots=all_roots,
     )
 
-    response = templates.TemplateResponse(
-        request=request,
-        name="explorer_partial.html.j2" if partial else "explorer.html.j2",
-        context={
-            **base_context,
-            "folder": folder,
-            "parent_path": base_context["directory_path"],
-            # Folders of different datasets have different snapshots, so moving between them needs a full page load
-            "dataset": root_folder.logical_sub_path or "",
-        },
-    )
-    logger.info("Cache hits/misses for root '%s': %d/%d", decoded_root_name, root_folder.cache_hits, root_folder.cache_misses)
-    return response
+    context = {
+        **base_context,
+        "folder": folder,
+        "parent_path": base_context["directory_path"],
+        # Folders of different datasets have different snapshots, so moving between them needs a full page load
+        "dataset": root_folder.logical_sub_path or "",
+    }
+    owner = current_username.get()
+    target = (decoded_root_name, directory_path, folder.snapshot.id)
+
+    def render_partial() -> str:
+        html = templates.get_template("explorer_partial.html.j2").render(context)
+        logger.info("Cache hits/misses for root '%s': %d/%d", decoded_root_name, root_folder.cache_hits, root_folder.cache_misses)
+        return html
+
+    if partial:
+        claimed = take_over(handoff, owner, target) if handoff else None
+        return HTMLResponse(claimed.result() if claimed else render_partial())
+
+    rows = start_render(render_partial)
+    page = templates.get_template("explorer.html.j2").render({**context, "first_folder": Markup(_ROWS_MARKER)})
+    head, tail = page.split(_ROWS_MARKER)
+    partial_url = make_route_url("list", decoded_root_name, directory_path, folder.snapshot.id) + "&partial=1"
+
+    def stream() -> Iterator[str]:
+        yield head
+        try:
+            first_folder = {"rows": Markup(rows.result(timeout=max(0.0, started_at + ROWS_BUDGET_SECONDS - time.monotonic())))}
+        except TimeoutError:
+            first_folder = {"url": f"{partial_url}&handoff={hand_off(rows, owner, target)}"}
+        except Exception:
+            # The partial listing renders the error
+            logger.exception("Failed to render the rows of '%s/%s'", decoded_root_name, directory_path)
+            first_folder = {"url": partial_url}
+        yield templates.get_template("first_folder.html.j2").render(first_folder)
+        yield tail
+
+    return StreamingResponse(stream(), media_type="text/html")
 
 
 @router.get("/detail/{full_path:path}", response_class=HTMLResponse)

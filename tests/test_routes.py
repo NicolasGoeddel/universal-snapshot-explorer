@@ -4,7 +4,9 @@ import os
 import re
 import tempfile
 import unittest
+from concurrent.futures import Future
 from typing import override
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -81,12 +83,15 @@ class TestAppRoutes(unittest.TestCase):
         self.assertIn("data-level=", response.text)
 
     def test_explorer_view(self) -> None:
-        # The page is a skeleton: its rows come from the partial listing it preloads
-        response = self.client.get("/list/mock-root")
+        # Rows rendered in time follow the skeleton in the page, as its partial listing. The budget
+        # is generous here: a first render also compiles the templates, which can take longer
+        with patch("goeddel.use.routers.explorer.ROWS_BUDGET_SECONDS", 30.0):
+            response = self.client.get("/list/mock-root")
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn("file1.txt", response.text)
-        self.assertIn('rel="preload" id="folder-preload" href="/list/mock-root?snapshot=Original&amp;partial=1"', response.text)
         self.assertIn('class="rows-skeleton"', response.text)
+        self.assertIn('<template id="first-folder">', response.text)
+        self.assertIn("file1.txt", response.text)
+        self.assertNotIn("handoff=", response.text)
 
         partial = self.client.get("/list/mock-root?snapshot=Original&partial=1")
         self.assertEqual(partial.status_code, 200)
@@ -110,6 +115,26 @@ class TestAppRoutes(unittest.TestCase):
 
         missing = self.client.get("/list/mock-root/-/nonexistent?partial=1")
         self.assertEqual(missing.status_code, 404)
+
+    def test_explorer_view_slow_rows(self) -> None:
+        # Rows not rendered in time are requested by the page, and that request takes over their render
+        pending: Future[str] = Future()
+        with patch("goeddel.use.routers.explorer.start_render", return_value=pending):
+            response = self.client.get("/list/mock-root")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('<template id="first-folder">', response.text)
+        match = re.search(r"handoff=([\w-]+)", response.text)
+        assert match is not None
+        pending.set_result('<template data-nav-slot="rows">handed over</template>')
+
+        claimed = self.client.get(f"/list/mock-root?snapshot=Original&partial=1&handoff={match[1]}")
+        self.assertEqual(claimed.status_code, 200)
+        self.assertIn("handed over", claimed.text)
+
+        # A token is used up by its first request
+        again = self.client.get(f"/list/mock-root?snapshot=Original&partial=1&handoff={match[1]}")
+        self.assertNotIn("handed over", again.text)
+        self.assertIn("file1.txt", again.text)
 
     def test_snapshot_state_api(self) -> None:
         response = self.client.get("/api/snapshot-state/mock-root")

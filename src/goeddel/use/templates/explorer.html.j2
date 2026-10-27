@@ -1,14 +1,14 @@
 {% from 'explorer_parts.html.j2' import folder_actions with context %}
 {% from 'criteria_dropdown.html.j2' import snapshot_criteria_dropdown %}
 {% from 'snapshots_bar.svg.j2' import snapshots_bar_skeleton %}
-{#- The page is a skeleton: the rows and the snapshot bars are requested as soon as the head is parsed,
-    and only the styles of what is visible before they arrive block the first paint -#}
+{#- The page is a skeleton that the server sends before the rows (`first_folder`), and the snapshot
+    bars are requested as soon as the head is parsed: only the styles of what is visible before
+    they arrive block the first paint -#}
 {% set deferred_styles = ['css/typeahead.css', 'css/snapshot_timeline.css'] %}
 {% set blocking_scripts = ['js/table_resizer.js', 'js/column_visibility.js', 'js/table_sort_order.js'] %}
 {#- Imported after the lists above, which it only sees if they already exist -#}
 {% from 'assets.html.j2' import stylesheet, script with context %}
 {% set head_preloads %}
-<link rel="preload" id="folder-preload" href="{{ route_url('list', root_name, directory_path, folder.snapshot.id) ~ '&partial=1' }}" as="fetch" crossorigin>
 <script>
     (function() {
         // Custom snapshot comparison criteria change the bars URL: those bars are only requested with the rows
@@ -171,7 +171,7 @@
             {%- endfor %}
         </tbody>
     </table>
-    <script>ExplorerBoot.showFirstFolder(document.getElementById('filebrowser'), document.getElementById('folder-preload').href);</script>
+    {{ first_folder }}
 
     <!-- Floating Action Bar for Multi-Selection & ZIP Batch-Download -->
     <div id="floating-action-bar" class="floating-action-bar" style="display: none;">

@@ -212,12 +212,12 @@ const ExplorerBoot = {
      * their snapshot bars wait for the bars instead, which only the deferred scripts load.
      *
      * @param {HTMLTableElement} table - Explorer table.
-     * @param {string} url - Preloaded URL of the folder's partial listing.
+     * @param {Promise<DocumentFragment>} slots - The folder's partial listing, from the page or requested.
      */
-    showFirstFolder(table, url) {
+    showFirstFolder(table, slots) {
         this.applyFilterToggles(table, this.loadFilterToggles());
         // Resolves to the listing when it is left for the deferred scripts to show
-        this.firstFolder = this.fetchSlots(url).then((fragment) => {
+        this.firstFolder = slots.then((fragment) => {
             const sortOrder = new TableSortOrder(table, this.sortOptions(table));
             if (sortOrder.currentSort?.type === 'snapshot-bar') return fragment;
             this.applySlots(fragment);

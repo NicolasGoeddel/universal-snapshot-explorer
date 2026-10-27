@@ -287,6 +287,9 @@ class FSNode:
         """
         if not self.does_exist:
             return True
+        if self.is_symlink and self.symlink_is_broken:
+            # No target to check: listed like any other entry of its folder
+            return self.is_stat_visible
         try:
             real_path = self._root_folder.real_path(self.path, self.snapshot)
             if self.is_symlink:

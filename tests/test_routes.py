@@ -184,6 +184,44 @@ class TestAppRoutes(unittest.TestCase):
         response = self.client.get("/api/snapshot-state/mock-root", headers={"Remote-User": current_user})
         self.assertEqual(response.status_code, 200)
 
+    def test_broken_symlink_listed_as_accessible(self) -> None:
+        import logging
+        import pwd
+
+        from goeddel.use.config import SecurityConfig
+
+        os.symlink("does-not-exist.txt", os.path.join(self.root_path, "dangling.txt"))
+        app.state.loaded_config = AppConfig(
+            roots=self.config.roots,
+            security=SecurityConfig(enabled=True, trusted_user_header="Remote-User", impersonate_users=()),
+        )
+        # A missing target is neither an error nor a denial
+        with self.assertNoLogs("goeddel.use", level=logging.ERROR):
+            response = self.client.get("/list/mock-root?partial=1", headers={"Remote-User": pwd.getpwuid(os.getuid()).pw_name})
+        row = re.search(r'<tr[^>]*data-path="dangling.txt"[^>]*>', response.text)
+        assert row is not None
+        self.assertIn('data-is-accessible="true"', row[0])
+
+    def test_symlink_to_unreadable_target_listed_as_denied(self) -> None:
+        import pwd
+
+        from goeddel.use.config import SecurityConfig
+
+        target = os.path.join(self.root_path, "secret.txt")
+        with open(target, "w") as f:
+            _ = f.write("secret")
+        os.chmod(target, 0o000)
+        os.symlink("secret.txt", os.path.join(self.root_path, "to-secret.txt"))
+        app.state.loaded_config = AppConfig(
+            roots=self.config.roots,
+            security=SecurityConfig(enabled=True, trusted_user_header="Remote-User", impersonate_users=()),
+        )
+        response = self.client.get("/list/mock-root?partial=1", headers={"Remote-User": pwd.getpwuid(os.getuid()).pw_name})
+        row = re.search(r'<tr[^>]*data-path="to-secret.txt"[^>]*>', response.text)
+        assert row is not None
+        # A link shows its target's permissions
+        self.assertIn('data-is-accessible="false"', row[0])
+
     def test_api_security_unauthorized(self) -> None:
         from goeddel.use.config import SecurityConfig
 

@@ -236,7 +236,7 @@ class FSNode:
             is_symlink=self.is_symlink,
             symlink_is_broken=self.symlink_is_broken,
             symlink_target_is_dir=self.symlink_target_is_dir,
-            filetype=self._filetype,
+            filetype=self.filetype,
             mode=self.mode,
         )
 
@@ -246,20 +246,25 @@ class FSNode:
         Single source of truth for the row icon shown by both the Jinja templates
         (folder_content.html.j2) and the snapshot-state API (explorer.js swaps this
         icon in when a snapshot switch changes a row's existence/access)."""
-        return self._get_effective_icon_info()[0]
+        return self.effective_icon()[0]
 
     @property
     def effective_icon_class(self) -> str:
-        return self._get_effective_icon_info()[1]
+        return self.effective_icon()[1]
 
-    def _get_effective_icon_info(self) -> tuple[str, str]:
-        if not self.does_exist or self.is_accessible:
-            return self.icon_name, self.icon_class
+    def effective_icon(self, is_accessible: bool | None = None) -> tuple[str, str]:
+        """
+        The row icon's name and class together. `is_accessible` saves checking access again
+        when the caller already did.
+        """
+        icon_name, icon_class = self._get_icon_info()
+        if not self.does_exist or (self.is_accessible if is_accessible is None else is_accessible):
+            return icon_name, icon_class
         if self.is_folder:
             return "folder-lock", "icon-folder folder-locked"
         if self.is_symlink:
-            return self.icon_name, self.icon_class
-        return self.icon_name, f"{self.icon_class} file-locked"
+            return icon_name, icon_class
+        return icon_name, f"{icon_class} file-locked"
 
     @property
     def filetype(self) -> str | None:

@@ -268,7 +268,20 @@ th.sort-flash {
     opacity: 0.6;
 }
 
-/* Name column */
+/* Selection column */
+.filebrowser > tbody > tr > .browser-cell-select {
+    width: 32px;
+    min-width: 32px;
+    max-width: 32px;
+    text-align: center;
+    padding: 2px 4px;
+}
+
+/* Name column, indented by the row's depth in the folder tree */
+.filebrowser > tbody > tr > .browser-cell-name {
+    padding-left: calc(6px + 20px * var(--level, 0));
+}
+
 .browser-cell-name {
     &.stroke {
         text-decoration: line-through;

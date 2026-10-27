@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import functools
 import os
 import re
 import shutil
@@ -18,6 +19,12 @@ class BtrfsMountInfo(TypedDict):
     subvolid: int | None
 
 
+# Looked up once: searching every PATH directory is slow, and binaries don't come and go while the app runs
+@functools.cache
+def _find_binary(name: str) -> str | None:
+    return shutil.which(name)
+
+
 class BtrfsClient:
     """Wrapper around the btrfs CLI commands."""
 
@@ -26,7 +33,7 @@ class BtrfsClient:
 
     def is_available(self) -> bool:
         """Checks if the btrfs binary is installed and executable."""
-        return shutil.which(self._btrfs_binary) is not None
+        return _find_binary(self._btrfs_binary) is not None
 
     def list_subvolumes(
         self,

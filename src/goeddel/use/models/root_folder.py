@@ -218,9 +218,12 @@ class RootFolder:
                     return False
         return True
 
-    def active_snapshot_count(self) -> int:
-        """Returns the count of active snapshots excluding the live system pseudo-snapshot."""
-        if not self.is_mounted():
+    def active_snapshot_count(self, is_mounted: bool | None = None) -> int:
+        """
+        Returns the count of active snapshots excluding the live system pseudo-snapshot.
+        `is_mounted` saves checking the mount again when the caller already did.
+        """
+        if not (self.is_mounted() if is_mounted is None else is_mounted):
             return 0
         from .snapshot import OriginalSnapshot
 

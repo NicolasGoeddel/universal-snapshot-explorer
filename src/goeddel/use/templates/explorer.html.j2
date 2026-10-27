@@ -7,7 +7,7 @@
 {% set deferred_styles = ['css/typeahead.css', 'css/snapshot_timeline.css'] %}
 {% set blocking_scripts = ['js/table_resizer.js', 'js/column_visibility.js', 'js/table_sort_order.js'] %}
 {#- Imported after the lists above, which it only sees if they already exist -#}
-{% from 'assets.html.j2' import stylesheet, script with context %}
+{% from 'assets.html.j2' import stylesheets, scripts with context %}
 {% set head_preloads %}
 <script>
     (function() {
@@ -31,17 +31,9 @@
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2' %}
-    {{ stylesheet('css/file_browser.css') }}
-    {{ stylesheet('css/criteria_manager.css') }}
-    {{ stylesheet('css/column_visibility.css') }}
-    {{ stylesheet('css/skeleton.css') }}
-    {{ stylesheet('css/snapshot_timeline.css') }}
-    {{ script('js/criteria_manager.js') }}
-    {{ script('js/filter_strategies.js') }}
-    {{ script('js/column_visibility.js') }}
+    {{ stylesheets(['css/file_browser.css', 'css/criteria_manager.css', 'css/column_visibility.css', 'css/skeleton.css', 'css/snapshot_timeline.css']) }}
     {{ inline_js('js/explorer_boot.js') }}
-    {{ script('js/explorer.js') }}
-    {{ script('js/snapshot_timeline.js') }}
+    {{ scripts(['js/criteria_manager.js', 'js/filter_strategies.js', 'js/column_visibility.js', 'js/explorer.js', 'js/snapshot_timeline.js']) }}
 </head>
 <body>
     <div class="sticky-header-container">

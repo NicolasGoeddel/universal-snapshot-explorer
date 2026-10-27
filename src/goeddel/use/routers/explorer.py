@@ -16,6 +16,7 @@ from ..i18n import get_client_translations, get_language, get_translator
 from ..logger import logger
 from ..models.folder import Folder
 from ..security import current_username
+from ..utils.assets import bundle, bundle_paths
 from ..utils.icons import icon_stylesheet
 from ..utils.path_resolver import resolve_root_and_subpath
 from ..utils.render_handoff import hand_off, start_render, take_over
@@ -43,6 +44,16 @@ def get_icons(request: Request) -> Response:
     """The icon stylesheet; its URL carries the stylesheet's version, so browsers may keep it."""
     headers = {"Cache-Control": "public, max-age=31536000, immutable"} if "v" in request.query_params else {}
     return Response(icon_stylesheet().css, media_type="text/css", headers=headers)
+
+
+@router.get("/bundle.{kind}", include_in_schema=False)
+def get_bundle(request: Request, kind: str, files: str) -> Response:
+    """Several static scripts or stylesheets in one minified file, as the pages link them."""
+    if kind not in ("css", "js") or (paths := bundle_paths(kind, files)) is None:
+        raise HTTPException(status_code=404)
+    headers = {"Cache-Control": "public, max-age=31536000, immutable"} if "v" in request.query_params else {}
+    media_type = "text/css" if kind == "css" else "text/javascript"
+    return Response(bundle(kind, paths).content, media_type=media_type, headers=headers)
 
 
 @router.get("/", response_class=HTMLResponse)

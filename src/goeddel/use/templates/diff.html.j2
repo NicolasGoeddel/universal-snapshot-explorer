@@ -1,15 +1,11 @@
 {% from 'criteria_dropdown.html.j2' import snapshot_criteria_dropdown %}
-{% from 'assets.html.j2' import stylesheet, script with context -%}
+{% from 'assets.html.j2' import stylesheets, scripts with context -%}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2' %}
-    {{ stylesheet('css/criteria_manager.css') }}
-    {{ stylesheet('css/differ.css') }}
-    {{ stylesheet('css/pygments.css') }}
-    {{ script('js/criteria_manager.js') }}
-    {{ script('js/differ.js') }}
-    {{ script('js/plugins/text_differ.js') }}
+    {{ stylesheets(['css/criteria_manager.css', 'css/differ.css', 'css/pygments.css']) }}
+    {{ scripts(['js/criteria_manager.js', 'js/differ.js', 'js/plugins/text_differ.js']) }}
 </head>
 <body class="differ-view">
     <div class="sticky-header-container">

@@ -1,4 +1,4 @@
-{% from 'assets.html.j2' import stylesheet, script with context %}
+{% from 'assets.html.j2' import stylesheets, scripts with context %}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ t('page.title') }}</title>
@@ -23,20 +23,5 @@
         }
     })();
 </script>
-{{ stylesheet('css/main.css') }}
-{{ stylesheet('css/path_bar.css') }}
-{{ stylesheet('css/table_resizer.css') }}
-{{ stylesheet('css/typeahead.css') }}
-{{ stylesheet('css/selection.css') }}
-{{ stylesheet('css/filter.css') }}
-{{ script('js/icons.js') }}
-{{ script('js/theme.js') }}
-{{ script('js/path_bar.js') }}
-{{ script('js/table_resizer.js') }}
-{{ script('js/tree_table.js') }}
-{{ script('js/table_sort_order.js') }}
-{{ script('js/table_sorter.js') }}
-{{ script('js/filter_manager.js') }}
-{{ script('js/selection_manager.js') }}
-{{ script('js/keyboard_nav.js') }}
-{{ script('js/typeahead.js') }}
+{{ stylesheets(['css/main.css', 'css/path_bar.css', 'css/table_resizer.css', 'css/typeahead.css', 'css/selection.css', 'css/filter.css']) }}
+{{ scripts(['js/icons.js', 'js/theme.js', 'js/path_bar.js', 'js/table_resizer.js', 'js/tree_table.js', 'js/table_sort_order.js', 'js/table_sorter.js', 'js/filter_manager.js', 'js/selection_manager.js', 'js/keyboard_nav.js', 'js/typeahead.js']) }}

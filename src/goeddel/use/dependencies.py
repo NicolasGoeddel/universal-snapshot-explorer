@@ -7,10 +7,10 @@ from urllib.parse import quote, quote_plus
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 from jinja2 import select_autoescape
-from markupsafe import Markup
 
 from .config import AppConfig
 from .i18n import LANGUAGES
+from .utils.assets import inline_js, script_tags, static_url, stylesheet_tags
 from .utils.icons import icon_stylesheet_url, render_icon
 
 # Set up templates
@@ -31,34 +31,6 @@ def quote_path_filter(path: str) -> str:
     return "/".join(quote(p) for p in path.split("/"))
 
 
-_STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-
-
-def static_url(path: str) -> str:
-    full_path = os.path.join(_STATIC_DIR, path)
-    try:
-        mtime = int(os.path.getmtime(full_path))
-        return f"/static/{path}?v={mtime}"
-    except OSError:
-        return f"/static/{path}"
-
-
-_inline_cache: dict[str, tuple[float, Markup]] = {}
-
-
-def inline_js(path: str) -> Markup:
-    """Returns a static script's content in a `script` element, re-read whenever the file changes."""
-    full_path = os.path.join(_STATIC_DIR, path)
-    mtime = os.path.getmtime(full_path)
-    cached = _inline_cache.get(path)
-    if cached is None or cached[0] != mtime:
-        with open(full_path, encoding="utf-8") as f:
-            content = f.read()
-        cached = (mtime, Markup('<script data-source="{0}">{1}</script>').format(path, Markup(content)))
-        _inline_cache[path] = cached
-    return cached[1]
-
-
 def make_route_url(module: str, root_name: str, sub_path: str = "", snapshot: str | None = None) -> str:
     root_part = quote(root_name, safe="/")
     if sub_path:
@@ -74,6 +46,8 @@ cast(dict[str, object], templates.env.globals).update(
     {
         "static_url": static_url,
         "inline_js": inline_js,
+        "stylesheet_tags": stylesheet_tags,
+        "script_tags": script_tags,
         "route_url": make_route_url,
         "lucide": render_icon,
         "icon_stylesheet_url": icon_stylesheet_url,

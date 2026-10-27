@@ -1,15 +1,10 @@
-{#- Pages opt in by setting `deferred_styles` (loaded without blocking rendering); any other
-    stylesheet is a regular blocking link. -#}
-{%- macro stylesheet(path) -%}
-{%- if path in deferred_styles | default([]) -%}
-<link rel="stylesheet" href="{{ static_url(path) }}" media="print" onload="this.media='all'">
-{%- else -%}
-<link rel="stylesheet" href="{{ static_url(path) }}">
-{%- endif -%}
+{#- Pages opt in by setting `deferred_styles` (loaded without blocking rendering) and
+    `blocking_scripts` (run while the page is still being parsed); other stylesheets block
+    rendering, and other scripts are deferred. Each call's files are served as one bundle. -#}
+{%- macro stylesheets(paths) -%}
+{{ stylesheet_tags(paths, deferred_styles | default([])) }}
 {%- endmacro -%}
 
-{#- Scripts are deferred unless the page lists them in `blocking_scripts`, for code that must run
-    while the page is still being parsed -#}
-{%- macro script(path) -%}
-<script src="{{ static_url(path) }}"{% if path not in blocking_scripts | default([]) %} defer{% endif %}></script>
+{%- macro scripts(paths) -%}
+{{ script_tags(paths, blocking_scripts | default([])) }}
 {%- endmacro -%}

@@ -1,14 +1,10 @@
-{% from 'assets.html.j2' import stylesheet, script with context -%}
+{% from 'assets.html.j2' import stylesheets, scripts with context -%}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2'%}
-    {{ stylesheet('css/snapshot_timeline.css') }}
-    {{ stylesheet('css/file_browser.css') }}
-    {{ stylesheet('css/column_visibility.css') }}
-    {{ script('js/column_visibility.js') }}
-    {{ script('js/details.js') }}
-    {{ script('js/snapshot_timeline.js') }}
+    {{ stylesheets(['css/snapshot_timeline.css', 'css/file_browser.css', 'css/column_visibility.css']) }}
+    {{ scripts(['js/column_visibility.js', 'js/details.js', 'js/snapshot_timeline.js']) }}
 </head>
 <body>
     <div class="sticky-header-container">

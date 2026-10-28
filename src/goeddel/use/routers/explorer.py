@@ -47,7 +47,11 @@ def read_root(request: Request) -> HTMLResponse:
 
 
 @router.get("/list/{full_path:path}", response_class=HTMLResponse)
-def get_list_content(request: Request, full_path: str = "", snapshot: str | None = None) -> HTMLResponse:
+def get_list_content(request: Request, full_path: str = "", snapshot: str | None = None, partial: bool = False) -> HTMLResponse:
+    """
+    Renders a folder's listing page. With `partial`, renders only the regions that change from
+    one folder to another, so the client can navigate between folders without reloading the page.
+    """
     config = get_app_config(request)
     decoded_root_name, directory_path, root_folder = resolve_root_and_subpath(full_path, config)
     folder = root_folder.get_file(path=directory_path, snapshot=snapshot)
@@ -75,11 +79,13 @@ def get_list_content(request: Request, full_path: str = "", snapshot: str | None
 
     response = templates.TemplateResponse(
         request=request,
-        name="explorer.html.j2",
+        name="explorer_partial.html.j2" if partial else "explorer.html.j2",
         context={
             **base_context,
             "folder": folder,
             "parent_path": base_context["directory_path"],
+            # Folders of different datasets have different snapshots, so moving between them needs a full page load
+            "dataset": root_folder.logical_sub_path or "",
         },
     )
     logger.info("Cache hits/misses for root '%s': %d/%d", decoded_root_name, root_folder.cache_hits, root_folder.cache_misses)

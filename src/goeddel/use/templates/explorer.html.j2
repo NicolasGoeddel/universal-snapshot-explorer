@@ -1,4 +1,4 @@
-{% from 'snapshots_bar.svg.j2' import render_snapshot_bar %}
+{% from 'explorer_parts.html.j2' import folder_actions, header_timeline with context %}
 {% from 'criteria_dropdown.html.j2' import snapshot_criteria_dropdown %}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
@@ -66,7 +66,7 @@
         </div>
     </div>
 
-    <table id="filebrowser" class="filebrowser is-loading-snapshots" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}" data-loading-text="{{ t('loading.snapshots') }}">
+    <table id="filebrowser" class="filebrowser is-loading-snapshots" data-root="{{ root_name }}" data-snapshot="{{ folder.snapshot.id }}" data-subpath="{{ directory_path }}" data-dataset="{{ dataset }}" data-resizer-tooltip="{{ t('table.resizer_tooltip') }}" data-loading-text="{{ t('loading.snapshots') }}">
         <thead>
             <tr class="header-row">
                 <th class="browser-header-select" data-fixed-width="32" style="width: 32px; min-width: 32px; max-width: 32px; text-align: center; padding: 2px 4px;">
@@ -84,9 +84,7 @@
                 <th class="browser-header-mtime sortable" data-sort-type="date" data-col-key="mtime" data-default-pct="10.5" data-min-width="45">{{ t('table.modified') }}</th>
                 <th class="browser-header-ctime sortable" data-sort-type="date" data-col-key="ctime" data-default-pct="12" data-min-width="45">{{ t('table.changed') }}</th>
                 <th class="browser-header-actions" data-fixed-width="84" style="width: 84px; min-width: 84px; max-width: 84px;">
-                    <div class="browser-cell-actions-wrapper">
-                        <a href="{{ base_url }}/detail/{{ root_name | quote_plus }}/{{ directory_path | quote_path }}?snapshot={{ folder.snapshot.id | quote_plus }}" title="{{ t('action.show_folder_details') }}" class="action-btn action-info">{{ lucide('info', size=16) }}</a>
-                    </div>
+                    <div class="browser-cell-actions-wrapper" data-nav-slot="folder-actions">{{ folder_actions() }}</div>
                 </th>
             </tr>
             <tr class="column-filter">
@@ -101,9 +99,7 @@
                     </div>
                 </td>
                 <td class="browser-filter-snapshots">
-                    <div class="snapshots-header-timeline">
-                        {{ render_snapshot_bar(folder.snapshots_bar, current_snapshot_id=folder.snapshot.id, is_header=true, with_links=true, root_name=root_name, path=directory_path, module='list', t=t) }}
-                    </div>
+                    <div class="snapshots-header-timeline" data-nav-slot="header-timeline">{{ header_timeline() }}</div>
                 </td>
                 <td>
                     <div class="filter-input-wrapper">
@@ -150,7 +146,7 @@
                 <td></td>
             </tr>
         </thead>
-        <tbody>
+        <tbody data-nav-slot="rows">
             {% include 'folder_content.html.j2' %}
         </tbody>
     </table>

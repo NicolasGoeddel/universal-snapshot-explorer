@@ -31,6 +31,8 @@ class ExplorerView {
         this.snapshot = table.dataset.snapshot;
         this.selectedRow = null;
         this.snapshotAbortController = null;
+        // Bumped on every folder navigation so a slower earlier response is dropped
+        this.folderSeq = 0;
 
         if (typeof TableColumnResizer !== 'undefined') {
             this.columnResizer = new TableColumnResizer(this.table);
@@ -48,6 +50,7 @@ class ExplorerView {
         this.initRowActivation();
         this.initTimelineTooltip();
         this.initSnapshotDropdown();
+        this.initPathBarLinks();
         this.initSnapshotCriteria();
         this.updateZebra();
         this.updateToggleCounts();
@@ -58,6 +61,15 @@ class ExplorerView {
         window.addEventListener('popstate', (_e) => {
             const params = new URLSearchParams(window.location.search);
             const snap = params.get('snapshot') || 'Original';
+            const subpath = this.getFolderSubpath(window.location.href);
+            if (subpath !== null && subpath !== (this.table.dataset.subpath || '')) {
+                if (snap !== this.snapshot) {
+                    window.location.reload();
+                } else {
+                    this.navigateToFolder(subpath, { hash: window.location.hash, pushHistory: false });
+                }
+                return;
+            }
             if (snap && snap !== this.snapshot) {
                 this.navigateToSnapshot(snap, { pushHistory: false });
             }
@@ -289,6 +301,90 @@ class ExplorerView {
         }
     }
 
+    /**
+     * Path bar segments and subfolder menu items of the current root open their folder in place.
+     */
+    initPathBarLinks() {
+        document.addEventListener('click', (e) => {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            const link = e.target.closest('nav.pathbar a.path-crumb, .path-menu a.path-menu-item');
+            const subpath = link ? this.getFolderSubpath(link.href) : null;
+            if (subpath === null) return;
+            e.preventDefault();
+            window.pathBar?.close();
+            this.navigateToFolder(subpath, { hash: new URL(link.href).hash });
+        });
+    }
+
+    /**
+     * @param {string} url - Any URL.
+     * @returns {string|null} Folder subpath if `url` lists a folder of the current root, otherwise null.
+     */
+    getFolderSubpath(url) {
+        const match = new URL(url, window.location.origin).pathname.match(/^\/list\/(.*?)(?:\/-\/(.*))?$/);
+        if (!match || decodeURIComponent(match[1]) !== this.rootName) return null;
+        return (match[2] || '').split('/').map(decodeURIComponent).join('/');
+    }
+
+    /**
+     * Show another folder of the current root without reloading the page: the server renders the
+     * regions that depend on the folder, and each replaces the content of its `data-nav-slot` element.
+     * Falls back to a full page load on errors and when the folder belongs to another dataset.
+     *
+     * @param {string} subpath - Folder to show.
+     * @param {{hash?: string, pushHistory?: boolean}} [options] - `hash` selects a row once loaded;
+     *     `pushHistory: false` when replaying a history entry.
+     */
+    async navigateToFolder(subpath, { hash = '', pushHistory = true } = {}) {
+        const snapshot = this.snapshot;
+        const listUrl = buildRouteUrl('', 'list', this.rootName, subpath, { snapshot }) + hash;
+        const seq = ++this.folderSeq;
+        let fragment;
+        try {
+            const res = await fetch(buildRouteUrl('', 'list', this.rootName, subpath, { snapshot, partial: 1 }));
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const template = document.createElement('template');
+            template.innerHTML = await res.text();
+            fragment = template.content;
+        } catch (_err) {
+            // The full page renders the error (missing folder, access denied)
+            window.location.assign(listUrl);
+            return;
+        }
+        if (seq !== this.folderSeq) return;
+        if (snapshot !== this.snapshot) {
+            this.navigateToFolder(subpath, { hash, pushHistory });
+            return;
+        }
+        const state = fragment.querySelector('template[data-nav-state]')?.dataset;
+        if (!state || state.dataset !== this.table.dataset.dataset) {
+            window.location.assign(listUrl);
+            return;
+        }
+
+        this.selectRow(null, { updateHash: false });
+        fragment.querySelectorAll('template[data-nav-slot]').forEach((slot) => {
+            document.querySelector(`[data-nav-slot="${slot.dataset.navSlot}"]`)?.replaceChildren(slot.content);
+        });
+        this.table.dataset.subpath = state.subpath;
+        this.treeTable.reset(state.subpath);
+        this.bindTreeEvents(this.tbody);
+        this.selectionManager?.clearSelection();
+        this.applyFilter();
+        if (this.currentSort !== null) {
+            this.sortTree();
+        }
+        this.updateZebra();
+        this.updateToggleCounts();
+        this.loadSnapshotBars(this.tbody, state.subpath);
+
+        if (pushHistory) {
+            history.pushState(null, '', listUrl);
+        }
+        window.scrollTo(0, 0);
+        this.selectRowFromHash();
+    }
+
     initSnapshotCriteria() {
         if (typeof SnapshotCriteriaManager !== 'undefined') {
             this.criteriaManager = new SnapshotCriteriaManager({
@@ -502,7 +598,8 @@ class ExplorerView {
         }
 
         const baseSubpath = this.table.dataset.subpath || '';
-        document.querySelectorAll('.breadcrumbs a[href*="snapshot="]').forEach((a) => {
+        const snapshotLinks = '.breadcrumbs a[href*="snapshot="], [data-nav-slot="folder-actions"] a';
+        document.querySelectorAll(snapshotLinks).forEach((a) => {
             try {
                 const u = new URL(a.href, window.location.origin);
                 u.searchParams.set('snapshot', targetSnapshotId);
@@ -1453,7 +1550,13 @@ class ExplorerView {
      * @param {HTMLTableRowElement} row - Table row.
      */
     openRow(row) {
-        const url = this.getRowOpenUrl(row) || this.getRowDownloadUrl(row);
+        const openUrl = this.getRowOpenUrl(row);
+        const subpath = openUrl ? this.getFolderSubpath(openUrl) : null;
+        if (subpath !== null) {
+            this.navigateToFolder(subpath, { hash: new URL(openUrl, window.location.origin).hash });
+            return;
+        }
+        const url = openUrl || this.getRowDownloadUrl(row);
         if (url) {
             window.location.assign(url);
             return;
@@ -1720,7 +1823,7 @@ class ExplorerView {
                 const currentFolder = parts.pop();
                 const parentSub = parts.join('/');
                 const targetHash = currentFolder ? `#${encodeURIComponent(currentFolder)}` : '';
-                window.location.href = `/list/${encodeURIComponent(this.rootName)}/${encodePath(parentSub)}?snapshot=${encodeURIComponent(this.snapshot)}${targetHash}`;
+                this.navigateToFolder(parentSub, { hash: targetHash });
             } else {
                 window.location.href = `/#${encodeURIComponent(this.rootName)}`;
             }

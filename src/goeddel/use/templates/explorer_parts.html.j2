@@ -1,0 +1,9 @@
+{% from 'snapshots_bar.svg.j2' import render_snapshot_bar %}
+
+{%- macro folder_actions() -%}
+<a href="{{ route_url('detail', root_name, directory_path, folder.snapshot.id) }}" title="{{ t('action.show_folder_details') }}" class="action-btn action-info">{{ lucide('info', size=16) }}</a>
+{%- endmacro -%}
+
+{%- macro header_timeline() -%}
+{{ render_snapshot_bar(folder.snapshots_bar, current_snapshot_id=folder.snapshot.id, is_header=true, with_links=true, root_name=root_name, path=directory_path, module='list', t=t) }}
+{%- endmacro -%}

@@ -38,6 +38,17 @@ class TreeTable {
     }
 
     /**
+     * Rebuild the tree index after the tbody content was replaced by another directory's.
+     *
+     * @param {string} subpath - Base subpath of the new directory.
+     */
+    reset(subpath) {
+        this.subpath = subpath;
+        this.rowMap.clear();
+        this.init();
+    }
+
+    /**
      * Index an array or Set of rows into the tree hierarchy.
      *
      * @param {HTMLTableRowElement[]|Set<HTMLTableRowElement>} rows - Rows to index.

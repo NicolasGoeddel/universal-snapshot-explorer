@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import threading
+import time
 import unittest
 from concurrent.futures import Future
 from unittest.mock import patch
 
 from goeddel.use.utils import render_handoff
-from goeddel.use.utils.render_handoff import hand_off, start_render, take_over
+from goeddel.use.utils.render_handoff import hand_off, start_render, take_over, wait_for_render
 
 
 class TestRenderHandoff(unittest.TestCase):
@@ -28,6 +30,20 @@ class TestRenderHandoff(unittest.TestCase):
             expired = hand_off(Future(), "alice", "target")
         self.assertIsNone(take_over(expired, "alice", "target"))
         self.assertIsNotNone(take_over(token, "alice", "target"))
+
+    def test_waits_for_the_render_running_under_a_key(self) -> None:
+        release = threading.Event()
+        future = start_render(lambda: str(release.wait(timeout=5)), key="rows")
+        started = time.monotonic()
+        threading.Timer(0.2, release.set).start()
+        wait_for_render("rows", timeout=5)
+        self.assertTrue(future.done())
+        self.assertGreaterEqual(time.monotonic() - started, 0.15)
+        # Once done, nothing is left to wait for
+        started = time.monotonic()
+        wait_for_render("rows", timeout=5)
+        wait_for_render("other", timeout=5)
+        self.assertLess(time.monotonic() - started, 0.1)
 
     def test_render_runs_in_the_callers_context(self) -> None:
         from goeddel.use.security import current_username

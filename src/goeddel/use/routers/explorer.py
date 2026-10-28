@@ -19,7 +19,7 @@ from ..security import current_username
 from ..utils.assets import bundle, bundle_paths
 from ..utils.icons import icon_stylesheet
 from ..utils.path_resolver import resolve_root_and_subpath
-from ..utils.render_handoff import hand_off, start_render, take_over
+from ..utils.render_handoff import hand_off, rows_render_key, start_render, take_over
 from ..utils.roots_hierarchy import build_root_hierarchy
 from ..utils.ui import get_base_template_context, render_error_response
 from ..zip_streamer import stream_zip_archive
@@ -132,7 +132,7 @@ def get_list_content(
         claimed = take_over(handoff, owner, target) if handoff else None
         return HTMLResponse(claimed.result() if claimed else render_partial())
 
-    rows = start_render(render_partial)
+    rows = start_render(render_partial, key=rows_render_key(owner, decoded_root_name, directory_path))
     page = templates.get_template("explorer.html.j2").render({**context, "first_folder": Markup(_ROWS_MARKER)})
     head, tail = page.split(_ROWS_MARKER)
     partial_url = make_route_url("list", decoded_root_name, directory_path, folder.snapshot.id) + "&partial=1"

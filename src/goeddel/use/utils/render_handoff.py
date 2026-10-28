@@ -4,7 +4,7 @@ import secrets
 import threading
 import time
 from collections.abc import Callable, Hashable
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from contextvars import copy_context
 from dataclasses import dataclass
 
@@ -24,15 +24,42 @@ class _Handoff:
 
 
 _handoffs: dict[str, _Handoff] = {}
+# Renders still running, by what they render
+_running: dict[Hashable, Future[str]] = {}
 
 
-def start_render(render: Callable[[], str]) -> Future[str]:
+def start_render(render: Callable[[], str], key: Hashable = None) -> Future[str]:
     """
     Runs `render` in the background, in the current context, so it sees the request's user
-    and permission caches.
+    and permission caches. While it runs, `wait_for_render(key)` waits for it.
     """
     context = copy_context()
-    return _executor.submit(context.run, render)
+    future = _executor.submit(context.run, render)
+    if key is not None:
+        with _lock:
+            _running[key] = future
+
+        def forget(done: Future[str]) -> None:
+            with _lock:
+                if _running.get(key) is done:
+                    del _running[key]
+
+        # Runs at once if the render is already done
+        future.add_done_callback(forget)
+    return future
+
+
+def rows_render_key(owner: Hashable, root_name: str, directory_path: str) -> Hashable:
+    """What a render of a folder's rows for a user runs under, whichever snapshot it shows."""
+    return ("rows", owner, root_name, directory_path)
+
+
+def wait_for_render(key: Hashable, timeout: float) -> None:
+    """Waits for the render running under `key`, if any, so that work which can come later doesn't slow it down."""
+    with _lock:
+        future = _running.get(key)
+    if future is not None:
+        _ = wait([future], timeout=timeout)
 
 
 def hand_off(future: Future[str], owner: Hashable, target: Hashable) -> str:

@@ -12,11 +12,13 @@ from .config import AppConfig
 from .i18n import LANGUAGES
 from .utils.assets import inline_js, script_tags, static_url, stylesheet_tags
 from .utils.icons import icon_stylesheet_url, render_icon
+from .utils.template_whitespace import StripIndentation
 
 # Set up templates
 templates_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 templates = Jinja2Templates(directory=templates_dir)
 templates.env.autoescape = select_autoescape(["html", "xml", "j2"])
+templates.env.add_extension(StripIndentation)
 
 
 def get_base_url(request: Request) -> str:

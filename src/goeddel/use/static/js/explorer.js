@@ -681,7 +681,7 @@ class ExplorerView {
             const topLevelRows = this.treeTable.getChildrenOfPath(baseSubpath);
 
             topLevelRows.forEach((row) => {
-                const filename = row.dataset.filename || row.querySelector('.browser-cell-snapshots')?.dataset.filename;
+                const filename = row.dataset.filename;
                 if (!filename) return;
 
                 const meta = data.entries[filename];
@@ -806,9 +806,7 @@ class ExplorerView {
 
                             const children = Array.from(this.treeTable.getChildren(expRow));
                             children.forEach((childRow) => {
-                                const fn =
-                                    childRow.dataset.filename ||
-                                    childRow.querySelector('.browser-cell-snapshots')?.dataset.filename;
+                                const fn = childRow.dataset.filename;
                                 if (!fn) return;
                                 const childMeta = subData.entries[fn];
                                 if (!childMeta) return;
@@ -1109,7 +1107,7 @@ class ExplorerView {
 
     async loadSnapshotBars(container, dirPath) {
         const skeletons = container.querySelectorAll(
-            '.browser-cell-snapshots[data-filename] .snapshot-skeleton, .browser-cell-snapshots[data-filename] .snapshot-skeleton-svg',
+            'tr[data-filename] > .browser-cell-snapshots :is(.snapshot-skeleton, .snapshot-skeleton-svg)',
         );
         if (skeletons.length === 0) return;
 
@@ -1452,7 +1450,8 @@ class ExplorerView {
      * @returns {string|null} Where opening the row navigates (folder, sub-dataset, symlink target).
      */
     getRowOpenUrl(row) {
-        return row.dataset.openUrl || null;
+        const link = row.querySelector('.row-link');
+        return link && !link.hasAttribute('download') ? link.getAttribute('href') : null;
     }
 
     /**
@@ -1460,11 +1459,11 @@ class ExplorerView {
      * @returns {string|null} Download URL of a readable file row.
      */
     getRowDownloadUrl(row) {
-        return row.dataset.downloadUrl || null;
+        return row.querySelector('.row-link[download]')?.getAttribute('href') || null;
     }
 
     /**
-     * Point every URL of a row (open/download targets, row link, action buttons) at another snapshot.
+     * Point every URL of a row (row link, action buttons) at another snapshot.
      *
      * @param {HTMLTableRowElement} row - Table row.
      * @param {string} snapshotId - Target snapshot.
@@ -1475,9 +1474,6 @@ class ExplorerView {
             u.searchParams.set('snapshot', snapshotId);
             return u.pathname + u.search + u.hash;
         };
-        for (const key of ['openUrl', 'downloadUrl']) {
-            if (row.dataset[key]) row.dataset[key] = retarget(row.dataset[key]);
-        }
         row.querySelectorAll('a[href]').forEach((a) => {
             a.setAttribute('href', retarget(a.getAttribute('href')));
         });

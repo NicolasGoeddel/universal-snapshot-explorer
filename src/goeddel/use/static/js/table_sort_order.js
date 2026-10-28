@@ -17,6 +17,7 @@ class TableSortOrder {
      * @param {function(HTMLTableRowElement): string} [options.getTreeParent] - Extractor for row's parent path.
      * @param {function(HTMLTableRowElement): string} [options.getTreeId] - Extractor for row's unique identifier/path.
      * @param {function(): string} [options.getTreeRoot] - Returns top-level parent path for root rows.
+     * @param {function(HTMLTableRowElement, number): (string|undefined)} [options.getSortValue] - A row's value in a column, when not the cell's `data-sort` or text.
      * @param {Object<string, function(string, string, HTMLElement, HTMLElement, string): number>} [options.customComparators={}] - Map of custom comparator functions keyed by sort-type.
      * @param {function(HTMLTableRowElement, HTMLTableRowElement, number, number, string): number} [options.rowComparator] - Optional high-priority row comparator (e.g. for keeping directories on top).
      * @param {function(number, string, string): void} [options.onSort] - Callback triggered after sorting is applied.
@@ -41,6 +42,7 @@ class TableSortOrder {
         this.getTreeParent = options.getTreeParent || ((row) => row.dataset.parent || '');
         this.getTreeId = options.getTreeId || ((row) => row.dataset.path || '');
         this.getTreeRoot = options.getTreeRoot || (() => this.table.dataset.subpath || '');
+        this.getSortValue = options.getSortValue || (() => undefined);
         this.customComparators = options.customComparators || {};
         this.rowComparator = options.rowComparator || null;
         this.onSort = options.onSort || null;
@@ -171,8 +173,10 @@ class TableSortOrder {
             const cellB = b.children[colIndex];
             if (!cellA || !cellB) return 0;
 
-            const valA = cellA.dataset.sort !== undefined ? cellA.dataset.sort : cellA.textContent.trim();
-            const valB = cellB.dataset.sort !== undefined ? cellB.dataset.sort : cellB.textContent.trim();
+            const value = (row, cell) =>
+                this.getSortValue(row, colIndex) ?? cell.dataset.sort ?? cell.textContent.trim();
+            const valA = value(a, cellA);
+            const valB = value(b, cellB);
 
             let cmp = this.compareValues(valA, valB, type, cellA, cellB, direction);
             cmp = direction === 'asc' ? cmp : -cmp;

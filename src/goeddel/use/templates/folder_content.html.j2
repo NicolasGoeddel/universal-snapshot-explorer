@@ -30,14 +30,14 @@
             data-is-hidden="{{ 'true' if entry.is_hidden else 'false' }}"
             data-is-missing="false"
             data-is-accessible="{{ 'true' if accessible else 'false' }}"
-            data-is-sub-dataset="{{ 'true' if entry.is_sub_dataset else 'false' }}"
-            {%- if open_url %} data-open-url="{{ open_url }}"{% endif %}
-            {%- if download_url %} data-download-url="{{ download_url }}"{% endif %}>
+            data-is-sub-dataset="{{ 'true' if entry.is_sub_dataset else 'false' }}">
             <td class="browser-cell-select">
-                <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ entry.name }}"{% if not accessible %} disabled title="{{ t('error.permission_denied') }}"{% endif %}>
+                <input type="checkbox" class="row-checkbox custom-checkbox"{% if not accessible %} disabled title="{{ t('error.permission_denied') }}"{% endif %}>
             </td>
-            <td class="browser-cell-name{{ ' node-locked' if not accessible else '' }}"{% if level %} style="--level: {{ level }}"{% endif %} data-sort="{{ entry.name }}">
-                {%- if open_url or download_url %}<a class="row-link" href="{{ open_url or download_url }}" tabindex="-1" aria-hidden="true"></a>{% endif -%}
+            <td class="browser-cell-name{{ ' node-locked' if not accessible else '' }}"{% if level %} style="--level: {{ level }}"{% endif %}>
+                {#- Where opening the row leads: a folder or link target, or else the file's download -#}
+                {%- if open_url %}<a class="row-link" href="{{ open_url }}" tabindex="-1" aria-hidden="true"></a>
+                {%- elif download_url %}<a class="row-link" href="{{ download_url }}" download tabindex="-1" aria-hidden="true"></a>{% endif -%}
                 {%- if entry.sub_dataset_root_name is not none -%}
                 <span class="folder-spacer"></span>{{ lucide(icon[0], size=16, **{'class': 'file-icon ' ~ icon[1]}) }}
                 <span class="sub-dataset-name" title="{{ entry.display_type }}">{{ entry.name }}</span>
@@ -81,13 +81,13 @@
                     <span class="lock-indicator" title="{{ t('error.permission_denied') }}">{{ lucide('lock', size=12) }}</span>
                 {%- endif -%}
             </td>
-            <td class="browser-cell-snapshots" data-filename="{{ filename }}" data-is-sub-dataset="{{ 'true' if entry.is_sub_dataset else 'false' }}">
+            <td class="browser-cell-snapshots">
                 <div class="snapshot-skeleton"></div>
             </td>
             {%- if not entry.is_stat_visible -%}
             <td class="browser-cell-size" data-sort="-1" title="{{ t('error.permission_denied') }}">?</td>
             <td class="browser-cell-type" data-sort="?" title="{{ t('error.permission_denied') }}">?</td>
-            <td class="browser-cell-owner" data-sort="?:?" title="{{ t('error.permission_denied') }}">?:?</td>
+            <td class="browser-cell-owner" title="{{ t('error.permission_denied') }}">?:?</td>
             <td class="browser-cell-mode" data-sort="0000" title="{{ t('error.permission_denied') }}">?</td>
             <td class="browser-cell-mtime" data-sort="1970-01-01T00:00:00" title="{{ t('error.permission_denied') }}">?</td>
             <td class="browser-cell-ctime" data-sort="1970-01-01T00:00:00" title="{{ t('error.permission_denied') }}">?</td>
@@ -109,7 +109,9 @@
                     {{ entry.size_human }}
                 {%- endif -%}
             </td>
-            <td class="browser-cell-type" data-sort="{{ '0' if entry.is_folder else (entry.filetype or '') }}">
+            {#- A file's type sorts by its text -#}
+            <td class="browser-cell-type"
+                {%- if entry.is_folder or entry.is_sub_dataset or entry.is_symlink or not entry.filetype %} data-sort="{{ '0' if entry.is_folder else (entry.filetype or '') }}"{% endif %}>
                 {%- if entry.is_sub_dataset -%}
                     {{ entry.display_type }}
                 {%- elif entry.is_symlink -%}
@@ -124,7 +126,7 @@
                     {{ entry.filetype }}
                 {%- endif -%}
             </td>
-            <td class="browser-cell-owner" data-sort="{{ entry.owner }}:{{ entry.group }}">{{ entry.owner }}:{{ entry.group }}</td>
+            <td class="browser-cell-owner">{{ entry.owner }}:{{ entry.group }}</td>
             <td class="browser-cell-mode" data-sort="{{ entry.mode_octal }}">{{ entry.mode_human }}</td>
             <td class="browser-cell-mtime" data-sort="{{ entry.mtime.isoformat() if entry.mtime else '' }}">
                 {{- entry.mtime.strftime('%d.%m.%Y %H:%M:%S') if entry.mtime else '' -}}
@@ -163,22 +165,21 @@
             data-parent="{{ parent_path | default('') }}"
             data-is-folder="{{ 'true' if entry.is_folder else 'false' }}"
             data-is-hidden="{{ 'true' if entry.is_hidden else 'false' }}"
-            data-is-missing="true"
-            {%- if entry.is_folder %} data-open-url="{{ route_url(module, root_name, entry.logical_path, folder.snapshot.id) }}"{% endif %}>
+            data-is-missing="true">
             <td class="browser-cell-select">
-                <input type="checkbox" class="row-checkbox custom-checkbox" data-path="{{ entry.logical_path }}" data-filename="{{ filename }}">
+                <input type="checkbox" class="row-checkbox custom-checkbox">
             </td>
-            <td class="browser-cell-name stroke"{% if level %} style="--level: {{ level }}"{% endif %} data-sort="{{ filename }}">
+            <td class="browser-cell-name stroke"{% if level %} style="--level: {{ level }}"{% endif %}>
                 {%- if entry.is_folder %}<a class="row-link" href="{{ route_url(module, root_name, entry.logical_path, folder.snapshot.id) }}" tabindex="-1" aria-hidden="true"></a>{% endif %}
                 <span class="folder-spacer"></span>{{ lucide(icon[0], size=16, **{'class': 'file-icon ' ~ icon[1]}) }}
                 <span>{{ filename }}</span>
             </td>
-            <td class="browser-cell-snapshots" data-filename="{{ filename }}">
+            <td class="browser-cell-snapshots">
                 <div class="snapshot-skeleton"></div>
             </td>
             <td class="browser-cell-size" data-sort="-1">?</td>
             <td class="browser-cell-type" data-sort="?">{{ 'directory' if entry.is_folder else '?' }}</td>
-            <td class="browser-cell-owner" data-sort="?:?">?:?</td>
+            <td class="browser-cell-owner">?:?</td>
             <td class="browser-cell-mode" data-sort="0000">?</td>
             <td class="browser-cell-mtime" data-sort="1970-01-01T00:00:00">?</td>
             <td class="browser-cell-ctime" data-sort="1970-01-01T00:00:00">?</td>

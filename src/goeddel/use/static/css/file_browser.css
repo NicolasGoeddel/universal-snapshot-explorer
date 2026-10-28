@@ -60,7 +60,7 @@
         --row-tint: transparent;
         position: relative;
 
-        &:is([data-open-url], [data-download-url]) {
+        &:has(> .browser-cell-name > .row-link) {
             cursor: pointer;
         }
         scroll-margin-top: calc(var(--top-header-height, 85px) + var(--header-row-height, 27px) + 32px);

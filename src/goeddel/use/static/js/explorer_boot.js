@@ -110,6 +110,8 @@ const ExplorerBoot = {
             tbody: table.tBodies[0],
             treeSort: true,
             storageKey: table.id || 'explorer',
+            // The name cell also holds badges, such as a link's target
+            getSortValue: (row, colIndex) => (colIndex === 1 ? row.dataset.filename : undefined),
             customComparators: {
                 'snapshot-bar': (_valA, _valB, cellA, cellB) =>
                     this.compareBarKeys(

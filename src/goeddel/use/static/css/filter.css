@@ -195,8 +195,8 @@ table.filebrowser>thead>tr.column-filter>td>input:focus {
     outline-offset: -2px;
 }
 
-.explorer-toolbar .criteria-dropdown-btn > svg:last-child,
-.explorer-toolbar .col-visibility-toolbar-btn > svg:last-child {
+.explorer-toolbar .criteria-dropdown-btn > .ico:last-child,
+.explorer-toolbar .col-visibility-toolbar-btn > .ico:last-child {
     margin-left: -2px;
     opacity: 0.5;
 }
@@ -209,7 +209,7 @@ table.filebrowser>thead>tr.column-filter>td>input:focus {
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-accent) 30%, transparent);
 }
 
-.explorer-toolbar .criteria-dropdown-btn.has-custom-criteria svg {
+.explorer-toolbar .criteria-dropdown-btn.has-custom-criteria .ico {
     color: inherit;
 }
 
@@ -236,7 +236,15 @@ table.filebrowser>thead>tr.column-filter>td>input:focus {
     color: inherit;
     line-height: 1.3;
     font-variant-numeric: tabular-nums;
+    /* Room for four digits, so counts appearing or changing don't move the toolbar */
+    box-sizing: content-box;
+    min-width: 4ch;
+    text-align: center;
     transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+
+    &.is-empty {
+        visibility: hidden;
+    }
 }
 
 .toggle-badge.is-filtering {

@@ -1,11 +1,5 @@
 function updateThemeIcon() {
-    const theme = localStorage.getItem('theme') || 'system';
-    const lightIcon = document.querySelector('.icon-light-theme');
-    const darkIcon = document.querySelector('.icon-dark-theme');
-    const sysIcon = document.querySelector('.icon-system-theme');
-    if (lightIcon) lightIcon.style.display = theme === 'light' ? 'inline-flex' : 'none';
-    if (darkIcon) darkIcon.style.display = theme === 'dark' ? 'inline-flex' : 'none';
-    if (sysIcon) sysIcon.style.display = theme === 'system' ? 'inline-flex' : 'none';
+    document.documentElement.dataset.themeChoice = localStorage.getItem('theme') || 'system';
 }
 
 function setTheme(theme) {

@@ -7,12 +7,15 @@ import os
 # Licensed under the AGPLv3: https://www.gnu.org/licenses/agpl-3.0.txt
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from typing import cast, override
 from urllib.parse import unquote_plus
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from .config import AppConfig, load_config
 from .logger import logger, setup_logging
@@ -61,9 +64,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Application shutting down...")
 
 
+class VersionedStaticFiles(StaticFiles):
+    """Static files whose URL carries a version (`?v=`), which changes with the file, so browsers may keep them."""
+
+    @override
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        query = cast(bytes, scope.get("query_string", b""))
+        if response.status_code in (200, 304) and b"v=" in query:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
 app = FastAPI(lifespan=lifespan)
 static_dir = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/static", VersionedStaticFiles(directory=static_dir), name="static")
 
 
 @app.middleware("http")
@@ -166,3 +181,25 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
 app.include_router(explorer.router)
 app.include_router(differ.router)
 app.include_router(api.router)
+
+# Files downloaded from the roots are sent as they are: they are often compressed already, and
+# compressing them would drop their size from the response, so browsers couldn't show progress
+_DOWNLOAD_PREFIXES = ("/download/", "/download-zip/")
+
+
+class PagesGZipMiddleware:
+    """Compresses the app's own responses: its pages, partial listings, scripts, styles and data."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app: ASGIApp = app
+        self.gzip: ASGIApp = GZipMiddleware(app, minimum_size=1024, compresslevel=6)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = cast(str, scope.get("path", ""))
+        if scope["type"] == "http" and not path.startswith(_DOWNLOAD_PREFIXES):
+            await self.gzip(scope, receive, send)
+        else:
+            await self.app(scope, receive, send)
+
+
+app.add_middleware(PagesGZipMiddleware)

@@ -35,7 +35,7 @@ def build_root_hierarchy(
         for r_name, r_cfg in configs.items():
             folder = RootFolder.get(r_cfg)
             mounted = folder.is_mounted()
-            snap_count = folder.active_snapshot_count()
+            snap_count = folder.active_snapshot_count(mounted)
             roots_info.append(
                 {
                     "name": r_name,

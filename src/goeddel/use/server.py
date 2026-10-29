@@ -45,6 +45,9 @@ def start() -> None:
     # know which config file to load.
     os.environ["USE_CONFIG_FILE"] = args.config_file
     os.environ["ZFS_EXPLORER_CONFIG_FILE"] = args.config_file
+    if args.reload:
+        # Developing: serve each script and stylesheet as it is, rather than bundled and minified
+        _ = os.environ.setdefault("USE_DEBUG_ASSETS", "1")
 
     uvicorn.run("goeddel.use.app:app", host=args.bind, port=args.port, reload=args.reload)
 

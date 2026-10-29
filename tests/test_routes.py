@@ -4,7 +4,9 @@ import os
 import re
 import tempfile
 import unittest
+from concurrent.futures import Future
 from typing import override
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -81,12 +83,22 @@ class TestAppRoutes(unittest.TestCase):
         self.assertIn("data-level=", response.text)
 
     def test_explorer_view(self) -> None:
-        response = self.client.get("/list/mock-root")
+        # Rows rendered in time follow the skeleton in the page, as its partial listing. The budget
+        # is generous here: a first render also compiles the templates, which can take longer
+        with patch("goeddel.use.routers.explorer.ROWS_BUDGET_SECONDS", 30.0):
+            response = self.client.get("/list/mock-root")
         self.assertEqual(response.status_code, 200)
+        self.assertIn('class="rows-skeleton"', response.text)
+        self.assertIn('<template id="first-folder">', response.text)
         self.assertIn("file1.txt", response.text)
-        self.assertIn("folder1", response.text)
+        self.assertNotIn("handoff=", response.text)
+
+        partial = self.client.get("/list/mock-root?snapshot=Original&partial=1")
+        self.assertEqual(partial.status_code, 200)
+        self.assertIn("file1.txt", partial.text)
+        self.assertIn("folder1", partial.text)
         # Ensure hidden .zfs folder is not rendered in HTML
-        self.assertNotIn('href="/list/mock-root/.zfs"', response.text)
+        self.assertNotIn('href="/list/mock-root/.zfs"', partial.text)
 
     def test_explorer_partial(self) -> None:
         page = self.client.get("/list/mock-root/-/folder1")
@@ -103,6 +115,37 @@ class TestAppRoutes(unittest.TestCase):
 
         missing = self.client.get("/list/mock-root/-/nonexistent?partial=1")
         self.assertEqual(missing.status_code, 404)
+
+    def test_explorer_view_slow_rows(self) -> None:
+        # Rows not rendered in time are requested by the page, and that request takes over their render
+        pending: Future[str] = Future()
+        with patch("goeddel.use.routers.explorer.start_render", return_value=pending):
+            response = self.client.get("/list/mock-root")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('<template id="first-folder">', response.text)
+        match = re.search(r"handoff=([\w-]+)", response.text)
+        assert match is not None
+        pending.set_result('<template data-nav-slot="rows">handed over</template>')
+
+        claimed = self.client.get(f"/list/mock-root?snapshot=Original&partial=1&handoff={match[1]}")
+        self.assertEqual(claimed.status_code, 200)
+        self.assertIn("handed over", claimed.text)
+
+        # A token is used up by its first request
+        again = self.client.get(f"/list/mock-root?snapshot=Original&partial=1&handoff={match[1]}")
+        self.assertNotIn("handed over", again.text)
+        self.assertIn("file1.txt", again.text)
+
+    def test_gzip_pages_not_downloads(self) -> None:
+        with open(os.path.join(self.root_path, "big.txt"), "w") as f:
+            f.write("compressible " * 1000)
+        headers = {"Accept-Encoding": "gzip"}
+        self.assertEqual(self.client.get("/list/mock-root", headers=headers).headers.get("content-encoding"), "gzip")
+        self.assertEqual(self.client.get("/static/css/main.css", headers=headers).headers.get("content-encoding"), "gzip")
+        download = self.client.get("/download/mock-root/-/big.txt", headers=headers)
+        self.assertEqual(download.status_code, 200)
+        self.assertNotIn("content-encoding", download.headers)
+        self.assertEqual(download.headers.get("content-length"), str(len("compressible " * 1000)))
 
     def test_snapshot_state_api(self) -> None:
         response = self.client.get("/api/snapshot-state/mock-root")
@@ -140,6 +183,44 @@ class TestAppRoutes(unittest.TestCase):
         # Request with header should succeed
         response = self.client.get("/api/snapshot-state/mock-root", headers={"Remote-User": current_user})
         self.assertEqual(response.status_code, 200)
+
+    def test_broken_symlink_listed_as_accessible(self) -> None:
+        import logging
+        import pwd
+
+        from goeddel.use.config import SecurityConfig
+
+        os.symlink("does-not-exist.txt", os.path.join(self.root_path, "dangling.txt"))
+        app.state.loaded_config = AppConfig(
+            roots=self.config.roots,
+            security=SecurityConfig(enabled=True, trusted_user_header="Remote-User", impersonate_users=()),
+        )
+        # A missing target is neither an error nor a denial
+        with self.assertNoLogs("goeddel.use", level=logging.ERROR):
+            response = self.client.get("/list/mock-root?partial=1", headers={"Remote-User": pwd.getpwuid(os.getuid()).pw_name})
+        row = re.search(r'<tr[^>]*data-path="dangling.txt"[^>]*>', response.text)
+        assert row is not None
+        self.assertIn('data-is-accessible="true"', row[0])
+
+    def test_symlink_to_unreadable_target_listed_as_denied(self) -> None:
+        import pwd
+
+        from goeddel.use.config import SecurityConfig
+
+        target = os.path.join(self.root_path, "secret.txt")
+        with open(target, "w") as f:
+            _ = f.write("secret")
+        os.chmod(target, 0o000)
+        os.symlink("secret.txt", os.path.join(self.root_path, "to-secret.txt"))
+        app.state.loaded_config = AppConfig(
+            roots=self.config.roots,
+            security=SecurityConfig(enabled=True, trusted_user_header="Remote-User", impersonate_users=()),
+        )
+        response = self.client.get("/list/mock-root?partial=1", headers={"Remote-User": pwd.getpwuid(os.getuid()).pw_name})
+        row = re.search(r'<tr[^>]*data-path="to-secret.txt"[^>]*>', response.text)
+        assert row is not None
+        # A link shows its target's permissions
+        self.assertIn('data-is-accessible="false"', row[0])
 
     def test_api_security_unauthorized(self) -> None:
         from goeddel.use.config import SecurityConfig
@@ -216,8 +297,8 @@ class TestAppRoutes(unittest.TestCase):
         for h_item, b_item in zip(history, bar_items, strict=True):
             self.assertEqual(h_item.color, b_item["color"])
 
-        # 3. Verify explorer view template renders generic snapshot bar macro with pills
-        resp_explorer = self.client.get("/list/mock-root")
+        # 3. Verify the explorer's folder content renders the generic snapshot bar macro with pills
+        resp_explorer = self.client.get("/list/mock-root?partial=1")
         self.assertEqual(resp_explorer.status_code, 200)
         self.assertIn('class="snapshotbar header-snapshotbar"', resp_explorer.text)
         self.assertIn('class="header-snap-rect', resp_explorer.text)
@@ -261,7 +342,7 @@ class TestAppRoutes(unittest.TestCase):
         self.assertIn("text_differ.js", resp.text)
 
         # Verify entry point button in list view
-        resp_list = self.client.get("/list/mock-root")
+        resp_list = self.client.get("/list/mock-root?partial=1")
         self.assertEqual(resp_list.status_code, 200)
         self.assertIn('href="/diff/mock-root/-/file1.txt', resp_list.text)
 

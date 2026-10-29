@@ -33,14 +33,15 @@ class ExplorerView {
         this.snapshotAbortController = null;
         // Bumped on every folder navigation so a slower earlier response is dropped
         this.folderSeq = 0;
+        this.rowsSkeleton = table.querySelector('tbody.rows-skeleton');
+        this.skeletonTimer = null;
+        this.initialSubpath = table.dataset.subpath || '';
+        this.initialSnapshot = this.snapshot;
 
-        if (typeof TableColumnResizer !== 'undefined') {
-            this.columnResizer = new TableColumnResizer(this.table);
-        }
+        this.columnResizer = ExplorerBoot.columns?.resizer;
         this.treeTable = new TreeTable(this.table, {
             subpath: this.table.dataset.subpath || '',
         });
-        this.bindTreeEvents(this.tbody);
         this.initSorting();
         this.initColumnVisibility();
         this.initFiltering();
@@ -52,11 +53,8 @@ class ExplorerView {
         this.initSnapshotDropdown();
         this.initPathBarLinks();
         this.initSnapshotCriteria();
-        this.updateZebra();
-        this.updateToggleCounts();
 
-        this.loadSnapshotBars(this.tbody, this.table.dataset.subpath || '');
-        this.selectRowFromHash();
+        this.loadInitialFolder();
         window.addEventListener('hashchange', () => this.selectRowFromHash());
         window.addEventListener('popstate', (_e) => {
             const params = new URLSearchParams(window.location.search);
@@ -339,13 +337,12 @@ class ExplorerView {
         const snapshot = this.snapshot;
         const listUrl = buildRouteUrl('', 'list', this.rootName, subpath, { snapshot }) + hash;
         const seq = ++this.folderSeq;
+        clearTimeout(this.skeletonTimer);
+        // Fast responses swap the rows directly, without flashing the skeleton
+        this.skeletonTimer = setTimeout(() => this.setRowsLoading(true), 150);
         let fragment;
         try {
-            const res = await fetch(buildRouteUrl('', 'list', this.rootName, subpath, { snapshot, partial: 1 }));
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const template = document.createElement('template');
-            template.innerHTML = await res.text();
-            fragment = template.content;
+            fragment = await ExplorerBoot.fetchSlots(buildRouteUrl('', 'list', this.rootName, subpath, { snapshot, partial: 1 }));
         } catch (_err) {
             // The full page renders the error (missing folder, access denied)
             window.location.assign(listUrl);
@@ -362,27 +359,78 @@ class ExplorerView {
             return;
         }
 
+        ExplorerBoot.applySlots(fragment);
+        this.initFolderRows(state.subpath);
+        if (pushHistory) {
+            history.pushState(null, '', listUrl);
+        }
+        window.scrollTo(0, 0);
+        this.selectRowFromHash();
+    }
+
+    /**
+     * Take over the rows of the folder the page was opened on, which may already be shown.
+     */
+    async loadInitialFolder() {
+        try {
+            const fragment = await ExplorerBoot.firstFolder;
+            if (fragment) ExplorerBoot.applySlots(fragment);
+            this.initFolderRows(this.initialSubpath);
+        } catch (err) {
+            console.error('Failed to load the folder content:', err);
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 10;
+            cell.className = 'browser-cell-error';
+            cell.textContent = window.clientI18n?.['breadcrumb.subfolders_error'] || 'Could not read this folder';
+            row.appendChild(cell);
+            this.tbody.replaceChildren(row);
+            this.setRowsLoading(false);
+            this.updateToggleCounts();
+            return;
+        }
+        this.selectRowFromHash();
+    }
+
+    /**
+     * Rebuild the table state around the rows of the folder now in the page.
+     *
+     * @param {string} subpath - Folder they list.
+     */
+    initFolderRows(subpath) {
         this.selectRow(null, { updateHash: false });
-        fragment.querySelectorAll('template[data-nav-slot]').forEach((slot) => {
-            document.querySelector(`[data-nav-slot="${slot.dataset.navSlot}"]`)?.replaceChildren(slot.content);
-        });
-        this.table.dataset.subpath = state.subpath;
-        this.treeTable.reset(state.subpath);
+        this.table.dataset.subpath = subpath;
+        this.treeTable.reset(subpath);
         this.bindTreeEvents(this.tbody);
         this.selectionManager?.clearSelection();
         this.applyFilter();
         if (this.currentSort !== null) {
             this.sortTree();
         }
+        this.setRowsLoading(false);
         this.updateZebra();
         this.updateToggleCounts();
-        this.loadSnapshotBars(this.tbody, state.subpath);
+        this.loadSnapshotBars(this.tbody, subpath);
+    }
 
-        if (pushHistory) {
-            history.pushState(null, '', listUrl);
+    /**
+     * @param {boolean} loading - Whether to show the skeleton rows instead of the folder's rows.
+     */
+    setRowsLoading(loading) {
+        if (!loading) clearTimeout(this.skeletonTimer);
+        this.table.classList.toggle('is-loading-rows', loading);
+        this.tbody.hidden = loading;
+        if (this.rowsSkeleton) this.rowsSkeleton.hidden = !loading;
+        for (const id of ['badge-hidden-count', 'badge-missing-count', 'badge-changed-count']) {
+            document.getElementById(id)?.classList.toggle('is-loading', loading);
         }
-        window.scrollTo(0, 0);
-        this.selectRowFromHash();
+    }
+
+    /**
+     * @param {boolean} loading - Whether the "changed" count waits for the snapshot bars it is computed from.
+     */
+    setChangedCountLoading(loading) {
+        document.getElementById('badge-changed-count')?.classList.toggle('is-loading', loading);
     }
 
     initSnapshotCriteria() {
@@ -633,7 +681,7 @@ class ExplorerView {
             const topLevelRows = this.treeTable.getChildrenOfPath(baseSubpath);
 
             topLevelRows.forEach((row) => {
-                const filename = row.dataset.filename || row.querySelector('.browser-cell-snapshots')?.dataset.filename;
+                const filename = row.dataset.filename;
                 if (!filename) return;
 
                 const meta = data.entries[filename];
@@ -651,8 +699,8 @@ class ExplorerView {
                     nameCell.classList.toggle('stroke', !doesExist);
                     nameCell.classList.toggle('node-locked', !meta.is_accessible);
 
-                    const iconEl = nameCell.querySelector('svg.file-icon');
-                    if (iconEl && meta.icon_svg) iconEl.outerHTML = meta.icon_svg;
+                    const iconEl = nameCell.querySelector('.file-icon');
+                    if (iconEl) iconEl.outerHTML = lucideIcon(meta.icon_name, 16, `file-icon ${meta.icon_class}`);
                 }
 
                 // Update lock indicator
@@ -664,7 +712,7 @@ class ExplorerView {
                         lockIndicator.title =
                             window.clientI18n?.['error.permission_denied'] || 'Keine Leseberechtigung';
                         lockIndicator.innerHTML =
-                            '<svg class="lucide lucide-lock" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+                            lucideIcon('lock', 12);
                         nameCell.appendChild(lockIndicator);
                     }
                     if (lockIndicator) lockIndicator.style.display = 'inline-block';
@@ -758,9 +806,7 @@ class ExplorerView {
 
                             const children = Array.from(this.treeTable.getChildren(expRow));
                             children.forEach((childRow) => {
-                                const fn =
-                                    childRow.dataset.filename ||
-                                    childRow.querySelector('.browser-cell-snapshots')?.dataset.filename;
+                                const fn = childRow.dataset.filename;
                                 if (!fn) return;
                                 const childMeta = subData.entries[fn];
                                 if (!childMeta) return;
@@ -777,8 +823,8 @@ class ExplorerView {
                                     childNameCell.classList.toggle('stroke', !childExists);
                                     childNameCell.classList.toggle('node-locked', !childMeta.is_accessible);
 
-                                    const childIconEl = childNameCell.querySelector('svg.file-icon');
-                                    if (childIconEl && childMeta.icon_svg) childIconEl.outerHTML = childMeta.icon_svg;
+                                    const childIconEl = childNameCell.querySelector('.file-icon');
+                                    if (childIconEl) childIconEl.outerHTML = lucideIcon(childMeta.icon_name, 16, `file-icon ${childMeta.icon_class}`);
                                 }
 
                                 const childStatVisible = childMeta.is_stat_visible !== false;
@@ -1059,53 +1105,34 @@ class ExplorerView {
         );
     }
 
-    showSnapshotLoadingOverlay() {
-        const overlay = document.getElementById('snapshot-loading-overlay');
-        if (overlay) {
-            overlay.style.display = 'flex';
-            // Trigger reflow for clean CSS transition
-            void overlay.offsetHeight;
-            overlay.classList.remove('fade-out');
-            overlay.classList.add('is-visible');
-        }
-        this.table?.classList.add('is-loading-snapshots');
-    }
-
-    hideSnapshotLoadingOverlay() {
-        const overlay = document.getElementById('snapshot-loading-overlay');
-        if (overlay) {
-            overlay.classList.remove('is-visible');
-            overlay.classList.add('fade-out');
-            setTimeout(() => {
-                if (overlay.classList.contains('fade-out')) {
-                    overlay.style.display = 'none';
-                    overlay.classList.remove('fade-out');
-                }
-            }, 300);
-        }
-        this.table?.classList.remove('is-loading-snapshots');
-    }
-
     async loadSnapshotBars(container, dirPath) {
         const skeletons = container.querySelectorAll(
-            '.browser-cell-snapshots[data-filename] .snapshot-skeleton, .browser-cell-snapshots[data-filename] .snapshot-skeleton-svg',
+            'tr[data-filename] > .browser-cell-snapshots :is(.snapshot-skeleton, .snapshot-skeleton-svg)',
         );
-        if (skeletons.length === 0) {
-            this.hideSnapshotLoadingOverlay();
-            return;
-        }
+        if (skeletons.length === 0) return;
 
         this.initSnapshotObserver();
+        const isShownFolder = dirPath === (this.table.dataset.subpath || '');
+        if (isShownFolder) this.setChangedCountLoading(true);
 
         try {
             const queryParams = { snapshot: this.snapshot };
             if (this.activeCriteria && this.activeCriteria.length > 0 && this.activeCriteria.length < 5) {
                 queryParams.attributes = this.activeCriteria.join(',');
             }
-            const url = buildRouteUrl('', 'api/snapshot-bars', this.rootName, dirPath, queryParams);
-            const res = await fetch(url);
+            let url = buildRouteUrl('', 'api/snapshot-bars', this.rootName, dirPath, queryParams);
+            // The page preloads the bars of the folder it was opened on, with the default criteria
+            const preload = document.getElementById('bars-preload');
+            if (preload) {
+                preload.remove();
+                if (!queryParams.attributes && dirPath === this.initialSubpath && this.snapshot === this.initialSnapshot) {
+                    url = preload.href;
+                }
+            }
+            // Less important than everything else on the page
+            const res = await fetch(url, { priority: 'low' });
             if (!res.ok) {
-                this.hideSnapshotLoadingOverlay();
+                if (isShownFolder) this.setChangedCountLoading(false);
                 return;
             }
             const data = await res.json();
@@ -1173,9 +1200,9 @@ class ExplorerView {
                 if (index < rows.length) {
                     requestAnimationFrame(processChunk);
                 } else {
+                    if (isShownFolder) this.setChangedCountLoading(false);
                     this.updateZebra();
                     this.updateToggleCounts();
-                    this.hideSnapshotLoadingOverlay();
                     this.filterManager?.applyFilter();
                 }
             };
@@ -1183,33 +1210,12 @@ class ExplorerView {
             processChunk();
         } catch (err) {
             console.error('Failed to load snapshot bars:', err);
-            this.hideSnapshotLoadingOverlay();
+            if (isShownFolder) this.setChangedCountLoading(false);
         }
     }
 
     updateZebra() {
-        const hideHidden = this.table.classList.contains('hide-hidden');
-        const hideMissing = this.table.classList.contains('hide-missing');
-        const hideUnchanged = this.table.classList.contains('hide-unchanged');
-        const hasFilterHidden = !!this.tbody.querySelector('tr.filter-hidden');
-        const allRows = this.treeTable.getAllRows();
-        const hasDisplayNone = allRows.some((row) => row.style.display === 'none');
-        const isFiltered = hideHidden || hideMissing || hideUnchanged || hasFilterHidden || hasDisplayNone;
-
-        this.table.classList.toggle('is-filtered', isFiltered);
-        if (!isFiltered) {
-            allRows.forEach((row) => {
-                row.classList.remove('even', 'odd');
-            });
-            return;
-        }
-
-        const visibleRows = this.getVisibleRows();
-        for (let i = 0; i < visibleRows.length; i++) {
-            const row = visibleRows[i];
-            row.classList.toggle('odd', i % 2 === 0);
-            row.classList.toggle('even', i % 2 !== 0);
-        }
+        ExplorerBoot.stripeRows(this.table);
     }
 
     /**
@@ -1369,76 +1375,11 @@ class ExplorerView {
         });
     }
 
-    getBarSortKey(bar) {
-        if (!bar) return [0, 0, 0, []];
-        let changes = 0;
-        let exists = 0;
-        const lengths = [];
-        let currentLen = 0;
-        let lastChar = null;
-
-        for (let i = 0; i < bar.length; i++) {
-            const c = bar[i];
-            if (c !== 'x') exists++;
-            if (lastChar === null) {
-                lastChar = c;
-                currentLen = 1;
-            } else if (c === lastChar) {
-                currentLen++;
-            } else {
-                lengths.push(currentLen);
-                if (lastChar !== 'x' && c !== 'x') changes++;
-                lastChar = c;
-                currentLen = 1;
-            }
-        }
-        if (currentLen > 0) {
-            lengths.push(currentLen);
-        }
-
-        return [changes, exists, lengths.length, lengths];
-    }
-
-    compareBarKeys(keyA, keyB) {
-        if (keyA[0] !== keyB[0]) return keyA[0] - keyB[0];
-        if (keyA[1] !== keyB[1]) return keyA[1] - keyB[1];
-        if (keyA[2] !== keyB[2]) return keyA[2] - keyB[2];
-        for (let i = 0; i < Math.min(keyA[3].length, keyB[3].length); i++) {
-            if (keyA[3][i] !== keyB[3][i]) return keyA[3][i] - keyB[3][i];
-        }
-        return 0;
-    }
-
     initSorting() {
         if (typeof TableSorter === 'undefined') return;
         this.sorter = new TableSorter(this.table, {
+            ...ExplorerBoot.sortOptions(this.table),
             tbody: this.tbody,
-            treeSort: true,
-            storageKey: this.table.id || 'explorer',
-            customComparators: {
-                'snapshot-bar': (_valA, _valB, cellA, cellB) => {
-                    const barA = cellA?.dataset?.barStr || '';
-                    const barB = cellB?.dataset?.barStr || '';
-                    const keyA = this.getBarSortKey(barA);
-                    const keyB = this.getBarSortKey(barB);
-                    return this.compareBarKeys(keyA, keyB);
-                },
-            },
-            rowComparator: (a, b, colIndex, baseCmp) => {
-                if (colIndex === 1) {
-                    const isDirLike = (row) =>
-                        row.dataset.isFolder === 'true' ||
-                        row.dataset.isSubDataset === 'true' ||
-                        row.querySelector('.sub-dataset-name') !== null ||
-                        row.querySelector('.folder-toggle') !== null;
-                    const isDirA = isDirLike(a);
-                    const isDirB = isDirLike(b);
-                    if (isDirA !== isDirB) {
-                        return isDirA ? -1 : 1;
-                    }
-                }
-                return baseCmp;
-            },
             onSort: () => {
                 this.updateZebra();
                 if (this.selectedRow) {
@@ -1453,12 +1394,8 @@ class ExplorerView {
     }
 
     initColumnVisibility() {
-        if (typeof ColumnVisibilityManager === 'undefined') return;
-        this.columnVisibility = new ColumnVisibilityManager(this.table, {
-            sorter: this.sorter,
-            resizer: this.columnResizer,
-            toolbarButton: 'btn-column-visibility',
-        });
+        this.columnVisibility = ExplorerBoot.columns?.visibility;
+        if (this.columnVisibility) this.columnVisibility.sorter = this.sorter;
     }
 
     sortByColumnIndex(cellIndex, forcedDirection = null) {
@@ -1513,7 +1450,8 @@ class ExplorerView {
      * @returns {string|null} Where opening the row navigates (folder, sub-dataset, symlink target).
      */
     getRowOpenUrl(row) {
-        return row.dataset.openUrl || null;
+        const link = row.querySelector('.row-link');
+        return link && !link.hasAttribute('download') ? link.getAttribute('href') : null;
     }
 
     /**
@@ -1521,11 +1459,11 @@ class ExplorerView {
      * @returns {string|null} Download URL of a readable file row.
      */
     getRowDownloadUrl(row) {
-        return row.dataset.downloadUrl || null;
+        return row.querySelector('.row-link[download]')?.getAttribute('href') || null;
     }
 
     /**
-     * Point every URL of a row (open/download targets, row link, action buttons) at another snapshot.
+     * Point every URL of a row (row link, action buttons) at another snapshot.
      *
      * @param {HTMLTableRowElement} row - Table row.
      * @param {string} snapshotId - Target snapshot.
@@ -1536,9 +1474,6 @@ class ExplorerView {
             u.searchParams.set('snapshot', snapshotId);
             return u.pathname + u.search + u.hash;
         };
-        for (const key of ['openUrl', 'downloadUrl']) {
-            if (row.dataset[key]) row.dataset[key] = retarget(row.dataset[key]);
-        }
         row.querySelectorAll('a[href]').forEach((a) => {
             a.setAttribute('href', retarget(a.getAttribute('href')));
         });

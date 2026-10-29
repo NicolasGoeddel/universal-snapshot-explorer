@@ -1,10 +1,10 @@
+{% from 'assets.html.j2' import stylesheets, scripts with context -%}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2' %}
-    <link rel="stylesheet" href="{{ static_url('css/file_browser.css') }}">
-    <link rel="stylesheet" href="{{ static_url('css/root_view.css') }}">
-    <script src="{{ static_url('js/root_view.js') }}" defer></script>
+    {{ stylesheets(['css/file_browser.css', 'css/root_view.css']) }}
+    {{ scripts(['js/root_view.js']) }}
     
 </head>
 <body>

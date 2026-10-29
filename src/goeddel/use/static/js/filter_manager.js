@@ -8,7 +8,7 @@
  * Encapsulates all table filtering mechanisms:
  *  1. Column-specific text filter inputs in table headers (`thead tr.column-filter input`).
  *  2. Keyboard interaction within filter inputs (<kbd>Esc</kbd> blur, cyclic <kbd>Tab</kbd>, <kbd>↓</kbd>/<kbd>Enter</kbd> jump to table, sort shortcuts).
- *  3. Toolbar toggle switches (`toggle-hidden`, `toggle-missing`, `toggle-changed`) with LocalStorage persistence.
+ *  3. Toolbar toggle switches (`toggle-hidden`, `toggle-missing`, `toggle-changed`), persisted through `ExplorerBoot`.
  *  4. Tree-hierarchy-aware row filtering with parent match propagation.
  *  5. Hierarchy-aware count badge updates for hidden, missing, and changed items.
  *  6. Coordinator interceptor support for global filter focus (<kbd>/</kbd>).
@@ -27,7 +27,6 @@ class FilterManager {
      * @param {function(HTMLTableRowElement|null): void} [options.onSelectRow] - Callback to focus a row in the table.
      * @param {function(number, string=): void} [options.onSortColumn] - Callback to trigger sorting by column index.
      * @param {function(string): void} [options.collapseDescendants] - Callback to collapse child rows when toggles hide items.
-     * @param {string} [options.storagePrefix='zfs_explorer_'] - LocalStorage key prefix for toggle states.
      * @param {string} [options.toggleHiddenId='toggle-hidden'] - DOM ID for hidden files toggle.
      * @param {string} [options.toggleMissingId='toggle-missing'] - DOM ID for missing files toggle.
      * @param {string} [options.toggleChangedId='toggle-changed'] - DOM ID for changed files toggle.
@@ -59,7 +58,6 @@ class FilterManager {
         this.onSortColumn = options.onSortColumn || null;
         this.collapseDescendants = options.collapseDescendants || null;
 
-        this.storagePrefix = options.storagePrefix || 'zfs_explorer_';
         this.toggleHiddenId = options.toggleHiddenId || 'toggle-hidden';
         this.toggleMissingId = options.toggleMissingId || 'toggle-missing';
         this.toggleChangedId = options.toggleChangedId || 'toggle-changed';
@@ -253,9 +251,7 @@ class FilterManager {
         const toggleMissing = document.getElementById(this.toggleMissingId);
         const toggleChanged = document.getElementById(this.toggleChangedId);
 
-        const showHidden = localStorage.getItem(`${this.storagePrefix}show_hidden`) === 'true';
-        const showMissing = localStorage.getItem(`${this.storagePrefix}show_missing`) !== 'false';
-        const showChangedOnly = localStorage.getItem(`${this.storagePrefix}show_changed_only`) === 'true';
+        const { showHidden, showMissing, showChangedOnly } = ExplorerBoot.loadFilterToggles();
 
         if (toggleHidden) {
             toggleHidden.checked = showHidden;
@@ -263,7 +259,7 @@ class FilterManager {
             toggleHidden.addEventListener('change', () => {
                 const isChecked = toggleHidden.checked;
                 this.table.classList.toggle('hide-hidden', !isChecked);
-                localStorage.setItem(`${this.storagePrefix}show_hidden`, isChecked ? 'true' : 'false');
+                ExplorerBoot.saveFilterToggle('showHidden', isChecked);
                 if (!isChecked) {
                     this.tbody.querySelectorAll('tr[data-is-hidden="true"]').forEach((row) => {
                         if (row.dataset.path && this.collapseDescendants) {
@@ -284,7 +280,7 @@ class FilterManager {
             toggleMissing.addEventListener('change', () => {
                 const isChecked = toggleMissing.checked;
                 this.table.classList.toggle('hide-missing', !isChecked);
-                localStorage.setItem(`${this.storagePrefix}show_missing`, isChecked ? 'true' : 'false');
+                ExplorerBoot.saveFilterToggle('showMissing', isChecked);
                 if (!isChecked) {
                     this.tbody.querySelectorAll('tr[data-is-missing="true"]').forEach((row) => {
                         if (row.dataset.path && this.collapseDescendants) {
@@ -305,7 +301,7 @@ class FilterManager {
             toggleChanged.addEventListener('change', () => {
                 const isChecked = toggleChanged.checked;
                 this.table.classList.toggle('hide-unchanged', isChecked);
-                localStorage.setItem(`${this.storagePrefix}show_changed_only`, isChecked ? 'true' : 'false');
+                ExplorerBoot.saveFilterToggle('showChangedOnly', isChecked);
                 if (isChecked) {
                     this.tbody.querySelectorAll('tr[data-is-changed="false"]').forEach((row) => {
                         if (row.dataset.path && this.collapseDescendants) {
@@ -470,8 +466,8 @@ class FilterManager {
      * Update count badges and toolbar status indicators based on active filters and hierarchy.
      */
     updateToggleCounts() {
+        if (this.table.classList.contains('is-loading-rows')) return;
         const allRows = this.treeTable.getAllRows().filter((r) => this.treeTable.isRowInExpandedHierarchy(r));
-        if (allRows.length === 0) return;
 
         const hideHidden = this.table.classList.contains('hide-hidden');
         const hideMissing = this.table.classList.contains('hide-missing');
@@ -509,7 +505,6 @@ class FilterManager {
         const badgeHidden = document.getElementById('badge-hidden-count');
         if (badgeHidden) {
             badgeHidden.textContent = String(hiddenCount);
-            badgeHidden.style.display = hiddenCount > 0 ? 'inline-block' : 'none';
             badgeHidden.classList.toggle('is-filtering', hideHidden && hiddenCount > 0);
             const hiddenPattern = hideHidden
                 ? i18n['filter.hidden_files_hidden_status'] || '{count} hidden files hidden'
@@ -520,7 +515,6 @@ class FilterManager {
         const badgeMissing = document.getElementById('badge-missing-count');
         if (badgeMissing) {
             badgeMissing.textContent = String(missingCount);
-            badgeMissing.style.display = missingCount > 0 ? 'inline-block' : 'none';
             badgeMissing.classList.toggle('is-filtering', hideMissing && missingCount > 0);
             const missingPattern = hideMissing
                 ? i18n['filter.missing_files_hidden_status'] || '{count} missing files hidden'
@@ -530,9 +524,10 @@ class FilterManager {
 
         const badgeChanged = document.getElementById('badge-changed-count');
         if (badgeChanged) {
-            if (unchangedCount + changedCount > 0) {
+            // Left blank while no row's changes are known, rather than counting them as unchanged
+            if (unchangedCount + changedCount > 0 || totalRows === 0) {
                 badgeChanged.textContent = `${changedCount}/${totalRows}`;
-                badgeChanged.style.display = 'inline-block';
+                badgeChanged.classList.remove('is-empty');
                 badgeChanged.classList.toggle('is-filtering', hideUnchanged && unchangedCount > 0);
                 badgeChanged.title = hideUnchanged
                     ? (
@@ -545,7 +540,8 @@ class FilterManager {
                           .replace('{changed}', String(changedCount))
                           .replace('{total}', String(totalRows));
             } else {
-                badgeChanged.style.display = 'none';
+                badgeChanged.textContent = '';
+                badgeChanged.classList.add('is-empty');
             }
         }
 

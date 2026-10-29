@@ -1,0 +1,10 @@
+{#- Pages opt in by setting `deferred_styles` (loaded without blocking rendering) and
+    `blocking_scripts` (run while the page is still being parsed); other stylesheets block
+    rendering, and other scripts are deferred. Each call's files are served as one bundle. -#}
+{%- macro stylesheets(paths) -%}
+{{ stylesheet_tags(paths, deferred_styles | default([])) }}
+{%- endmacro -%}
+
+{%- macro scripts(paths) -%}
+{{ script_tags(paths, blocking_scripts | default([])) }}
+{%- endmacro -%}

@@ -77,7 +77,7 @@
     cursor: pointer;
 }
 
-.col-visibility-hide-action svg {
+.col-visibility-hide-action .ico {
     flex-shrink: 0;
     color: var(--text-muted);
 }

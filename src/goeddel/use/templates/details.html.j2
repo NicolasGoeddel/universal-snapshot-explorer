@@ -1,13 +1,10 @@
+{% from 'assets.html.j2' import stylesheets, scripts with context -%}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
     {% include 'header.html.j2'%}
-    <link rel="stylesheet" href="{{ static_url('css/snapshot_timeline.css') }}">
-    <link rel="stylesheet" href="{{ static_url('css/file_browser.css') }}">
-    <link rel="stylesheet" href="{{ static_url('css/column_visibility.css') }}">
-    <script src="{{ static_url('js/column_visibility.js') }}" defer></script>
-    <script src="{{ static_url('js/details.js') }}" defer></script>
-    <script src="{{ static_url('js/snapshot_timeline.js') }}" defer></script>
+    {{ stylesheets(['css/snapshot_timeline.css', 'css/file_browser.css', 'css/column_visibility.css']) }}
+    {{ scripts(['js/column_visibility.js', 'js/details.js', 'js/snapshot_timeline.js']) }}
 </head>
 <body>
     <div class="sticky-header-container">

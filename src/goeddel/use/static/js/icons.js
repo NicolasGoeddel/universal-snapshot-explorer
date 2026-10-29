@@ -1,4 +1,5 @@
 /** A Lucide icon, as an element the icon stylesheet draws. */
 function lucideIcon(name, size, className) {
-    return `<i class="ico i-${name} s${size}${className ? ` ${className}` : ''}"></i>`;
+    const classes = className ? `ico i-${name} s${size} ${className}` : `ico i-${name} s${size}`;
+    return `<i class="${classes}"></i>`;
 }

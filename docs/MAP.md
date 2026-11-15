@@ -2,22 +2,17 @@
 def setup_logging(level: ?) -> ?:
     "Configures the unified logging setup for the application."
 
-# File: src/goeddel/use/dependencies.py Line: 20
+# File: src/goeddel/use/dependencies.py Line: 25
 def get_base_url(request: Request) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 28
+# File: src/goeddel/use/dependencies.py Line: 33
 def quote_path_filter(path: str) -> str:
 
-# File: src/goeddel/use/dependencies.py Line: 32
-def render_lucide(name: str, **kwargs) -> str:
+# File: src/goeddel/use/dependencies.py Line: 37
+def make_route_url(module: str, root_name: str, sub_path: str="", snapshot: ?, params: ?) -> str:
+    "Builds a route URL for a module, root, optional subpath, snapshot, and query parameters."
 
-# File: src/goeddel/use/dependencies.py Line: 39
-def static_url(path: str) -> str:
-
-# File: src/goeddel/use/dependencies.py Line: 48
-def make_route_url(module: str, root_name: str, sub_path: str="", snapshot: ?) -> str:
-
-# File: src/goeddel/use/dependencies.py Line: 70
+# File: src/goeddel/use/dependencies.py Line: 78
 def get_app_config(request: Request) -> AppConfig:
 
 # File: src/goeddel/use/enums.py Line: 6
@@ -52,22 +47,22 @@ class LogLevel(StrEnum):
 class Language(StrEnum):
     "Supported user interface languages."
 
-# File: src/goeddel/use/enums.py Line: 77
+# File: src/goeddel/use/enums.py Line: 78
 class DiffLineType(StrEnum):
     "Classification of lines in diff comparison."
 
-# File: src/goeddel/use/zip_streamer.py Line: 17
+# File: src/goeddel/use/zip_streamer.py Line: 18
 class ChunkedZipStreamer:
     """In-memory streaming sink for zipfile.ZipFile.
     Buffers emitted zip bytes and yields them in chunks to a generator,
     enabling low constant RAM footprint and zero disk temporary files."""
 
-# File: src/goeddel/use/zip_streamer.py Line: 53
+# File: src/goeddel/use/zip_streamer.py Line: 54
 def deduplicate_paths(paths: list[str]) -> list[str]:
     """Normalizes and deduplicates a list of paths.
     If a parent directory is already present, its children are excluded to prevent duplicate files."""
 
-# File: src/goeddel/use/zip_streamer.py Line: 73
+# File: src/goeddel/use/zip_streamer.py Line: 74
 def resolve_zip_selection(root_folder: RootFolder, snapshot: ?, paths: list[str]) -> tuple[(list[tuple[(str, str)]], list[str], list[str])]:
     """Walks the requested selection exactly as `stream_zip_archive` below will,
     without reading any file content.
@@ -82,7 +77,7 @@ def resolve_zip_selection(root_folder: RootFolder, snapshot: ?, paths: list[str]
         user's ACL restrictions. A denied subdirectory is reported once,
         not descended into."""
 
-# File: src/goeddel/use/zip_streamer.py Line: 153
+# File: src/goeddel/use/zip_streamer.py Line: 169
 def stream_zip_archive(root_folder: RootFolder, snapshot: ?, paths: list[str], base_folder_path: str="", structure_mode: StructureMode=..., compression: CompressionMode=...) -> Generator[(bytes, ?, ?)]:
     """Generates a streaming ZIP archive from selected paths within a root folder snapshot.
     Yields chunks of bytes directly to the caller."""
@@ -91,21 +86,29 @@ def stream_zip_archive(root_folder: RootFolder, snapshot: ?, paths: list[str], b
 class DiffEngine:
     "Manager and executor for diff plugins."
 
-# File: src/goeddel/use/app.py Line: 49
+# File: src/goeddel/use/app.py Line: 52
 async def lifespan(app: FastAPI) -> AsyncGenerator[(?, ?)]:
 
-# File: src/goeddel/use/app.py Line: 70
+# File: src/goeddel/use/app.py Line: 67
+class VersionedStaticFiles(StaticFiles):
+    "Static files whose URL carries a version (`?v=`), which changes with the file, so browsers may keep them."
+
+# File: src/goeddel/use/app.py Line: 85
 async def security_middleware(request: Request, call_next: Callable[(?, Awaitable[Response])]) -> Response:
     """Single policy-enforcement point for every filesystem-exposing route (see
     security.py and SecurityConfig for the full reasoning). Disabled by default:
     with `security.enabled = False`, this only sets an empty current_username
     context."""
 
-# File: src/goeddel/use/app.py Line: 127
+# File: src/goeddel/use/app.py Line: 142
 async def value_error_handler(request: Request, exc: ValueError) -> Response:
 
-# File: src/goeddel/use/app.py Line: 136
+# File: src/goeddel/use/app.py Line: 151
 async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException) -> Response:
+
+# File: src/goeddel/use/app.py Line: 190
+class PagesGZipMiddleware:
+    "Compresses the app's own responses: its pages, partial listings, scripts, styles and data."
 
 # File: src/goeddel/use/server.py Line: 12
 class ServerArgs:
@@ -116,15 +119,19 @@ def parse_args() -> ServerArgs:
 # File: src/goeddel/use/server.py Line: 28
 def start() -> ?:
 
-# File: src/goeddel/use/i18n.py Line: 333
-def get_language(request: Request) -> str:
-    "Extracts the language from the request, either via cookie, query param, or Accept-Language."
+# File: src/goeddel/use/i18n.py Line: 588
+def _parse_accept_language(accept_language: str) -> list[str]:
+    "Parses an Accept-Language header into language tags ordered by preference (q-value, then position)."
 
-# File: src/goeddel/use/i18n.py Line: 352
+# File: src/goeddel/use/i18n.py Line: 619
+def get_language(request: Request) -> str:
+    "Extracts the language from the request, via query param, cookie, or Accept-Language preference order."
+
+# File: src/goeddel/use/i18n.py Line: 638
 def get_translator(lang: str) -> Callable[(?, str)]:
     "Returns a translation function for the given language."
 
-# File: src/goeddel/use/i18n.py Line: 368
+# File: src/goeddel/use/i18n.py Line: 654
 def get_client_translations(lang: str) -> str:
     "Returns a JSON string of translations for the client side."
 
@@ -283,10 +290,18 @@ def can_traverse_real_path(real_path: str, username: ?) -> bool:
     "Same as `can_read_real_path`, but checks traverse (\"x\") rather than read."
 
 # File: src/goeddel/use/security.py Line: 451
+def identities_that_can_list(real_path: str, username: ?) -> frozenset[UserName]:
+    """Narrows `username` (a single user or an impersonation union) down to the
+    identities that may both list ("r") and traverse ("x") the directory at
+    `real_path`, the two permissions needed to enumerate and open its entries.
+    Both must hold for the same identity, so the result is meant to be passed
+    on as the `username` of any check made below that directory."""
+
+# File: src/goeddel/use/security.py Line: 462
 def _ancestor_chain(dir_path: FilePath) -> list[str]:
     "Every directory from the share root (\"\") down to and including `dir_path`."
 
-# File: src/goeddel/use/security.py Line: 463
+# File: src/goeddel/use/security.py Line: 474
 def _can_traverse_chain(root_folder: _RootFolderLike, dir_path: FilePath, snapshot: Snapshot, username: UserName) -> bool:
     """True if `username` may traverse every directory from the share root down to
     and including `dir_path`: the precondition for reaching anything inside it.
@@ -304,12 +319,12 @@ def _can_traverse_chain(root_folder: _RootFolderLike, dir_path: FilePath, snapsh
     is done once per directory per request no matter how many paths run through
     it."""
 
-# File: src/goeddel/use/security.py Line: 533
+# File: src/goeddel/use/security.py Line: 544
 def can_view_metadata(root_folder: _RootFolderLike, child_path: FilePath, snapshot: Snapshot, username: ?) -> bool:
     """Checks whether `child_path`'s metadata (size, mtime, mode, ...) may be shown
     to `username` at all, regardless of whether its content is readable."""
 
-# File: src/goeddel/use/security.py Line: 549
+# File: src/goeddel/use/security.py Line: 560
 def can_access_child(root_folder: _RootFolderLike, child_path: FilePath, snapshot: Snapshot, username: ?) -> bool:
     """Lighter sibling of `can_access()` used by `FSNode.is_accessible`: checks read
     permission on a single already-listed entry, plus traverse on its immediate
@@ -324,7 +339,7 @@ def can_access_child(root_folder: _RootFolderLike, child_path: FilePath, snapsho
     traverse the parent plus another who can merely read the file, neither of
     whom can do both, would wrongly combine into access neither actually has."""
 
-# File: src/goeddel/use/security.py Line: 587
+# File: src/goeddel/use/security.py Line: 598
 def can_access(root_folder: _RootFolderLike, path: FilePath, snapshot: Snapshot, username: ?) -> bool:
     """Full access check for `path` within `root_folder` at `snapshot`: requires
     traverse ("x") permission on every ancestor directory (via
@@ -347,6 +362,50 @@ def resolve_root_and_subpath(full_path: str, config: AppConfig) -> tuple[(str, s
     Example: /list/data/apps/immich/pgData/-/sub/folder -> root='data/apps/immich/pgData', path='sub/folder'
     Also falls back to longest registered prefix match when no /-/ delimiter is present."""
 
+# File: src/goeddel/use/utils/render_handoff.py Line: 19
+class _Handoff:
+
+# File: src/goeddel/use/utils/render_handoff.py Line: 31
+def start_render(render: Callable[(?, str)], key: Hashable) -> Future[str]:
+    """Runs `render` in the background, in the current context, so it sees the request's user
+    and permission caches. While it runs, `wait_for_render(key)` waits for it."""
+
+# File: src/goeddel/use/utils/render_handoff.py Line: 52
+def rows_render_key(owner: Hashable, root_name: str, directory_path: str) -> Hashable:
+    "What a render of a folder's rows for a user runs under, whichever snapshot it shows."
+
+# File: src/goeddel/use/utils/render_handoff.py Line: 57
+def wait_for_render(key: Hashable, timeout: float) -> ?:
+    "Waits for the render running under `key`, if any, so that work which can come later doesn't slow it down."
+
+# File: src/goeddel/use/utils/render_handoff.py Line: 65
+def hand_off(future: Future[str], owner: Hashable, target: Hashable) -> str:
+    """Keeps a render that is still running for a later request, and returns the one-time token
+    that claims it."""
+
+# File: src/goeddel/use/utils/render_handoff.py Line: 79
+def take_over(token: str, owner: Hashable, target: Hashable) -> ?:
+    """Claims the render kept under `token`. A token is used up by its first claim, and only
+    claims the render for the user and target it was handed off for."""
+
+# File: src/goeddel/use/utils/icons.py Line: 29
+class IconStylesheet:
+
+# File: src/goeddel/use/utils/icons.py Line: 36
+def icon_stylesheet() -> IconStylesheet:
+    """Every Lucide icon the app names, as one stylesheet that draws each icon as a mask, so pages hold
+    one empty element per icon instead of its shapes."""
+
+# File: src/goeddel/use/utils/icons.py Line: 60
+def _image(name: str, **attributes) -> str:
+
+# File: src/goeddel/use/utils/icons.py Line: 66
+def icon_stylesheet_url() -> str:
+
+# File: src/goeddel/use/utils/icons.py Line: 70
+def render_icon(name: str, size: ?=24, **attributes) -> Markup:
+    "A Lucide icon, as an element the icon stylesheet draws."
+
 # File: src/goeddel/use/utils/roots_hierarchy.py Line: 13
 def build_root_hierarchy(roots_or_configs: ?, root_configs: ?) -> list[RootViewItem]:
     """Organizes roots into a hierarchical tree grouped by filesystem origin:
@@ -361,68 +420,131 @@ def build_root_hierarchy(roots_or_configs: ?, root_configs: ?) -> list[RootViewI
     Returns a topologically sorted list in depth-first order with levels,
     parent references, and group headers."""
 
-# File: src/goeddel/use/utils/ui.py Line: 23
+# File: src/goeddel/use/utils/ui.py Line: 24
 def get_base_template_context(request: Request, root_folder: RootFolder, root_name: RootName, node: FSNode, module: str, path: str="", all_roots: ?, snapshots: ?) -> dict[(str, object)]:
     "Prepares the common template context for explorer, detail, and differ views."
 
-# File: src/goeddel/use/utils/ui.py Line: 71
+# File: src/goeddel/use/utils/ui.py Line: 86
 def get_breadcrumbs(root_folder: RootFolder, root_name: RootName, file: FSNode, snapshots: list[Snapshot], all_roots: list[RootName]) -> BreadcrumbsData:
 
-# File: src/goeddel/use/utils/ui.py Line: 142
+# File: src/goeddel/use/utils/ui.py Line: 157
 def render_error_response(request: Request, status_code: int, message: ?, root_name: ?, path: str="", snapshot_id: ?, is_folder_error: bool, title: ?) -> HTMLResponse:
 
-# File: src/goeddel/use/utils/ui.py Line: 212
+# File: src/goeddel/use/utils/ui.py Line: 227
 def find_nearest_existing_parent(root_folder: RootFolder, path: str, snapshot: ?) -> ?:
     "Finds the closest existing parent directory by walking up the path hierarchy."
 
-# File: src/goeddel/use/routers/api.py Line: 15
+# File: src/goeddel/use/utils/assets.py Line: 26
+def debug_assets() -> bool:
+    "Whether to serve each file as it is, readable for debugging, rather than bundled and minified."
+
+# File: src/goeddel/use/utils/assets.py Line: 31
+def static_url(path: str) -> str:
+
+# File: src/goeddel/use/utils/assets.py Line: 41
+class Bundle:
+
+# File: src/goeddel/use/utils/assets.py Line: 46
+def bundle(kind: AssetKind, paths: Sequence[str]) -> Bundle:
+    "The minified files, in their order, rebuilt whenever one of them changes."
+
+# File: src/goeddel/use/utils/assets.py Line: 53
+def _build(kind: AssetKind, paths: tuple[(str, ?)], _mtimes: tuple[(float, ?)]) -> Bundle:
+
+# File: src/goeddel/use/utils/assets.py Line: 62
+def bundle_paths(kind: AssetKind, files: str) -> ?:
+    "The files a bundle URL names, or None unless each is an existing static file of that kind."
+
+# File: src/goeddel/use/utils/assets.py Line: 73
+def _urls(kind: AssetKind, paths: Sequence[str]) -> list[str]:
+    "Each file's own URL when debugging, otherwise one bundle's."
+
+# File: src/goeddel/use/utils/assets.py Line: 83
+def stylesheet_tags(paths: Sequence[str], deferred: Sequence[str]) -> Markup:
+    "Stylesheets; `deferred` ones are loaded without blocking the page's rendering."
+
+# File: src/goeddel/use/utils/assets.py Line: 93
+def script_tags(paths: Sequence[str], blocking: Sequence[str]) -> Markup:
+    "Deferred scripts, except `blocking` ones, which run while the page is still being parsed."
+
+# File: src/goeddel/use/utils/assets.py Line: 103
+def inline_js(path: str) -> Markup:
+    "Returns a static script's content in a `script` element, re-read whenever the file changes."
+
+# File: src/goeddel/use/utils/template_whitespace.py Line: 14
+class StripIndentation(Extension):
+    """Removes the templates' indentation when they are compiled, so pages are sent without it while
+    the templates stay indented. Line breaks are kept, which HTML renders the same."""
+
+# File: src/goeddel/use/routers/api.py Line: 21
 def get_snapshot_bars_api(request: Request, full_path: str="", snapshot: ?, attributes: ?) -> dict[(str, object)]:
 
-# File: src/goeddel/use/routers/api.py Line: 29
+# File: src/goeddel/use/routers/api.py Line: 37
 def get_file_mimetypes_api(request: Request, full_path: str="", snapshot: ?) -> dict[(str, str)]:
 
-# File: src/goeddel/use/routers/api.py Line: 37
-def get_snapshot_state_api(request: Request, full_path: str="", snapshot: ?) -> dict[(str, object)]:
-
 # File: src/goeddel/use/routers/api.py Line: 45
+def get_snapshot_state_api(request: Request, full_path: str="", snapshot: ?) -> SnapshotStateResponse:
+
+# File: src/goeddel/use/routers/api.py Line: 53
 async def get_zip_preview_api(request: Request, full_path: str="") -> dict[(str, object)]:
     """Reports what a ZIP export of the given selection would skip due to the
     current user's ACL restrictions, WITHOUT generating the archive: lets the
     frontend warn the user before committing to a download."""
 
-# File: src/goeddel/use/routers/api.py Line: 65
+# File: src/goeddel/use/routers/api.py Line: 73
 def invalidate_cache_api() -> dict[(str, object)]:
 
-# File: src/goeddel/use/routers/differ.py Line: 20
+# File: src/goeddel/use/routers/differ.py Line: 21
 def get_diff_content(request: Request, full_path: str="", snapshots: ?) -> HTMLResponse:
     "Render the HTML view for comparing snapshots of a file."
 
-# File: src/goeddel/use/routers/differ.py Line: 87
+# File: src/goeddel/use/routers/differ.py Line: 88
+def get_diff_timeline_segments(request: Request, full_path: str="", attributes: ?) -> HTMLResponse:
+    """Render only the diff timeline's segments, colored for the given criteria.
+
+    Lets the differ page apply a criteria change in place (like the file browser
+    refetching its snapshot bars) instead of reloading the whole page."""
+
+# File: src/goeddel/use/routers/differ.py Line: 116
 def get_diff_api(request: Request, full_path: str="", snapshots: str="", plugin: str="text-differ") -> dict[(str, object)]:
     "Provide JSON data containing the computed diff for the specified snapshots."
 
-# File: src/goeddel/use/routers/explorer.py Line: 24
+# File: src/goeddel/use/routers/explorer.py Line: 36
 def get_favicon() -> FileResponse:
 
-# File: src/goeddel/use/routers/explorer.py Line: 31
-def read_root(request: Request) -> HTMLResponse:
+# File: src/goeddel/use/routers/explorer.py Line: 43
+def get_icons(request: Request) -> Response:
+    "The icon stylesheet; its URL carries the stylesheet's version, so browsers may keep it."
 
 # File: src/goeddel/use/routers/explorer.py Line: 50
-def get_list_content(request: Request, full_path: str="", snapshot: ?) -> HTMLResponse:
+def get_bundle(request: Request, kind: str, files: str) -> Response:
+    "Several static scripts or stylesheets in one minified file, as the pages link them."
 
-# File: src/goeddel/use/routers/explorer.py Line: 90
+# File: src/goeddel/use/routers/explorer.py Line: 60
+def read_root(request: Request) -> HTMLResponse:
+
+# File: src/goeddel/use/routers/explorer.py Line: 79
+def get_list_content(request: Request, full_path: str="", snapshot: ?, partial: bool, handoff: ?) -> Response:
+    """Renders a folder's listing page. With `partial`, renders only the regions that change from
+    one folder to another, so the client can navigate between folders without reloading the page.
+
+    The page is streamed: everything but the rows is sent first, and the rows follow if they are
+    rendered within `ROWS_BUDGET_SECONDS` of the request. Otherwise the page ends with a request for
+    the partial listing, which `handoff` lets take over the render still running."""
+
+# File: src/goeddel/use/routers/explorer.py Line: 164
 def get_detail_content(request: Request, full_path: str="", snapshot: ?) -> HTMLResponse:
 
-# File: src/goeddel/use/routers/explorer.py Line: 141
+# File: src/goeddel/use/routers/explorer.py Line: 215
 def download_file(request: Request, full_path: str="", snapshot: ?) -> Response:
 
-# File: src/goeddel/use/routers/explorer.py Line: 170
+# File: src/goeddel/use/routers/explorer.py Line: 244
 async def download_zip_archive(request: Request, full_path: str="") -> Response:
 
-# File: src/goeddel/use/routers/explorer.py Line: 274
+# File: src/goeddel/use/routers/explorer.py Line: 348
 def get_ajax_content(request: Request, full_path: str="", level: int, snapshot: ?) -> HTMLResponse:
 
-# File: src/goeddel/use/routers/explorer.py Line: 303
+# File: src/goeddel/use/routers/explorer.py Line: 377
 def set_language(request: Request, lang_code: str) -> RedirectResponse:
 
 # File: src/goeddel/use/zfs/models.py Line: 8
@@ -455,10 +577,13 @@ class BtrfsSnapshotProvider:
     Extracts timestamps from info.xml, btrfs CLI metadata, directory stat timestamps,
     or configured filename patterns."""
 
-# File: src/goeddel/use/btrfs/client.py Line: 15
+# File: src/goeddel/use/btrfs/client.py Line: 16
 class BtrfsMountInfo(TypedDict):
 
-# File: src/goeddel/use/btrfs/client.py Line: 21
+# File: src/goeddel/use/btrfs/client.py Line: 24
+def _find_binary(name: str) -> ?:
+
+# File: src/goeddel/use/btrfs/client.py Line: 28
 class BtrfsClient:
     "Wrapper around the btrfs CLI commands."
 
@@ -501,6 +626,23 @@ class BreadcrumbPath(TypedDict):
 class BreadcrumbsData(TypedDict):
 
 # File: src/goeddel/use/models/types.py Line: 58
+class SnapshotStateInfo(TypedDict):
+
+# File: src/goeddel/use/models/types.py Line: 65
+class SymlinkInfo(TypedDict, total=...):
+    """The symlink-specific fields of a SnapshotStateEntry. Its own type so it
+    can be built independently (e.g. FSNode.symlink_info) and merged in via
+    ``**symlink_info`` object-expansion without losing type checking."""
+
+# File: src/goeddel/use/models/types.py Line: 78
+class SnapshotStateEntry(SymlinkInfo):
+    """One entry's metadata, as returned by RootFolder.get_snapshot_state() for
+    instantaneous frontend updates on snapshot switch (see explorer.js)."""
+
+# File: src/goeddel/use/models/types.py Line: 103
+class SnapshotStateResponse(TypedDict):
+
+# File: src/goeddel/use/models/types.py Line: 109
 class RootViewItem(TypedDict):
 
 # File: src/goeddel/use/models/diff.py Line: 13
@@ -535,16 +677,8 @@ class FilesystemSnapshotProvider:
 class File(FSNode):
     "Represents a regular file or symlink in the filesystem."
 
-# File: src/goeddel/use/models/root_folder.py Line: 35
+# File: src/goeddel/use/models/root_folder.py Line: 37
 class RootFolder:
-
-# File: src/goeddel/use/plugins/diff/text_differ.py Line: 32
-class TextDifferPlugin(DiffPlugin):
-    "A plugin that provides text file diffing capabilities."
-
-# File: src/goeddel/use/plugins/diff/base.py Line: 9
-class DiffPlugin(ABC):
-    "Abstract base class for differ plugins."
 
 # File: src/goeddel/use/models/nodes/utils.py Line: 88
 def guess_filetype(name: str, mode: ?) -> str:
@@ -554,19 +688,27 @@ def guess_filetype(name: str, mode: ?) -> str:
 def get_icon_info(name: str, is_folder: bool, does_exist: bool, is_symlink: bool, symlink_is_broken: bool, symlink_target_is_dir: bool, filetype: ?, mode: ?) -> tuple[(str, str)]:
     "Returns a tuple of (lucide_icon_name, css_color_class) based on file attributes."
 
-# File: src/goeddel/use/models/nodes/base.py Line: 25
+# File: src/goeddel/use/models/nodes/base.py Line: 26
 class SnapshotVersionDetail:
     "Represents the diff state of a file in a single snapshot relative to its chronological predecessor."
 
-# File: src/goeddel/use/models/nodes/base.py Line: 37
+# File: src/goeddel/use/models/nodes/base.py Line: 38
 class RootFolderProtocol(Protocol):
     "Structural protocol for root folder interactions needed by nodes."
 
-# File: src/goeddel/use/models/nodes/base.py Line: 79
+# File: src/goeddel/use/models/nodes/base.py Line: 80
 class FSNode:
     "Base class for all filesystem entries (files, directories, missing paths)."
 
 # File: src/goeddel/use/models/nodes/missing.py Line: 14
 class MissingNode(FSNode):
     "Represents a path that does not exist in a given snapshot."
+
+# File: src/goeddel/use/plugins/diff/text_differ.py Line: 32
+class TextDifferPlugin(DiffPlugin):
+    "A plugin that provides text file diffing capabilities."
+
+# File: src/goeddel/use/plugins/diff/base.py Line: 9
+class DiffPlugin(ABC):
+    "Abstract base class for differ plugins."
 

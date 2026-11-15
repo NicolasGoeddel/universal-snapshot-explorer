@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from typing import cast
-from urllib.parse import quote, quote_plus
+from urllib.parse import quote, quote_plus, urlencode
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
@@ -33,14 +34,28 @@ def quote_path_filter(path: str) -> str:
     return "/".join(quote(p) for p in path.split("/"))
 
 
-def make_route_url(module: str, root_name: str, sub_path: str = "", snapshot: str | None = None) -> str:
+def make_route_url(
+    module: str,
+    root_name: str,
+    sub_path: str = "",
+    snapshot: str | None = None,
+    params: Mapping[str, str | int | None] | None = None,
+) -> str:
+    """Builds a route URL for a module, root, optional subpath, snapshot, and query parameters."""
     root_part = quote(root_name, safe="/")
     if sub_path:
         url = f"/{module}/{root_part}/-/{quote_path_filter(sub_path)}"
     else:
         url = f"/{module}/{root_part}"
+    query: dict[str, str] = {}
     if snapshot:
-        url += f"?snapshot={quote_plus(snapshot)}"
+        query["snapshot"] = snapshot
+    if params:
+        for key, value in params.items():
+            if value is not None and not (snapshot and key == "snapshot"):
+                query[key] = str(value)
+    if query:
+        url += f"?{urlencode(query)}"
     return url
 
 

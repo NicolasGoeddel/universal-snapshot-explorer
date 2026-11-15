@@ -5,6 +5,11 @@
 class PathBar { { ... }
 ```
 
+## File: `goeddel/use/static/js/icons.js`
+```javascript
+function lucideIcon(name, size, className) { ... }
+```
+
 ## File: `goeddel/use/static/js/filter_strategies.js`
 ```javascript
 class TextFilterStrategy { { ... }
@@ -20,12 +25,17 @@ class FilterManager { { ... }
 
 ## File: `goeddel/use/static/js/table_sorter.js`
 ```javascript
-class TableSorter { { ... }
+class TableSorter extends TableSortOrder { { ... }
 ```
 
 ## File: `goeddel/use/static/js/typeahead.js`
 ```javascript
 class TypeaheadHUD { { ... }
+```
+
+## File: `goeddel/use/static/js/table_sort_order.js`
+```javascript
+class TableSortOrder { { ... }
 ```
 
 ## File: `goeddel/use/static/js/keyboard_nav.js`

@@ -135,18 +135,25 @@ def get_list_content(
     rows = start_render(render_partial, key=rows_render_key(owner, decoded_root_name, directory_path))
     page = templates.get_template("explorer.html.j2").render({**context, "first_folder": Markup(_ROWS_MARKER)})
     head, tail = page.split(_ROWS_MARKER)
-    partial_url = make_route_url("list", decoded_root_name, directory_path, folder.snapshot.id) + "&partial=1"
 
     def stream() -> Iterator[str]:
         yield head
         try:
             first_folder = {"rows": Markup(rows.result(timeout=max(0.0, started_at + ROWS_BUDGET_SECONDS - time.monotonic())))}
         except TimeoutError:
-            first_folder = {"url": f"{partial_url}&handoff={hand_off(rows, owner, target)}"}
+            first_folder = {
+                "url": make_route_url(
+                    "list",
+                    decoded_root_name,
+                    directory_path,
+                    folder.snapshot.id,
+                    params={"partial": 1, "handoff": hand_off(rows, owner, target)},
+                )
+            }
         except Exception:
             # The partial listing renders the error
             logger.exception("Failed to render the rows of '%s/%s'", decoded_root_name, directory_path)
-            first_folder = {"url": partial_url}
+            first_folder = {"url": make_route_url("list", decoded_root_name, directory_path, folder.snapshot.id, params={"partial": 1})}
         yield templates.get_template("first_folder.html.j2").render(first_folder)
         yield tail
 

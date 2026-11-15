@@ -1,21 +1,25 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from typing import cast
-from urllib.parse import quote, quote_plus
+from urllib.parse import quote, quote_plus, urlencode
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 from jinja2 import select_autoescape
-from lucide.jinja import lucide as lucide_jinja
 
 from .config import AppConfig
 from .i18n import LANGUAGES
+from .utils.assets import inline_js, script_tags, static_url, stylesheet_tags
+from .utils.icons import icon_stylesheet_url, render_icon
+from .utils.template_whitespace import StripIndentation
 
 # Set up templates
 templates_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 templates = Jinja2Templates(directory=templates_dir)
 templates.env.autoescape = select_autoescape(["html", "xml", "j2"])
+templates.env.add_extension(StripIndentation)
 
 
 def get_base_url(request: Request) -> str:
@@ -30,38 +34,40 @@ def quote_path_filter(path: str) -> str:
     return "/".join(quote(p) for p in path.split("/"))
 
 
-def render_lucide(name: str, **kwargs: object) -> str:
-    return lucide_jinja(name, **kwargs)  # pyright: ignore[reportArgumentType] # External library lucide_jinja lacks proper kwargs typing
-
-
-_STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-
-
-def static_url(path: str) -> str:
-    full_path = os.path.join(_STATIC_DIR, path)
-    try:
-        mtime = int(os.path.getmtime(full_path))
-        return f"/static/{path}?v={mtime}"
-    except OSError:
-        return f"/static/{path}"
-
-
-def make_route_url(module: str, root_name: str, sub_path: str = "", snapshot: str | None = None) -> str:
+def make_route_url(
+    module: str,
+    root_name: str,
+    sub_path: str = "",
+    snapshot: str | None = None,
+    params: Mapping[str, str | int | None] | None = None,
+) -> str:
+    """Builds a route URL for a module, root, optional subpath, snapshot, and query parameters."""
     root_part = quote(root_name, safe="/")
     if sub_path:
         url = f"/{module}/{root_part}/-/{quote_path_filter(sub_path)}"
     else:
         url = f"/{module}/{root_part}"
+    query: dict[str, str] = {}
     if snapshot:
-        url += f"?snapshot={quote_plus(snapshot)}"
+        query["snapshot"] = snapshot
+    if params:
+        for key, value in params.items():
+            if value is not None and not (snapshot and key == "snapshot"):
+                query[key] = str(value)
+    if query:
+        url += f"?{urlencode(query)}"
     return url
 
 
 cast(dict[str, object], templates.env.globals).update(
     {
         "static_url": static_url,
+        "inline_js": inline_js,
+        "stylesheet_tags": stylesheet_tags,
+        "script_tags": script_tags,
         "route_url": make_route_url,
-        "lucide": render_lucide,
+        "lucide": render_icon,
+        "icon_stylesheet_url": icon_stylesheet_url,
         "languages": LANGUAGES,
     }
 )

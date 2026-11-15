@@ -8,7 +8,7 @@ The system is built on a strictly typed **FastAPI (Python)** backend and a **Van
 
 1. **Strict Typing**: The backend enforces strict type hints validated by `basedpyright`. No implicit `Any` is allowed.
 2. **Security by Design**: Security checks (e.g., path traversal prevention, access controls) are centralized at policy enforcement points (PEP), avoiding scattered "shotgun security" checks.
-3. **No Frontend Build Chain**: The frontend relies purely on Vanilla JavaScript, utilizing ES modules and modern browser APIs. It is free of Node/npm dependencies for runtime logic.
+3. **No Frontend Build Chain**: The frontend relies purely on Vanilla JavaScript and modern browser APIs without Node/npm dependencies or external build steps. In production, Python serves bundled/minified assets (`rjsmin`/`rcssmin` via `utils/assets.py`) and a generated CSS-mask icon stylesheet (`utils/icons.py`), which can be bypassed for development with `--reload` or `USE_DEBUG_ASSETS=1`.
 4. **Pluggability**: Core capabilities such as diffing are designed as plugins, allowing easy extension for new file formats or visualization techniques.
 
 ## Core Modules

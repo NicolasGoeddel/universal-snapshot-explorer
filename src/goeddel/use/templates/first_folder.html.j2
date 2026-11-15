@@ -1,0 +1,8 @@
+{#- The partial listing of the folder the page was opened on: in the page when it was rendered in
+    time, otherwise requested from `url` -#}
+{%- if rows -%}
+<template id="first-folder">{{ rows }}</template>
+<script>ExplorerBoot.showFirstFolder(document.getElementById('filebrowser'), Promise.resolve(document.getElementById('first-folder').content));</script>
+{%- else -%}
+<script>ExplorerBoot.showFirstFolder(document.getElementById('filebrowser'), ExplorerBoot.fetchSlots({{ url | tojson }}));</script>
+{%- endif -%}

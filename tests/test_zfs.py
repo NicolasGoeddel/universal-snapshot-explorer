@@ -288,6 +288,20 @@ roots:
             make_route_url("download", "Backup Rocky", "etc/passwd"),
             "/download/Backup%20Rocky/-/etc/passwd",
         )
+        self.assertEqual(
+            make_route_url("list", "data/backups", "sub/dir", params={"partial": 1}),
+            "/list/data/backups/-/sub/dir?partial=1",
+        )
+        self.assertEqual(
+            make_route_url(
+                "list",
+                "data/backups",
+                "sub/dir",
+                "snap1",
+                params={"partial": 1, "handoff": "abc def", "snapshot": "ignored", "empty": "", "zero": 0, "skip": None},
+            ),
+            "/list/data/backups/-/sub/dir?snapshot=snap1&partial=1&handoff=abc+def&empty=&zero=0",
+        )
 
     def test_sub_dataset_detection(self) -> None:
         from unittest.mock import patch

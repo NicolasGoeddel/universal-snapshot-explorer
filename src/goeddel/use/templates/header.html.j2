@@ -1,11 +1,15 @@
+{% from 'assets.html.j2' import stylesheets, scripts with context %}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ t('page.title') }}</title>
 <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+<link rel="stylesheet" href="{{ icon_stylesheet_url() }}">
+{{ head_preloads | default('') }}
 <script>
     (function() {
         try {
             var theme = localStorage.getItem('theme');
+            document.documentElement.setAttribute('data-theme-choice', theme || 'system');
             if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.setAttribute('data-theme', 'dark');
             } else {
@@ -19,18 +23,5 @@
         }
     })();
 </script>
-<link rel="stylesheet" href="{{ static_url('css/main.css') }}">
-<link rel="stylesheet" href="{{ static_url('css/path_bar.css') }}">
-<link rel="stylesheet" href="{{ static_url('css/table_resizer.css') }}">
-<link rel="stylesheet" href="{{ static_url('css/typeahead.css') }}">
-<link rel="stylesheet" href="{{ static_url('css/selection.css') }}">
-<link rel="stylesheet" href="{{ static_url('css/filter.css') }}">
-<script src="{{ static_url('js/theme.js') }}" defer></script>
-<script src="{{ static_url('js/path_bar.js') }}" defer></script>
-<script src="{{ static_url('js/table_resizer.js') }}" defer></script>
-<script src="{{ static_url('js/tree_table.js') }}" defer></script>
-<script src="{{ static_url('js/table_sorter.js') }}" defer></script>
-<script src="{{ static_url('js/filter_manager.js') }}" defer></script>
-<script src="{{ static_url('js/selection_manager.js') }}" defer></script>
-<script src="{{ static_url('js/keyboard_nav.js') }}" defer></script>
-<script src="{{ static_url('js/typeahead.js') }}" defer></script>
+{{ stylesheets(['css/main.css', 'css/path_bar.css', 'css/table_resizer.css', 'css/typeahead.css', 'css/selection.css', 'css/filter.css']) }}
+{{ scripts(['js/icons.js', 'js/theme.js', 'js/path_bar.js', 'js/table_resizer.js', 'js/tree_table.js', 'js/table_sort_order.js', 'js/table_sorter.js', 'js/filter_manager.js', 'js/selection_manager.js', 'js/keyboard_nav.js', 'js/typeahead.js']) }}

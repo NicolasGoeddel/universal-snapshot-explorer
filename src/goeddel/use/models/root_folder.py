@@ -218,9 +218,12 @@ class RootFolder:
                     return False
         return True
 
-    def active_snapshot_count(self) -> int:
-        """Returns the count of active snapshots excluding the live system pseudo-snapshot."""
-        if not self.is_mounted():
+    def active_snapshot_count(self, is_mounted: bool | None = None) -> int:
+        """
+        Returns the count of active snapshots excluding the live system pseudo-snapshot.
+        `is_mounted` saves checking the mount again when the caller already did.
+        """
+        if not (self.is_mounted() if is_mounted is None else is_mounted):
             return 0
         from .snapshot import OriginalSnapshot
 
@@ -698,6 +701,7 @@ class RootFolder:
         for filename in folder.content():
             entry = folder[filename]
             if not entry.does_exist or not entry.is_stat_visible:
+                icon_name, icon_class = entry.effective_icon()
                 # Traverse denied on the parent, or file missing -- stat data
                 # must not be exposed. Redacted here rather than in the frontend, since
                 # this payload is what the browser repaints the table from and
@@ -709,8 +713,8 @@ class RootFolder:
                     "is_sub_dataset": entry.is_sub_dataset,
                     "is_symlink": entry.is_symlink if entry.does_exist else False,
                     "is_accessible": False,
-                    "icon_name": entry.effective_icon_name,
-                    "icon_class": entry.effective_icon_class,
+                    "icon_name": icon_name,
+                    "icon_class": icon_class,
                     "is_stat_visible": entry.is_stat_visible,
                     "size_human": "–",
                     "size": -1,
@@ -729,6 +733,7 @@ class RootFolder:
                 ctime_fmt = entry.ctime.strftime("%d.%m.%Y %H:%M:%S") if entry.ctime else "–"
                 ctime_iso = entry.ctime.isoformat() if entry.ctime else ""
                 is_accessible = entry.is_accessible
+                icon_name, icon_class = entry.effective_icon(is_accessible)
                 if entry.has_independent_snapshots:
                     size_human = "–"
                 elif entry.is_folder and not is_accessible:
@@ -743,8 +748,8 @@ class RootFolder:
                     "has_independent_snapshots": entry.has_independent_snapshots,
                     "is_symlink": entry.is_symlink,
                     "is_accessible": is_accessible,
-                    "icon_name": entry.effective_icon_name,
-                    "icon_class": entry.effective_icon_class,
+                    "icon_name": icon_name,
+                    "icon_class": icon_class,
                     "is_stat_visible": True,
                     "size_human": size_human or "–",
                     "size": -1 if entry.is_folder and not is_accessible else entry.size if entry.size is not None else 0,

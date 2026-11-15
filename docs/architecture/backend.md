@@ -19,9 +19,15 @@ When a request arrives for a path, the backend delegates path resolution to `pat
 2. **Context Resolution**: The dependency injector (`dependencies.py`) provides the global app configuration.
 3. **Node Instantiation**: The specific file or folder node is instantiated via the root folder abstraction.
 4. **Action Execution**:
-   - If HTML is requested, a Jinja2 template is rendered with the node context.
+   - If HTML is requested, a Jinja2 template is rendered with the node context (with template indentation stripped at compile time via `utils/template_whitespace.py`).
+   - For folder listings (`/list/...`), the page shell is streamed immediately via `StreamingResponse` while rows render in a background thread (`utils/render_handoff.py` with `copy_context()`). If rendering finishes within `ROWS_BUDGET_SECONDS` (0.1 s), the rows follow in the same stream; otherwise a single-use, owner- and target-bound `handoff` token lets the browser's follow-up `?partial=1&handoff=...` request claim the running render. `/api/snapshot-bars/...` calls `wait_for_render` so bar computation does not compete with the initial row render.
    - If an API diff is requested, the node paths are passed to the `DiffEngine`.
    - If a download is requested, `zip_streamer.py` directly streams the node's contents on-the-fly.
+
+## Asset Bundling, Icons & Compression
+- **Bundled & Versioned Assets (`utils/assets.py`, `app.py`)**: Static CSS/JS files are combined and minified on demand via `/bundle.{kind}?files=...&v=...` using `rcssmin`/`rjsmin` (or served unbundled via `/static/...` when `--reload` / `USE_DEBUG_ASSETS=1` is set). `VersionedStaticFiles` and `/bundle.{kind}` emit `immutable` cache headers when `?v=` is present.
+- **Mask-Based Icon Stylesheet (`utils/icons.py`)**: All Lucide icon names referenced across `.py`, `.j2`, and `.js` files are collected once and served as `/icons.css?v=...`, drawing icons via CSS `mask-image` on lightweight `<i class="ico ...">` elements instead of embedding inline SVGs per row.
+- **Response Compression (`app.py`)**: `PagesGZipMiddleware` compresses HTML, API JSON, bundles, and stylesheets while excluding `/download/` and `/download-zip/` so browsers keep exact `Content-Length` download progress.
 
 ## Type Safety
 The backend strictly uses Python type hints (`typing.Sequence`, `typing.cast`, `dataclasses.dataclass`). `basedpyright` enforces these rules globally, explicitly forbidding the unchecked use of `Any` to guarantee robust execution boundaries.

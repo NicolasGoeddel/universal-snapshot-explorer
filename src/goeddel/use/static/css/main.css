@@ -524,6 +524,19 @@ body {
     color: var(--primary-accent);
 }
 
+/* Only the icon of the chosen theme, which the page head stores on the root element */
+:is(.icon-light-theme, .icon-dark-theme, .icon-system-theme) {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+:root[data-theme-choice='light'] .icon-light-theme,
+:root[data-theme-choice='dark'] .icon-dark-theme,
+:root[data-theme-choice='system'] .icon-system-theme {
+    display: inline-flex;
+}
+
 .icon-symlink-broken {
     color: #ef4444 !important;
 }
@@ -1109,99 +1122,4 @@ kbd {
 .error-btn.secondary:hover {
     background-color: var(--bg-surface-hover);
     border-color: var(--text-muted);
-}
-
-/* ==========================================================================
-   Snapshot Data Loading Overlay
-   ========================================================================== */
-
-.snapshot-loading-overlay {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.95);
-    z-index: 10000;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.snapshot-loading-overlay.is-visible {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-    pointer-events: auto;
-}
-
-.snapshot-loading-overlay.fade-out {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.95);
-    pointer-events: none;
-}
-
-.snapshot-loading-card {
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.3);
-    border-radius: 16px;
-    padding: 16px 26px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    min-width: 170px;
-}
-
-[data-theme="dark"] .snapshot-loading-card {
-    background: rgba(15, 23, 42, 0.88);
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-.snapshot-loading-spinner-wrapper {
-    position: relative;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.snapshot-loading-conic-ring {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: conic-gradient(var(--snap-1), var(--snap-2), var(--snap-3), var(--snap-4), var(--snap-5), var(--snap-6), var(--snap-1));
-    mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
-    animation: snapshot-conic-spin 1.4s linear infinite;
-}
-
-.snapshot-loading-inner-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-color);
-    animation: hourglass-flip 2.4s ease-in-out infinite;
-    z-index: 2;
-}
-
-.snapshot-loading-text {
-    font-size: 9.5pt;
-    font-weight: 500;
-    color: var(--text-color);
-    letter-spacing: 0.2px;
-    white-space: nowrap;
-}
-
-@keyframes snapshot-conic-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-@keyframes hourglass-flip {
-    0% { transform: rotate(0deg); }
-    45% { transform: rotate(180deg); }
-    50% { transform: rotate(180deg); }
-    100% { transform: rotate(360deg); }
 }

@@ -6,6 +6,44 @@ This project adheres to [Semantic Versioning (SemVer)](https://semver.org/).
 
 ---
 
+## [2.4.0] - 2026-11-20
+
+> **Minor Release: In-Place Folder Navigation, Streamed Skeleton Loading & Major UI/Server Speedups**
+
+### 🚀 Highlights & New Features
+
+* **In-Place Folder Navigation (#11):**
+  * Added partial HTML navigation (`/list/...?partial=1`) to switch folders without full page reloads, falling back to full loads on errors or dataset boundaries.
+* **Streamed Skeleton Loading (#14):**
+  * Removed the blocking snapshot loading overlay so rows are interactive immediately while snapshot bars populate asynchronously.
+  * Streamed `/list/...` responses with an immediate skeleton shell and a 100 ms row render budget, handing off slower renders via single-use, owner- and target-bound tokens.
+
+### ⚡ Performance & Asset Optimization
+
+* **Icons, Bundling & Compression:**
+  * Replaced per-row inline Lucide SVGs with a cached CSS-mask stylesheet (`/icons.css`).
+  * Added CSS/JS bundling and minification (`/bundle.{kind}` via `rcssmin`/`rjsmin`) with immutable cache headers, bypassed in debug mode (`--reload` or `USE_DEBUG_ASSETS=1`).
+  * Added GZip compression (`PagesGZipMiddleware`) for pages and assets (excluding `/download/` and `/download-zip/`) and compile-time Jinja2 whitespace stripping.
+* **Backend & Render Pipeline:**
+  * Evaluated ACL checks and icon selection once per row (down from 9.1 and 4.0 checks), deferred snapshot bar computation until row rendering finishes, and cached the `btrfs` binary lookup (~250 ms -> ~4 ms on the roots page).
+  * Split `TableSortOrder` from `TableSorter` for early sorting before deferred scripts load and preloaded `/api/snapshot-bars/...` from `<head>`.
+* **Measured Impact (10k-entry folder benchmark, local server, warm cache):**
+  * Server render time dropped from `3.5 s` to `0.8 s`, and transferred row payload dropped from `37.3 MB` to `479 KB` (`17.9 MB` uncompressed).
+  * Browser fresh-visit row load improved from `17.4 s` to `4.6 s` (time to interactive: `22.9 s` -> `0.25 s`), and throttled (9 Mbit/s, 150 ms latency) folder navigation improved from `40.8 s` to `4.8 s`.
+
+### 🐛 Bug Fixes & Dependencies
+
+* **Broken Symlinks:**
+  * Treated broken symlinks as stat-visible entries instead of logging tracebacks or showing them as permission-denied on directory listings.
+* **Dependencies & Tests:**
+  * Upgraded `certifi` to `2026.10.23` in `uv.lock` (#12) and gave snapshot test fixtures distinct `mtime` values (#13).
+
+### 🙏 Contributors
+
+* Thanks to **@ShyneTurtle** for authoring all features, performance optimizations, dependency updates, and fixes in this release (#11, #12, #13, #14).
+
+---
+
 ## [2.3.0] - 2026-09-28
 
 > **Minor Release: Interactive Snapshot Timeline, Major UI Redesign & ACL Permission Support**

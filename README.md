@@ -1,4 +1,4 @@
-# Universal Snapshot Explorer (USE) 📸
+# Universal Snapshot Explorer (USE)
 
 [![CI](https://github.com/NicolasGoeddel/zfs-snapshot-explorer/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasGoeddel/zfs-snapshot-explorer/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-74%25-brightgreen.svg)](#testing--code-quality)
@@ -8,9 +8,39 @@
 [![Container Registry](https://img.shields.io/badge/Container_Registry-GHCR-blue.svg?logo=docker&logoColor=white)](https://github.com/NicolasGoeddel/zfs-snapshot-explorer/pkgs/container/universal-snapshot-explorer)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://github.com/NicolasGoeddel/zfs-snapshot-explorer/blob/main/LICENSE)
 
-A high-performance, lightweight, read-only web explorer and audit tool for **OpenZFS, Btrfs & POSIX filesystem snapshots**.
+I started this project last year for the following reason: On my TrueNAS server, I had a ZFS system full of backups and snapshots, and it was just way too complicated to figure out what had changed between the snapshots. Searching through the various `.zfs/snapshot` directories or checking individual folders in multiple tabs quickly becomes tedious, especially when you’re trying to figure out when a file was modified, moved, or deleted.
 
-Instead of browsing snapshots one by one or mounting snapshot directories manually over SSH, **Universal Snapshot Explorer** visualizes the complete version history of all files and folders across all available snapshots simultaneously.
+Since I’ve had over 15 years of experience with Python, I naturally built the backend with it. Frontend development, however, has never really been my thing. But jQuery and Vanilla JavaScript are fine, so I started with those. Also, I really don’t like huge frameworks with npm and the like and their endless dependency trees, so I deliberately kept it completely free of Node and other build toolchains.
+
+As AI coding assistants became increasingly more powerful, I began to bring them in under strict supervision to migrate the front end to more modern standards that I’m not familiar with, and, building on that foundation, to develop additional new features, such as the interactive timeline, the N-way file comparison, the enforcement of POSIX ACLs, and significant improvements to UI performance.
+
+---
+
+## ✨ Key Features
+
+* **📊 Interactive Dual-Timeline & Snapshot Bars:** A sticky dual-timeline panel lets you pan and zoom across your snapshot history with density-aware grouping. Each file and folder row also displays an accessible, colorblind-friendly SVG pill bar indicating creations, modifications, deletions, and static periods (sorted right-to-left from recent to old), with configurable change criteria (`size`, `mode`, `uid`, `gid`, `mtime`, etc.).
+* **⚡ Streamed UI & In-Place Folder Navigation:** Switches folders via partial HTML updates without full page reloads, streams an immediate skeleton shell so directory rows are interactive right away while snapshot bars load asynchronously, and serves CSS-mask icons alongside bundled, minified, and GZip-compressed assets.
+* **🗂️ Pluggable Multi-Filesystem Support:** Native support for **OpenZFS** (`.zfs/snapshot` and ZFS CLI auto-discovery via `/dev/zfs`), **Btrfs** subvolumes (including **Snapper** `info.xml` layouts), **CephFS** (`.snap`), and generic POSIX snapshot directories.
+* **🌐 Boundary & Mount Discovery:** Automatically detects nested mount points and sub-datasets via `/proc/mounts`, rendering dedicated per-dataset snapshot timelines in table rows and breadcrumbs, organized hierarchically in the Roots Dashboard.
+* **🛡️ POSIX ACL & Impersonation Support:** Optional read-only enforcement of real filesystem POSIX ACLs (`system.posix_acl_access`), authenticating users via trusted reverse-proxy HTTP headers (e.g., `Remote-User`) or static `impersonate_users` lists while respecting directory traversal and group masks.
+* **📦 Multi-Selection & Streaming ZIP Downloads:** Tri-state hierarchical folder checkboxes with `Shift+Space` range selection and on-the-fly streaming ZIP downloads with zero temporary disk files (respecting ACL restrictions).
+* **🔍 Instant Audit, Column Filters & Custom Layout:**
+  * **Column Filters:** Search per column with text/wildcards, size ranges (`5mb..10mb`), octal/symbolic mode masks (`700`, `g:x`), and relative dates (`today`).
+  * **Audit Toggles:** Filter by **Changed only**, **Missing files**, and **Hidden files** (`.*`), plus toggleable and resizable table columns persisted in browser storage.
+* **⚖️ Modular N-Way File Differ:** Unified diffing engine designed to compare files across snapshots, shipping with a side-by-side `TextDiffer` plugin.
+* **⌨️ Full Keyboard Navigation & Typeahead Search:**
+  * Live typeahead HUD (`A`–`Z`, `0`–`9`) to jump straight to matching entries.
+  * `↑` / `↓` to move between rows, `→` / `←` to expand/collapse or navigate up, `Enter` to open or download, `Space` / `Shift+Space` to select, `i` for file details, `Ctrl+L` / `Cmd+L` for the breadcrumb path bar, `Shift+R` to refresh caches, and `h` / `?` for the shortcut cheat sheet.
+* **📋 Deep File Details & Clean URLs:** Compare file sizes, MIME types, POSIX permissions, ownership (resolved via host or snapshot-relative `/etc/passwd` and `/etc/group`), and timestamps across snapshots using unambiguous `/-/` dataset-to-path URLs (`/list/pool/dataset/-/sub/folder`).
+* **🔒 Safe, Read-Only & Localized:** Runs completely read-only (`:ro`) with zero database overhead, automatic dark/light theme detection (`prefers-color-scheme`), and native **English**, **German**, and **French** localization.
+
+---
+
+## 🎯 Use Cases
+
+1. **Self-Service File Recovery for Teams & Homelabs:** Let users easily locate and download previous versions of their documents without needing SSH access or bothering system administrators.
+2. **Forensic Audit & Incident Response:** Instantly pinpoint the exact snapshot where a ransomware attack, faulty migration script, or unintended deletion took place.
+3. **Version History for Large Assets (Video, 3D, Audio, CAD):** A "Git-like" visual history browser for large binary assets where traditional version control systems struggle.
 
 ---
 
@@ -32,43 +62,6 @@ Instead of browsing snapshots one by one or mounting snapshot directories manual
 
 ### N-Way File Differ (Text Comparison)
 ![N-Way File Differ](assets/text-differ.png)
-
----
-
-## ✨ Key Features
-
-* **📊 Multi-Snapshot Timeline Bar:** Each file and folder features an interactive, color-coded timeline bar indicating modifications, creations, deletions, and static periods across all snapshots at a single glance. The timeline is built with accessible, colorblind-friendly SVG pill designs, and the criteria for what constitutes a "change" (e.g., Size, Permissions, UID/GID, Mtime) is fully configurable.
-* **🗂️ Pluggable Multi-Filesystem Architecture:** Native support for **OpenZFS** datasets (`.zfs/snapshot`) and **Btrfs** subvolumes (including **Snapper** metadata layouts).
-* **🌐 Boundary & Mount Discovery:** Automatically detects nested mount points and sub-datasets via `/proc/mounts`, rendering dedicated per-dataset snapshot timelines in table rows and breadcrumbs.
-* **🤖 ZFS CLI Integration & Auto-Discovery:** Seamlessly discovers all active datasets across your ZFS pools with `/dev/zfs` passthrough and retrieves exact snapshot creation timestamps directly from ZFS metadata.
-* **📦 Checkbox Multi-Selection & Streaming ZIP Download:** Select multiple files or folders across any snapshot and download them instantly as an on-the-fly streaming ZIP archive without creating temporary files on disk.
-* **🛡️ POSIX ACL & Permissions Enforcement:** Fully replicates the kernel's access-control logic. If the user doesn't have read access to a file, they can't see or download it. Operates via HTTP headers (like TrueNAS auth proxies) and correctly evaluates inherited group mask and traversal permissions.
-* **🔍 Instant Audit & Advanced Column Filters:**
-  * **Column Filters:** Powerful search strategies per column, including size ranges (`5mb..10mb`), octal mode masks (`700`, `g:x`), relative dates (`today`), and wildcards.
-  * **"Changed only"** (`history` icon): Instantly filter out static files to spot what was modified, added, or deleted between snapshots.
-  * **"Missing files"** (`ghost` icon): Toggle visibility of files that do not exist in the current snapshot.
-  * **"Hidden files"** (`eye-off` icon): Toggle visibility of dotfiles (`.*`).
-* **⚖️ Modular N-Way File Differ:** A unified diffing engine designed to compare files across multiple snapshots simultaneously (currently equipped with a TextDiffer plugin for side-by-side 2-way text comparisons).
-* **⌨️ Full Keyboard Navigation:**
-  * `↑` / `↓`: Navigate through rows.
-  * `→` / `←`: Expand/collapse folders or navigate to parent directories.
-  * `Enter`: Open selected folder or download file.
-  * `i`: Open deep version details view.
-  * `Ctrl + L` / `Cmd + L`: Jump to breadcrumb path bar with live typeahead.
-  * `h` / `?`: Open keyboard shortcuts cheat sheet.
-* **🧭 Clean URL Structure (`/-/` Delimiter):** Uses the proven GitLab/GitHub delimiter pattern (`/list/pool/dataset/-/sub/folder`) for unambiguous navigation in deeply nested dataset pools.
-* **📋 Deep File Details & Change History:** Compare file sizes, MIME types, POSIX permissions, ownership (UID/GID resolved via host `/etc/passwd`), and timestamps across all snapshot versions.
-* **🔒 Safe & Read-Only:** Operates completely read-only (`:ro`). Zero database, zero storage overhead, and zero risk of accidental data modification.
-* **🌓 Modern Dark & Light Theming:** Seamless system theme detection (`prefers-color-scheme`) with an instant toggle and Lucide vector icons.
-* **🌍 Multi-Language Support (i18n):** Native support for English and German with automatic browser language detection.
-
----
-
-## 🎯 Use Cases
-
-1. **Self-Service File Recovery for Teams & Homelabs:** Let users easily locate and download previous versions of their documents without needing SSH access or bothering system administrators.
-2. **Forensic Audit & Incident Response:** Instantly pinpoint the exact snapshot where a ransomware attack, faulty migration script, or unintended deletion took place.
-3. **Version History for Large Assets (Video, 3D, Audio, CAD):** A "Git-like" visual history browser for large binary assets where traditional version control systems struggle.
 
 ---
 
@@ -110,7 +103,15 @@ services:
       - PYTHONUNBUFFERED=1
 ```
 
-### 2. `config.yaml`
+### 2. `docker run`
+
+The exact same setup as a single `docker run` command:
+
+```sh
+docker run -d --name universal-snapshot-explorer --restart unless-stopped -p 8090:8080 --privileged --security-opt apparmor=unconfined --cap-add SYS_ADMIN --device /dev/zfs:/dev/zfs -v /:/host:ro,rslave -v "$PWD/config.yaml:/app/config.yaml:ro" -e PYTHONUNBUFFERED=1 ghcr.io/nicolasgoeddel/universal-snapshot-explorer:latest
+```
+
+### 3. `config.yaml`
 
 ```yaml
 # Global OpenZFS Auto-Discovery Configuration
@@ -188,6 +189,15 @@ roots:
     filesystem_type: btrfs
     user_map: etc/passwd
     group_map: etc/group
+
+# Optional: Authenticated access with POSIX ACL enforcement (disabled by default)
+# security:
+#   enabled: true
+#   trusted_user_header: Remote-User
+#   # Optional: For standalone setups without an auth proxy, impersonate the union of these users
+#   impersonate_users:
+#     - alice
+#     - bob
 
 # Log verbosity level. Supported values: debug, info, warning, error, critical
 loglevel: info
